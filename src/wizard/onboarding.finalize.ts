@@ -95,7 +95,7 @@ export async function finalizeOnboardingWizard(options: FinalizeOnboardingOption
     installDaemon = true;
   } else {
     installDaemon = await prompter.confirm({
-      message: "Install Gateway service (recommended)",
+      message: "安装网关服务（推荐）",
       initialValue: true,
     });
   }
@@ -113,25 +113,22 @@ export async function finalizeOnboardingWizard(options: FinalizeOnboardingOption
       flow === "quickstart"
         ? (DEFAULT_GATEWAY_DAEMON_RUNTIME as GatewayDaemonRuntime)
         : ((await prompter.select({
-            message: "Gateway service runtime",
+            message: "网关服务运行时",
             options: GATEWAY_DAEMON_RUNTIME_OPTIONS,
             initialValue: opts.daemonRuntime ?? DEFAULT_GATEWAY_DAEMON_RUNTIME,
           })) as GatewayDaemonRuntime);
     if (flow === "quickstart") {
-      await prompter.note(
-        "QuickStart uses Node for the Gateway service (stable + supported).",
-        "Gateway service runtime",
-      );
+      await prompter.note("快速开始为网关服务使用Node（稳定+支持）。", "Gateway service runtime");
     }
     const service = resolveGatewayService();
     const loaded = await service.isLoaded({ env: process.env });
     if (loaded) {
       const action = (await prompter.select({
-        message: "Gateway service already installed",
+        message: "网关服务已安装",
         options: [
-          { value: "restart", label: "Restart" },
-          { value: "reinstall", label: "Reinstall" },
-          { value: "skip", label: "Skip" },
+          { value: "restart", label: "重启" },
+          { value: "reinstall", label: "重新安装" },
+          { value: "skip", label: "跳过" },
         ],
       })) as "restart" | "reinstall" | "skip";
       if (action === "restart") {
@@ -183,9 +180,7 @@ export async function finalizeOnboardingWizard(options: FinalizeOnboardingOption
       } catch (err) {
         installError = err instanceof Error ? err.message : String(err);
       } finally {
-        progress.stop(
-          installError ? "Gateway service install failed." : "Gateway service installed.",
-        );
+        progress.stop(installError ? "网关服务安装失败。" : "网关服务已安装。");
       }
       if (installError) {
         await prompter.note(`Gateway service install failed: ${installError}`, "Gateway");
@@ -233,12 +228,12 @@ export async function finalizeOnboardingWizard(options: FinalizeOnboardingOption
 
   await prompter.note(
     [
-      "Add nodes for extra features:",
-      "- macOS app (system + notifications)",
-      "- iOS app (camera/canvas)",
-      "- Android app (camera/canvas)",
+      "为额外功能添加节点：",
+      "- macOS应用（系统+通知）",
+      "- iOS应用（相机/画布）",
+      "- Android应用（相机/画布）",
     ].join("\n"),
-    "Optional apps",
+    "可选应用",
   );
 
   const controlUiBasePath =
@@ -260,8 +255,8 @@ export async function finalizeOnboardingWizard(options: FinalizeOnboardingOption
     password: settings.authMode === "password" ? nextConfig.gateway?.auth?.password : "",
   });
   const gatewayStatusLine = gatewayProbe.ok
-    ? "Gateway: reachable"
-    : `Gateway: not detected${gatewayProbe.detail ? ` (${gatewayProbe.detail})` : ""}`;
+    ? "网关：可访问"
+    : `网关：未检测到${gatewayProbe.detail ? ` (${gatewayProbe.detail})` : ""}`;
   const bootstrapPath = path.join(
     resolveUserPath(options.workspaceDir),
     DEFAULT_BOOTSTRAP_FILENAME,
@@ -273,15 +268,15 @@ export async function finalizeOnboardingWizard(options: FinalizeOnboardingOption
 
   await prompter.note(
     [
-      `Web UI: ${links.httpUrl}`,
-      tokenParam ? `Web UI (with token): ${authedUrl}` : undefined,
-      `Gateway WS: ${links.wsUrl}`,
+      `网页界面：${links.httpUrl}`,
+      tokenParam ? `网页界面（带令牌）：${authedUrl}` : undefined,
+      `网关WS：${links.wsUrl}`,
       gatewayStatusLine,
-      "Docs: https://docs.clawd.bot/web/control-ui",
+      "文档：https://docs.clawd.bot/web/control-ui",
     ]
       .filter(Boolean)
       .join("\n"),
-    "Control UI",
+    "控制界面",
   );
 
   let controlUiOpened = false;
@@ -293,31 +288,31 @@ export async function finalizeOnboardingWizard(options: FinalizeOnboardingOption
     if (hasBootstrap) {
       await prompter.note(
         [
-          "This is the defining action that makes your agent you.",
-          "Please take your time.",
-          "The more you tell it, the better the experience will be.",
-          'We will send: "Wake up, my friend!"',
+          "这是定义性的操作，使您的智能体成为您的。",
+          "请慢慢来。",
+          "您告诉它的越多，体验就会越好。",
+          '我们将发送："醒来吧，我的朋友！"',
         ].join("\n"),
-        "Start TUI (best option!)",
+        "启动TUI（最佳选项！）",
       );
     }
 
     await prompter.note(
       [
-        "Gateway token: shared auth for the Gateway + Control UI.",
-        "Stored in: ~/.clawdbot/clawdbot.json (gateway.auth.token) or CLAWDBOT_GATEWAY_TOKEN.",
-        "Web UI stores a copy in this browser's localStorage (clawdbot.control.settings.v1).",
-        `Get the tokenized link anytime: ${formatCliCommand("clawdbot dashboard --no-open")}`,
+        "网关令牌：网关+控制界面的共享认证。",
+        "存储在：~/.clawdbot/clawdbot.json（gateway.auth.token）或CLAWDBOT_GATEWAY_TOKEN。",
+        "网页界面在此浏览器的localStorage中存储副本（clawdbot.control.settings.v1）。",
+        `随时获取带令牌的链接：${formatCliCommand("clawdbot dashboard --no-open")}`,
       ].join("\n"),
-      "Token",
+      "令牌",
     );
 
     hatchChoice = (await prompter.select({
-      message: "How do you want to hatch your bot?",
+      message: "您想如何孵化您的机器人？",
       options: [
-        { value: "tui", label: "Hatch in TUI (recommended)" },
-        { value: "web", label: "Open the Web UI" },
-        { value: "later", label: "Do this later" },
+        { value: "tui", label: "在TUI中孵化（推荐）" },
+        { value: "web", label: "打开网页界面" },
+        { value: "later", label: "稍后执行" },
       ],
       initialValue: "tui",
     })) as "tui" | "web" | "later";
@@ -336,10 +331,10 @@ export async function finalizeOnboardingWizard(options: FinalizeOnboardingOption
       }
       if (seededInBackground) {
         await prompter.note(
-          `Web UI seeded in the background. Open later with: ${formatCliCommand(
+          `网页界面已在后台播种。稍后使用以下命令打开：${formatCliCommand(
             "clawdbot dashboard --no-open",
           )}`,
-          "Web UI",
+          "网页界面",
         );
       }
     } else if (hatchChoice === "web") {
@@ -374,24 +369,22 @@ export async function finalizeOnboardingWizard(options: FinalizeOnboardingOption
       );
     } else {
       await prompter.note(
-        `When you're ready: ${formatCliCommand("clawdbot dashboard --no-open")}`,
-        "Later",
+        `当您准备就绪时：${formatCliCommand("clawdbot dashboard --no-open")}`,
+        "稍后",
       );
     }
   } else if (opts.skipUi) {
-    await prompter.note("Skipping Control UI/TUI prompts.", "Control UI");
+    await prompter.note("跳过控制界面/TUI提示。", "控制界面");
   }
 
   await prompter.note(
-    ["Back up your agent workspace.", "Docs: https://docs.clawd.bot/concepts/agent-workspace"].join(
-      "\n",
-    ),
-    "Workspace backup",
+    ["备份您的智能体工作区。", "文档：https://docs.clawd.bot/concepts/agent-workspace"].join("\n"),
+    "工作区备份",
   );
 
   await prompter.note(
-    "Running agents on your computer is risky — harden your setup: https://docs.clawd.bot/security",
-    "Security",
+    "在您的计算机上运行智能体是有风险的——加强您的设置：https://docs.clawd.bot/security",
+    "安全",
   );
 
   const shouldOpenControlUi =
@@ -420,15 +413,15 @@ export async function finalizeOnboardingWizard(options: FinalizeOnboardingOption
 
     await prompter.note(
       [
-        `Dashboard link (with token): ${authedUrl}`,
+        `仪表盘链接（带令牌）：${authedUrl}`,
         controlUiOpened
-          ? "Opened in your browser. Keep that tab to control Clawdbot."
-          : "Copy/paste this URL in a browser on this machine to control Clawdbot.",
+          ? "已在浏览器中打开。保留该标签页以控制Clawdbot。"
+          : "在此机器上的浏览器中复制/粘贴此URL以控制Clawdbot。",
         controlUiOpenHint,
       ]
         .filter(Boolean)
         .join("\n"),
-      "Dashboard ready",
+      "仪表盘就绪",
     );
   }
 
@@ -438,38 +431,35 @@ export async function finalizeOnboardingWizard(options: FinalizeOnboardingOption
   await prompter.note(
     hasWebSearchKey
       ? [
-          "Web search is enabled, so your agent can look things up online when needed.",
+          "网络搜索已启用，因此您的智能体可以在需要时在线查找内容。",
           "",
           webSearchKey
-            ? "API key: stored in config (tools.web.search.apiKey)."
-            : "API key: provided via BRAVE_API_KEY env var (Gateway environment).",
-          "Docs: https://docs.clawd.bot/tools/web",
+            ? "API密钥：存储在配置中（tools.web.search.apiKey）。"
+            : "API密钥：通过BRAVE_API_KEY环境变量提供（网关环境）。",
+          "文档：https://docs.clawd.bot/tools/web",
         ].join("\n")
       : [
-          "If you want your agent to be able to search the web, you’ll need an API key.",
+          "如果希望您的智能体能够搜索网络，则需要API密钥。",
           "",
-          "Clawdbot uses Brave Search for the `web_search` tool. Without a Brave Search API key, web search won’t work.",
+          "Clawdbot使用Brave Search作为`web_search`工具。没有Brave Search API密钥，网络搜索将无法工作。",
           "",
-          "Set it up interactively:",
-          `- Run: ${formatCliCommand("clawdbot configure --section web")}`,
-          "- Enable web_search and paste your Brave Search API key",
+          "交互式设置：",
+          `- 运行：${formatCliCommand("clawdbot configure --section web")}`,
+          "- 启用web_search并粘贴您的Brave Search API密钥",
           "",
-          "Alternative: set BRAVE_API_KEY in the Gateway environment (no config changes).",
-          "Docs: https://docs.clawd.bot/tools/web",
+          "替代方案：在网关环境中设置BRAVE_API_KEY（无需更改配置）。",
+          "文档：https://docs.clawd.bot/tools/web",
         ].join("\n"),
-    "Web search (optional)",
+    "网络搜索（可选）",
   );
 
-  await prompter.note(
-    'What now: https://clawd.bot/showcase ("What People Are Building").',
-    "What now",
-  );
+  await prompter.note('接下来：https://clawd.bot/showcase（"人们正在构建什么"）。', "接下来");
 
   await prompter.outro(
     controlUiOpened
-      ? "Onboarding complete. Dashboard opened with your token; keep that tab to control Clawdbot."
+      ? "安装引导完成。仪表盘已使用您的令牌打开；保留该标签页以控制Clawdbot。"
       : seededInBackground
-        ? "Onboarding complete. Web UI seeded in the background; open it anytime with the tokenized link above."
-        : "Onboarding complete. Use the tokenized dashboard link above to control Clawdbot.",
+        ? "安装引导完成。网页界面已在后台播种；随时使用上面的带令牌链接打开它。"
+        : "安装引导完成。使用上面的带令牌仪表盘链接控制Clawdbot。",
   );
 }

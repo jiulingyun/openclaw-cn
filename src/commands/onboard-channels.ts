@@ -578,12 +578,12 @@ export async function setupChannels(
   if (options?.quickstartDefaults) {
     const { entries } = getChannelEntries();
     const choice = (await prompter.select({
-      message: "Select channel (QuickStart)",
+      message: "选择通道（快速开始）",
       options: [
         ...buildSelectionOptions(entries),
         {
           value: "__skip__",
-          label: "Skip for now",
+          label: "暂时跳过",
           hint: `You can add channels later via \`${formatCliCommand("clawdbot channels add")}\``,
         },
       ],
@@ -598,13 +598,13 @@ export async function setupChannels(
     while (true) {
       const { entries } = getChannelEntries();
       const choice = (await prompter.select({
-        message: "Select a channel",
+        message: "选择一个通道",
         options: [
           ...buildSelectionOptions(entries),
           {
             value: doneValue,
-            label: "Finished",
-            hint: selection.length > 0 ? "Done" : "Skip for now",
+            label: "已完成",
+            hint: selection.length > 0 ? "完成" : "暂时跳过",
           },
         ],
         initialValue,
@@ -625,7 +625,7 @@ export async function setupChannels(
     .map((channel) => selectionNotes.get(channel))
     .filter((line): line is string => Boolean(line));
   if (selectedLines.length > 0) {
-    await prompter.note(selectedLines.join("\n"), "Selected channels");
+    await prompter.note(selectedLines.join("\n"), "已选通道");
   }
 
   if (!options?.skipDmPolicyPrompt) {
