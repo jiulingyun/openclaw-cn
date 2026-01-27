@@ -423,7 +423,7 @@ struct DebugSettings: View {
                                     .font(.footnote)
                                     .foregroundStyle(.secondary)
                             } else {
-                                Text("Used by the CLI session loader; stored in ~/.clawdbot/clawdbot.json.")
+                                Text("Used by the CLI session loader; stored in ~/.clawdbot-cn/clawdbot-cn.json.")
                                     .font(.footnote)
                                     .foregroundStyle(.secondary)
                             }
@@ -832,7 +832,7 @@ struct DebugSettings: View {
     private func configURL() -> URL {
         FileManager().homeDirectoryForCurrentUser
             .appendingPathComponent(".clawdbot")
-            .appendingPathComponent("clawdbot.json")
+            .appendingPathComponent("clawdbot-cn.json")
     }
 }
 

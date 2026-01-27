@@ -303,7 +303,7 @@ ClawdHub 是一个简洁的技能注册表。启用 ClawdHub 后，智能体可�
 
 ## 配置
 
-最小化 `~/.clawdbot/clawdbot.json`（模型 + 默认值）：
+最小化 `~/.clawdbot-cn/clawdbot-cn.json`（模型 + 默认值）：
 
 ```json5
 {
@@ -325,7 +325,9 @@ ClawdHub 是一个简洁的技能注册表。启用 ClawdHub 后，智能体可�
 
 ### [WhatsApp](https://docs.clawd.bot/channels/whatsapp)
 
-- 链接设备：`pnpm clawdbot channels login`（凭证存储在 `~/.clawdbot/credentials`）。
+- 链接设备：`pnpm clawdbot-cn channels login`（凭证存储在 `~/.clawdbot-cn/credentials`）。
+- 或者使用：`pnpm clawdbot-cn channels login`（凭证存储在 `~/.clawdbot-cn/credentials`）。
+
 - 通过 `channels.whatsapp.allowFrom` 配置允许与助手对话的人员白名单。
 - 如果设置了 `channels.whatsapp.groups`，它会成为群组白名单；包含 `"*"` 表示允许所有。
 

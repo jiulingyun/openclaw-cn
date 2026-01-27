@@ -19,7 +19,7 @@ Note: `agents.list[].groupChat.mentionPatterns` is now used by Telegram/Discord/
 - Group system prompt: on the first turn of a group session (and whenever `/activation` changes the mode) we inject a short blurb into the system prompt like `You are replying inside the WhatsApp group "<subject>". Group members: Alice (+44...), Bob (+43...), … Activation: trigger-only … Address the specific sender noted in the message context.` If metadata isn’t available we still tell the agent it’s a group chat.
 
 ## Config example (WhatsApp)
-Add a `groupChat` block to `~/.clawdbot/clawdbot.json` so display-name pings work even when WhatsApp strips the visual `@` in the text body:
+Add a `groupChat` block to `~/.clawdbot-cn/clawdbot-cn.json` so display-name pings work even when WhatsApp strips the visual `@` in the text body:
 
 ```json5
 {

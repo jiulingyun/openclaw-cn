@@ -366,7 +366,7 @@ extension OnboardingView {
 
                 Text(
                     "This lets Clawdbot use Claude immediately. Credentials are stored at " +
-                        "`~/.clawdbot/credentials/oauth.json` (owner-only).")
+                        "`~/.clawdbot-cn/credentials/oauth.json` (owner-only)."
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -641,7 +641,7 @@ extension OnboardingView {
                                     let saved = await self.saveAgentWorkspace(AgentWorkspace.displayPath(for: url))
                                     if saved {
                                         self.workspaceStatus =
-                                            "Saved to ~/.clawdbot/clawdbot.json (agents.defaults.workspace)"
+                                            "Saved to ~/.clawdbot-cn/clawdbot-cn.json (agents.defaults.workspace)"
                                     }
                                 }
                             }
@@ -710,7 +710,7 @@ extension OnboardingView {
                         title: "Remote gateway checklist",
                         subtitle: """
                         On your gateway host: install/update the `clawdbot` package and make sure credentials exist
-                        (typically `~/.clawdbot/credentials/oauth.json`). Then connect again if needed.
+                        (typically `~/.clawdbot-cn/credentials/oauth.json`). Then connect again if needed.
                         """,
                         systemImage: "network")
                     Divider()

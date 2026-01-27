@@ -29,7 +29,7 @@ enum ClawdbotPaths {
         if let override = ClawdbotEnv.path(self.configPathEnv) {
             return URL(fileURLWithPath: override)
         }
-        return self.stateDirURL.appendingPathComponent("clawdbot.json")
+        return self.stateDirURL.appendingPathComponent("clawdbot-cn.json")
     }
 
     static var workspaceURL: URL {

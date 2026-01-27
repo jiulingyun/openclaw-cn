@@ -37,7 +37,7 @@ export function formatCliBannerLine(version: string, options: BannerOptions = {}
   const commitLabel = commit ?? "unknown";
   const tagline = pickTagline(options);
   const rich = options.richTty ?? isRich();
-  const title = "🦞 Clawdbot";
+  const title = "🦞 Clawdbot-CN";
   const prefix = "🦞 ";
   const columns = options.columns ?? process.stdout.columns ?? 120;
   const plainFullLine = `${title} ${version} (${commitLabel}) — ${tagline}`;
@@ -68,7 +68,7 @@ const LOBSTER_ASCII = [
   "█░░░░░█░░░░░█████░█░█░█░█░░█░████░░█░░░█░░█░",
   "█░░░░░█░░░░░█░░░█░█░█░█░█░░█░█░░█░░█░░░█░░█░",
   "░████░█████░█░░░█░░█░█░░███░░████░░░███░░░█░",
-  "              🦞 FRESH DAILY 🦞",
+  "            🦞 FRESH DAILY 🦞",
 ];
 
 export function formatCliBannerArt(options: BannerOptions = {}): string {

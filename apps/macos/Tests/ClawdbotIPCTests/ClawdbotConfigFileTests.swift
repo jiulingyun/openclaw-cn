@@ -8,7 +8,7 @@ struct ClawdbotConfigFileTests {
     func configPathRespectsEnvOverride() async {
         let override = FileManager().temporaryDirectory
             .appendingPathComponent("clawdbot-config-\(UUID().uuidString)")
-            .appendingPathComponent("clawdbot.json")
+            .appendingPathComponent("clawdbot-cn.json")
             .path
 
         await TestIsolation.withEnvValues(["CLAWDBOT_CONFIG_PATH": override]) {
@@ -21,7 +21,7 @@ struct ClawdbotConfigFileTests {
     func remoteGatewayPortParsesAndMatchesHost() async {
         let override = FileManager().temporaryDirectory
             .appendingPathComponent("clawdbot-config-\(UUID().uuidString)")
-            .appendingPathComponent("clawdbot.json")
+            .appendingPathComponent("clawdbot-cn.json")
             .path
 
         await TestIsolation.withEnvValues(["CLAWDBOT_CONFIG_PATH": override]) {
@@ -44,7 +44,7 @@ struct ClawdbotConfigFileTests {
     func setRemoteGatewayUrlPreservesScheme() async {
         let override = FileManager().temporaryDirectory
             .appendingPathComponent("clawdbot-config-\(UUID().uuidString)")
-            .appendingPathComponent("clawdbot.json")
+            .appendingPathComponent("clawdbot-cn.json")
             .path
 
         await TestIsolation.withEnvValues(["CLAWDBOT_CONFIG_PATH": override]) {
@@ -73,7 +73,7 @@ struct ClawdbotConfigFileTests {
             "CLAWDBOT_STATE_DIR": dir,
         ]) {
             #expect(ClawdbotConfigFile.stateDirURL().path == dir)
-            #expect(ClawdbotConfigFile.url().path == "\(dir)/clawdbot.json")
+            #expect(ClawdbotConfigFile.url().path == "\(dir)/clawdbot-cn.json")
         }
     }
 }

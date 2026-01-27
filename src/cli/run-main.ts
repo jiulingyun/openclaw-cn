@@ -45,7 +45,7 @@ export async function runCli(argv: string[] = process.argv) {
   installUnhandledRejectionHandler();
 
   process.on("uncaughtException", (error) => {
-    console.error("[clawdbot] Uncaught exception:", formatUncaughtError(error));
+    console.error("[clawdbot-cn] Uncaught exception:", formatUncaughtError(error));
     process.exit(1);
   });
 

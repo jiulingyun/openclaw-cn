@@ -10,7 +10,7 @@
     "./plugin-sdk/*": "./dist/plugin-sdk/*"
   },
   "bin": {
-    "clawdbot": "dist/entry.js"
+    "clawdbot-cn": "dist/entry.js"
   },
   "files": [
     "dist/acp/**",
@@ -89,7 +89,7 @@
     "ui:dev": "node scripts/ui.js dev",
     "ui:build": "node scripts/ui.js build",
     "start": "node scripts/run-node.mjs",
-    "clawdbot": "node scripts/run-node.mjs",
+    "clawdbot-cn": "node scripts/run-node.mjs",
     "gateway:watch": "node scripts/watch-node.mjs gateway --force",
     "gateway:dev": "CLAWDBOT_SKIP_CHANNELS=1 node scripts/run-node.mjs --dev gateway",
     "gateway:dev:reset": "CLAWDBOT_SKIP_CHANNELS=1 node scripts/run-node.mjs --dev gateway --reset",

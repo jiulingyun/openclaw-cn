@@ -21,7 +21,7 @@ struct GatewayEndpoint {
 func loadGatewayConfig() -> GatewayConfig {
     let url = FileManager().homeDirectoryForCurrentUser
         .appendingPathComponent(".clawdbot")
-        .appendingPathComponent("clawdbot.json")
+        .appendingPathComponent("clawdbot-cn.json")
     guard let data = try? Data(contentsOf: url) else { return GatewayConfig() }
     guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
         return GatewayConfig()

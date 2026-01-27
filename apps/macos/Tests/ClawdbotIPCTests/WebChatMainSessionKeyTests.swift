@@ -6,7 +6,7 @@ import Testing
     @Test func configGetSnapshotMainKeyFallsBackToMainWhenMissing() throws {
         let json = """
         {
-          "path": "/Users/pete/.clawdbot/clawdbot.json",
+          "path": "/Users/pete/.clawdbot-cn/clawdbot-cn.json",
           "exists": true,
           "raw": null,
           "parsed": {},
@@ -22,7 +22,7 @@ import Testing
     @Test func configGetSnapshotMainKeyTrimsAndUsesValue() throws {
         let json = """
         {
-          "path": "/Users/pete/.clawdbot/clawdbot.json",
+          "path": "/Users/pete/.clawdbot-cn/clawdbot-cn.json",
           "exists": true,
           "raw": null,
           "parsed": {},
