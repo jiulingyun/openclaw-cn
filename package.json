@@ -1,6 +1,6 @@
 {
   "name": "clawdbot-cn",
-  "version": "2026.1.25",
+  "version": "2026.1.24-cn.1",
   "description": "Clawdbot 中文版 - WhatsApp gateway CLI (Baileys web) with Pi RPC agent",
   "type": "module",
   "main": "dist/index.js",
