@@ -49,7 +49,7 @@ function ensureExperimentalWarningSuppressed(): boolean {
 
   child.once("error", (error) => {
     console.error(
-      "[clawdbot-cn] Failed to respawn CLI:",
+      "[clawdbot-cn] 重新生成CLI失败：",
       error instanceof Error ? (error.stack ?? error.message) : error,
     );
     process.exit(1);
@@ -138,7 +138,7 @@ if (!ensureExperimentalWarningSuppressed()) {
     .then(({ runCli }) => runCli(process.argv))
     .catch((error) => {
       console.error(
-        "[clawdbot-cn] Failed to start CLI:",
+        "[clawdbot-cn] 启动CLI失败：",
         error instanceof Error ? (error.stack ?? error.message) : error,
       );
       process.exitCode = 1;

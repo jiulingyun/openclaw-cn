@@ -93,14 +93,14 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
   spacer();
 
   if (service.configAudit?.issues.length) {
-    defaultRuntime.error(warnText("Service config looks out of date or non-standard."));
+    defaultRuntime.error(warnText("服务配置看起来已过时或非标准。"));
     for (const issue of service.configAudit.issues) {
       const detail = issue.detail ? ` (${issue.detail})` : "";
-      defaultRuntime.error(`${warnText("Service config issue:")} ${issue.message}${detail}`);
+      defaultRuntime.error(`${warnText("服务配置问题:")} ${issue.message}${detail}`);
     }
     defaultRuntime.error(
       warnText(
-        `Recommendation: run "${formatCliCommand("clawdbot doctor")}" (or "${formatCliCommand("clawdbot doctor --repair")}").`,
+        `建议: 运行 "${formatCliCommand("clawdbot doctor")}" (或 "${formatCliCommand("clawdbot doctor --repair")}").`,
       ),
     );
   }
@@ -111,7 +111,7 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
     if (!status.config.cli.valid && status.config.cli.issues?.length) {
       for (const issue of status.config.cli.issues.slice(0, 5)) {
         defaultRuntime.error(
-          `${errorText("Config issue:")} ${issue.path || "<root>"}: ${issue.message}`,
+          `${errorText("配置问题:")} ${issue.path || "<root>"}: ${issue.message}`,
         );
       }
     }
@@ -121,20 +121,18 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
       if (!status.config.daemon.valid && status.config.daemon.issues?.length) {
         for (const issue of status.config.daemon.issues.slice(0, 5)) {
           defaultRuntime.error(
-            `${errorText("Service config issue:")} ${issue.path || "<root>"}: ${issue.message}`,
+            `${errorText("服务配置问题:")} ${issue.path || "<root>"}: ${issue.message}`,
           );
         }
       }
     }
     if (status.config.mismatch) {
       defaultRuntime.error(
-        errorText(
-          "Root cause: CLI and service are using different config paths (likely a profile/state-dir mismatch).",
-        ),
+        errorText("根本原因: CLI 和服务使用不同的配置路径 (可能是配置文件/state-dir 不匹配)。"),
       );
       defaultRuntime.error(
         errorText(
-          `Fix: rerun \`${formatCliCommand("clawdbot gateway install --force")}\` from the same --profile / CLAWDBOT_STATE_DIR you expect.`,
+          `修复: 从相同的 --profile / CLAWDBOT_STATE_DIR 重新运行 \`${formatCliCommand("clawdbot gateway install --force")}\``,
         ),
       );
     }
@@ -180,16 +178,14 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
   }
 
   if (rpc && !rpc.ok && service.loaded && service.runtime?.status === "running") {
-    defaultRuntime.log(
-      warnText("Warm-up: launch agents can take a few seconds. Try again shortly."),
-    );
+    defaultRuntime.log(warnText("预热中: 启动代理可能需要几秒钟。请稍后再试。"));
   }
   if (rpc) {
     if (rpc.ok) {
-      defaultRuntime.log(`${label("RPC probe:")} ${okText("ok")}`);
+      defaultRuntime.log(`${label("RPC 探测:")} ${okText("正常")}`);
     } else {
-      defaultRuntime.error(`${label("RPC probe:")} ${errorText("failed")}`);
-      if (rpc.url) defaultRuntime.error(`${label("RPC target:")} ${rpc.url}`);
+      defaultRuntime.error(`${label("RPC 探测:")} ${errorText("失败")}`);
+      if (rpc.url) defaultRuntime.error(`${label("RPC 目标:")} ${rpc.url}`);
       const lines = String(rpc.error ?? "unknown")
         .split(/\r?\n/)
         .filter(Boolean);
@@ -203,7 +199,7 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
   const systemdUnavailable =
     process.platform === "linux" && isSystemdUnavailableDetail(service.runtime?.detail);
   if (systemdUnavailable) {
-    defaultRuntime.error(errorText("systemd user services unavailable."));
+    defaultRuntime.error(errorText("systemd 用户服务不可用。"));
     for (const hint of renderSystemdUnavailableHints({ wsl: isWSLEnv() })) {
       defaultRuntime.error(errorText(hint));
     }
@@ -211,14 +207,12 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
   }
 
   if (service.runtime?.missingUnit) {
-    defaultRuntime.error(errorText("Service unit not found."));
+    defaultRuntime.error(errorText("服务单元未找到。"));
     for (const hint of renderRuntimeHints(service.runtime)) {
       defaultRuntime.error(errorText(hint));
     }
   } else if (service.loaded && service.runtime?.status === "stopped") {
-    defaultRuntime.error(
-      errorText("Service is loaded but not running (likely exited immediately)."),
-    );
+    defaultRuntime.error(errorText("服务已加载但未运行 (可能立即退出了)。"));
     for (const hint of renderRuntimeHints(
       service.runtime,
       (service.command?.environment ?? process.env) as NodeJS.ProcessEnv,
@@ -233,7 +227,7 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
     const labelValue = resolveGatewayLaunchAgentLabel(env.CLAWDBOT_PROFILE);
     defaultRuntime.error(
       errorText(
-        `LaunchAgent label cached but plist missing. Clear with: launchctl bootout gui/$UID/${labelValue}`,
+        `LaunchAgent 标签已缓存但 plist 缺失。使用以下命令清除: launchctl bootout gui/$UID/${labelValue}`,
       ),
     );
     defaultRuntime.error(
@@ -265,11 +259,9 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
     status.port &&
     status.port.status !== "busy"
   ) {
-    defaultRuntime.error(
-      errorText(`Gateway port ${status.port.port} is not listening (service appears running).`),
-    );
+    defaultRuntime.error(errorText(`网关端口 ${status.port.port} 未监听 (服务似乎正在运行)。`));
     if (status.lastError) {
-      defaultRuntime.error(`${errorText("Last gateway error:")} ${status.lastError}`);
+      defaultRuntime.error(`${errorText("最后网关错误:")} ${status.lastError}`);
     }
     if (process.platform === "linux") {
       const env = (service.command?.environment ?? process.env) as NodeJS.ProcessEnv;
@@ -281,14 +273,14 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
       const logs = resolveGatewayLogPaths(
         (service.command?.environment ?? process.env) as NodeJS.ProcessEnv,
       );
-      defaultRuntime.error(`${errorText("Logs:")} ${shortenHomePath(logs.stdoutPath)}`);
-      defaultRuntime.error(`${errorText("Errors:")} ${shortenHomePath(logs.stderrPath)}`);
+      defaultRuntime.error(`${errorText("日志:")} ${shortenHomePath(logs.stdoutPath)}`);
+      defaultRuntime.error(`${errorText("错误:")} ${shortenHomePath(logs.stderrPath)}`);
     }
     spacer();
   }
 
   if (legacyServices.length > 0) {
-    defaultRuntime.error(errorText("Legacy gateway services detected:"));
+    defaultRuntime.error(errorText("检测到旧版网关服务:"));
     for (const svc of legacyServices) {
       defaultRuntime.error(`- ${errorText(svc.label)} (${svc.detail})`);
     }
@@ -297,12 +289,12 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
   }
 
   if (extraServices.length > 0) {
-    defaultRuntime.error(errorText("Other gateway-like services detected (best effort):"));
+    defaultRuntime.error(errorText("检测到其他类似网关的服务 (尽力而为):"));
     for (const svc of extraServices) {
       defaultRuntime.error(`- ${errorText(svc.label)} (${svc.scope}, ${svc.detail})`);
     }
     for (const hint of renderGatewayServiceCleanupHints()) {
-      defaultRuntime.error(`${errorText("Cleanup hint:")} ${hint}`);
+      defaultRuntime.error(`${errorText("清理提示:")} ${hint}`);
     }
     spacer();
   }
@@ -310,17 +302,17 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
   if (legacyServices.length > 0 || extraServices.length > 0) {
     defaultRuntime.error(
       errorText(
-        "Recommendation: run a single gateway per machine for most setups. One gateway supports multiple agents (see docs: /gateway#multiple-gateways-same-host).",
+        "建议: 对于大多数设置，每台机器运行一个网关。一个网关支持多个代理 (参见文档: /gateway#multiple-gateways-same-host)。",
       ),
     );
     defaultRuntime.error(
       errorText(
-        "If you need multiple gateways (e.g., a rescue bot on the same host), isolate ports + config/state (see docs: /gateway#multiple-gateways-same-host).",
+        "如果您需要多个网关 (例如，在同一主机上的救援机器人)，请隔离端口 + 配置/状态 (参见文档: /gateway#multiple-gateways-same-host)。",
       ),
     );
     spacer();
   }
 
-  defaultRuntime.log(`${label("Troubles:")} run ${formatCliCommand("clawdbot status")}`);
-  defaultRuntime.log(`${label("Troubleshooting:")} https://docs.clawd.bot/troubleshooting`);
+  defaultRuntime.log(`${label("问题排查:")} run ${formatCliCommand("clawdbot status")}`);
+  defaultRuntime.log(`${label("故障排除:")} https://docs.clawd.bot/troubleshooting`);
 }

@@ -124,7 +124,7 @@ export function registerPluginsCli(program: Command) {
       }
 
       if (list.length === 0) {
-        defaultRuntime.log(theme.muted("No plugins found."));
+        defaultRuntime.log(theme.muted("未找到插件。"));
         return;
       }
 
@@ -184,7 +184,7 @@ export function registerPluginsCli(program: Command) {
       const report = buildPluginStatusReport();
       const plugin = report.plugins.find((p) => p.id === id || p.name === id);
       if (!plugin) {
-        defaultRuntime.error(`Plugin not found: ${id}`);
+        defaultRuntime.error(`未找到插件: ${id}`);
         process.exit(1);
       }
       const cfg = loadConfig();
@@ -384,7 +384,7 @@ export function registerPluginsCli(program: Command) {
       }
 
       if (opts.link) {
-        defaultRuntime.error("`--link` requires a local path.");
+        defaultRuntime.error("`--link` 需要本地路径。");
         process.exit(1);
       }
 
@@ -401,7 +401,7 @@ export function registerPluginsCli(program: Command) {
         raw.endsWith(".tar") ||
         raw.endsWith(".zip");
       if (looksLikePath) {
-        defaultRuntime.error(`Path not found: ${resolved}`);
+        defaultRuntime.error(`未找到路径: ${resolved}`);
         process.exit(1);
       }
 
@@ -458,10 +458,10 @@ export function registerPluginsCli(program: Command) {
 
       if (targets.length === 0) {
         if (opts.all) {
-          defaultRuntime.log("No npm-installed plugins to update.");
+          defaultRuntime.log("没有需要更新的npm安装插件。");
           return;
         }
-        defaultRuntime.error("Provide a plugin id or use --all.");
+        defaultRuntime.error("提供插件ID或使用--all。");
         process.exit(1);
       }
 
@@ -502,20 +502,20 @@ export function registerPluginsCli(program: Command) {
       const diags = report.diagnostics.filter((d) => d.level === "error");
 
       if (errors.length === 0 && diags.length === 0) {
-        defaultRuntime.log("No plugin issues detected.");
+        defaultRuntime.log("未检测到插件问题。");
         return;
       }
 
       const lines: string[] = [];
       if (errors.length > 0) {
-        lines.push(theme.error("Plugin errors:"));
+        lines.push(theme.error("插件错误:"));
         for (const entry of errors) {
           lines.push(`- ${entry.id}: ${entry.error ?? "failed to load"} (${entry.source})`);
         }
       }
       if (diags.length > 0) {
         if (lines.length > 0) lines.push("");
-        lines.push(theme.warn("Diagnostics:"));
+        lines.push(theme.warn("诊断:"));
         for (const diag of diags) {
           const target = diag.pluginId ? `${diag.pluginId}: ` : "";
           lines.push(`- ${target}${diag.message}`);
