@@ -368,11 +368,12 @@ export async function runOnboardingWizard(
     opts: {
       tokenProvider: opts.tokenProvider,
       token: opts.authChoice === "apiKey" && opts.token ? opts.token : undefined,
+      volcengineApiKey: opts.volcengineApiKey,
     },
   });
   nextConfig = authResult.config;
 
-  if (authChoiceFromPrompt) {
+  if (authChoiceFromPrompt && !authResult.agentModelOverride) {
     const modelSelection = await promptDefaultModel({
       config: nextConfig,
       prompter,

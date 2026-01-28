@@ -52,7 +52,7 @@ export function registerOnboardCommand(program: Command) {
     .option("--mode <mode>", "向导模式：local|本地|remote|远程")
     .option(
       "--auth-choice <choice>",
-      "认证方式：setup-token|claude-cli|token|chutes|openai-codex|openai-api-key|openrouter-api-key|ai-gateway-api-key|moonshot-api-key|kimi-code-api-key|synthetic-api-key|venice-api-key|codex-cli|gemini-api-key|zai-api-key|apiKey|minimax-api|minimax-api-lightning|opencode-zen|skip",
+      "认证方式：setup-token|claude-cli|token|chutes|openai-codex|openai-api-key|openrouter-api-key|ai-gateway-api-key|moonshot-api-key|kimi-code-api-key|synthetic-api-key|venice-api-key|codex-cli|gemini-api-key|zai-api-key|apiKey|minimax-api|minimax-api-lightning|opencode-zen|volcengine-api-key|skip",
     )
     .option(
       "--token-provider <id>",
@@ -73,6 +73,7 @@ export function registerOnboardCommand(program: Command) {
     .option("--synthetic-api-key <key>", "Synthetic API 密钥")
     .option("--venice-api-key <key>", "Venice API 密钥")
     .option("--opencode-zen-api-key <key>", "OpenCode Zen API 密钥")
+    .option("--volcengine-api-key <key>", "Volcengine API 密钥")
     .option("--gateway-port <port>", "网关端口")
     .option(
       "--gateway-bind <mode>",
@@ -126,6 +127,7 @@ export function registerOnboardCommand(program: Command) {
             syntheticApiKey: opts.syntheticApiKey as string | undefined,
             veniceApiKey: opts.veniceApiKey as string | undefined,
             opencodeZenApiKey: opts.opencodeZenApiKey as string | undefined,
+            volcengineApiKey: opts.volcengineApiKey as string | undefined,
             gatewayPort:
               typeof gatewayPort === "number" && Number.isFinite(gatewayPort)
                 ? gatewayPort

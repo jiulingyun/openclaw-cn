@@ -203,3 +203,15 @@ export async function setDeepseekApiKey(key: string, agentDir?: string) {
     agentDir: resolveAuthAgentDir(agentDir),
   });
 }
+
+export async function setVolcengineApiKey(key: string, agentDir?: string) {
+  upsertAuthProfile({
+    profileId: "volcengine:default",
+    credential: {
+      type: "api_key",
+      provider: "volcengine",
+      key,
+    },
+    agentDir: resolveAuthAgentDir(agentDir),
+  });
+}

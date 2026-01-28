@@ -448,6 +448,16 @@ async function buildOllamaProvider(): Promise<ProviderConfig> {
   };
 }
 
+export const VOLCENGINE_API_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3";
+
+export function buildVolcengineProvider(): ProviderConfig {
+  return {
+    baseUrl: VOLCENGINE_API_BASE_URL,
+    api: "openai-completions",
+    models: [],
+  };
+}
+
 export async function resolveImplicitProviders(params: {
   agentDir: string;
 }): Promise<ModelsConfig["providers"]> {
@@ -510,6 +520,13 @@ export async function resolveImplicitProviders(params: {
     resolveApiKeyFromProfiles({ provider: "deepseek", store: authStore });
   if (deepseekKey) {
     providers.deepseek = { ...buildDeepseekProvider(), apiKey: deepseekKey };
+  }
+
+  const volcengineKey =
+    resolveEnvApiKeyVarName("volcengine") ??
+    resolveApiKeyFromProfiles({ provider: "volcengine", store: authStore });
+  if (volcengineKey) {
+    providers.volcengine = { ...buildVolcengineProvider(), apiKey: volcengineKey };
   }
 
   const qwenProfiles = listProfilesForProvider(authStore, "qwen-portal");

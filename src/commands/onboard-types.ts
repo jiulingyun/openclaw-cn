@@ -35,6 +35,9 @@ export type AuthChoice =
   | "github-copilot"
   | "copilot-proxy"
   | "qwen-portal"
+  | "volcengine-api-key"
+  | "xiaomi-api-key"
+  | "minimax-portal"
   | "skip";
 export type GatewayAuthChoice = "off" | "token" | "password";
 export type ResetScope = "config" | "config+creds+sessions" | "full";
@@ -76,9 +79,12 @@ export type OnboardOptions = {
   veniceApiKey?: string;
   opencodeZenApiKey?: string;
   // 新增：OpenAI兼容供应商API Key（非交互模式使用）
+  // 新增：OpenAI兼容供应商API Key（非交互模式使用）
   siliconflowApiKey?: string;
   dashscopeApiKey?: string;
   deepseekApiKey?: string;
+  volcengineApiKey?: string;
+  xiaomiApiKey?: string;
   gatewayPort?: number;
   gatewayBind?: GatewayBind;
   gatewayAuth?: GatewayAuthChoice;

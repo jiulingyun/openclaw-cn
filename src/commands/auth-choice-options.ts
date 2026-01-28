@@ -26,7 +26,8 @@ export type AuthChoiceGroupId =
   // 新增：OpenAI兼容供应商
   | "siliconflow"
   | "dashscope"
-  | "deepseek";
+  | "deepseek"
+  | "volcengine";
 
 export type AuthChoiceGroup = {
   value: AuthChoiceGroupId;
@@ -137,6 +138,12 @@ const AUTH_CHOICE_GROUP_DEFS: {
     hint: "API key",
     choices: ["opencode-zen"],
   },
+  {
+    value: "volcengine",
+    label: "火山引擎 (VolcanoEngine)",
+    hint: "ARK API key",
+    choices: ["volcengine-api-key"],
+  },
 ];
 
 function formatOAuthHint(expires?: number, opts?: { allowStale?: boolean }): string {
@@ -241,6 +248,17 @@ export function buildAuthChoiceOptions(params: {
     hint: "Uses the bundled Gemini CLI auth plugin",
   });
   options.push({ value: "zai-api-key", label: "Z.AI (GLM 4.7) API key" });
+  options.push({ value: "zai-api-key", label: "Z.AI (GLM 4.7) API key" });
+  options.push({
+    value: "xiaomi-api-key",
+    label: "Xiaomi API key",
+  });
+  options.push({
+    value: "minimax-portal",
+    label: "MiniMax OAuth",
+    hint: "Oauth plugin for MiniMax",
+  });
+  options.push({ value: "volcengine-api-key", label: "火山引擎 (ARK) API key" });
   options.push({ value: "qwen-portal", label: "Qwen OAuth" });
   options.push({
     value: "copilot-proxy",

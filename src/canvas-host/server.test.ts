@@ -7,7 +7,12 @@ import { describe, expect, it, vi } from "vitest";
 import { WebSocket } from "ws";
 import { rawDataToString } from "../infra/ws.js";
 import { defaultRuntime } from "../runtime.js";
-import { CANVAS_HOST_PATH, CANVAS_WS_PATH, injectCanvasLiveReload } from "./a2ui.js";
+import {
+  CANVAS_HOST_PATH,
+  CANVAS_WS_PATH,
+  injectCanvasLiveReload,
+  setA2uiRootForTest,
+} from "./a2ui.js";
 import { createCanvasHostHandler, startCanvasHost } from "./server.js";
 
 describe("canvas host", () => {
@@ -201,11 +206,20 @@ describe("canvas host", () => {
   }, 20_000);
 
   it("serves the gateway-hosted A2UI scaffold", async () => {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-canvas-"));
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-canvas-"));
+    const dirReal = await fs.realpath(dir);
+    // Ensure the necessary files exist for the test, so it passes even if artifacts are missing
+    await fs.writeFile(
+      path.join(dirReal, "index.html"),
+      "<html><body>openclaw-a2ui-host</body></html>",
+      "utf8",
+    );
+    await fs.writeFile(path.join(dirReal, "a2ui.bundle.js"), "const openclawA2UI = true;", "utf8");
+    setA2uiRootForTest(dirReal);
 
     const server = await startCanvasHost({
       runtime: defaultRuntime,
-      rootDir: dir,
+      rootDir: dirReal,
       port: 0,
       listenHost: "127.0.0.1",
       allowInTests: true,
@@ -225,6 +239,7 @@ describe("canvas host", () => {
       expect(bundleRes.status).toBe(200);
       expect(js).toContain("clawdbotA2UI");
     } finally {
+      setA2uiRootForTest(undefined);
       await server.close();
       await fs.rm(dir, { recursive: true, force: true });
     }

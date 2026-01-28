@@ -289,6 +289,7 @@ export function resolveEnvApiKey(provider: string): EnvApiKeyResult | null {
     siliconflow: "SILICONFLOW_API_KEY",
     dashscope: "DASHSCOPE_API_KEY",
     deepseek: "DEEPSEEK_API_KEY",
+    volcengine: "VOLCENGINE_API_KEY",
   };
   const envVar = envMap[normalized];
   if (!envVar) return null;
