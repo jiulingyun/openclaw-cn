@@ -70,7 +70,7 @@ async function requireRiskAcknowledgement(params: {
       "openclaw-cn security audit --deep",
       "openclaw-cn security audit --fix",
       "",
-      "必读：https://docs.clawd.bot/gateway/security",
+      "必读：https://clawd.org.cn/gateway/security.html",
     ].join("\n"),
     "安全",
   );
@@ -103,7 +103,7 @@ export async function runOnboardingWizard(
         [
           ...snapshot.issues.map((iss) => `- ${iss.path}: ${iss.message}`),
           "",
-          "文档：https://docs.clawd.bot/gateway/configuration",
+          "文档：https://clawd.org.cn/gateway/configuration-examples.html",
         ].join("\n"),
         "配置问题",
       );

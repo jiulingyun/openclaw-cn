@@ -1,6 +1,6 @@
 {
   "name": "@clawdbot/tlon",
-  "version": "2026.1.31-beta.1",
+  "version": "2026.1.31",
   "type": "module",
   "description": "Clawdbot Tlon/Urbit channel plugin",
   "clawdbot": {

@@ -1,6 +1,6 @@
 {
   "name": "openclaw-cn",
-  "version": "2026.1.31-beta.1",
+  "version": "2026.1.31",
   "description": "Openclaw 中文版 - WhatsApp gateway CLI (Baileys web) with Pi RPC agent",
   "type": "module",
   "main": "dist/index.js",
