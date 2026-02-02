@@ -66,12 +66,17 @@ export async function applyAuthChoiceVolcengine(
   const verifyModelAccess = async (id: string): Promise<boolean> => {
     const verifySpin = params.prompter.progress(`Verifying access to ${id} (10s timeout)...`);
     try {
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      };
+      if (process.env.MODEL_AGENT_CLIENT_REQ_ID && process.env.MODEL_AGENT_CLIENT_REQ_VALUE) {
+        headers[process.env.MODEL_AGENT_CLIENT_REQ_ID] = process.env.MODEL_AGENT_CLIENT_REQ_VALUE;
+      }
+
       const res = await fetch(`${VOLCENGINE_API_BASE_URL}/chat/completions`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({
           model: id,
           messages: [{ role: "user", content: "hi" }],

@@ -272,6 +272,25 @@ export function normalizeProviders(params: {
       normalizedProvider = googleNormalized;
     }
 
+    if (
+      normalizedKey === "volcengine" &&
+      process.env.MODEL_AGENT_CLIENT_REQ_ID &&
+      process.env.MODEL_AGENT_CLIENT_REQ_VALUE
+    ) {
+      const keyName = process.env.MODEL_AGENT_CLIENT_REQ_ID;
+      const valName = process.env.MODEL_AGENT_CLIENT_REQ_VALUE;
+      if (normalizedProvider.headers?.[keyName] !== valName) {
+        mutated = true;
+        normalizedProvider = {
+          ...normalizedProvider,
+          headers: {
+            ...normalizedProvider.headers,
+            [keyName]: valName,
+          },
+        };
+      }
+    }
+
     next[key] = normalizedProvider;
   }
 
