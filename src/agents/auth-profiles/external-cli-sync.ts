@@ -2,6 +2,7 @@ import {
   readClaudeCliCredentialsCached,
   readCodexCliCredentialsCached,
   readQwenCliCredentialsCached,
+  readMiniMaxCliCredentialsCached,
 } from "../cli-credentials.js";
 import {
   CLAUDE_CLI_PROFILE_ID,
@@ -9,6 +10,7 @@ import {
   EXTERNAL_CLI_NEAR_EXPIRY_MS,
   EXTERNAL_CLI_SYNC_TTL_MS,
   QWEN_CLI_PROFILE_ID,
+  MINIMAX_CLI_PROFILE_ID,
   log,
 } from "./constants.js";
 import type {
@@ -50,12 +52,50 @@ function isExternalProfileFresh(cred: AuthProfileCredential | undefined, now: nu
   if (
     cred.provider !== "anthropic" &&
     cred.provider !== "openai-codex" &&
-    cred.provider !== "qwen-portal"
+    cred.provider !== "qwen-portal" &&
+    cred.provider !== "minimax-portal"
   ) {
     return false;
   }
-  if (typeof cred.expires !== "number") return true;
+  if (typeof cred.expires !== "number") {
+    return true;
+  }
   return cred.expires > now + EXTERNAL_CLI_NEAR_EXPIRY_MS;
+}
+
+/** Sync external CLI credentials into the store for a given provider. */
+function syncExternalCliCredentialsForProvider(
+  store: AuthProfileStore,
+  profileId: string,
+  provider: string,
+  readCredentials: () => OAuthCredential | null,
+  now: number,
+): boolean {
+  const existing = store.profiles[profileId];
+  const shouldSync =
+    !existing || existing.provider !== provider || !isExternalProfileFresh(existing, now);
+  const creds = shouldSync ? readCredentials() : null;
+  if (!creds) {
+    return false;
+  }
+
+  const existingOAuth = existing?.type === "oauth" ? existing : undefined;
+  const shouldUpdate =
+    !existingOAuth ||
+    existingOAuth.provider !== provider ||
+    existingOAuth.expires <= now ||
+    creds.expires > existingOAuth.expires;
+
+  if (shouldUpdate && !shallowEqualOAuthCredentials(existingOAuth, creds)) {
+    store.profiles[profileId] = creds;
+    log.info(`synced ${provider} credentials from external cli`, {
+      profileId,
+      expires: new Date(creds.expires).toISOString(),
+    });
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -79,7 +119,7 @@ export function findDuplicateCodexProfile(
 }
 
 /**
- * Sync OAuth credentials from external CLI tools (Claude Code CLI, Codex CLI) into the store.
+ * Sync OAuth credentials from external CLI tools (Claude Code CLI, Codex CLI, Qwen Code CLI, MiniMax CLI) into the store.
  * This allows clawdbot to use the same credentials as these tools without requiring
  * separate authentication, and keeps credentials in sync when CLI tools refresh tokens.
  *
@@ -242,6 +282,19 @@ export function syncExternalCliCredentials(
         expires: new Date(qwenCreds.expires).toISOString(),
       });
     }
+  }
+
+  // Sync from MiniMax Portal CLI
+  if (
+    syncExternalCliCredentialsForProvider(
+      store,
+      MINIMAX_CLI_PROFILE_ID,
+      "minimax-portal",
+      () => readMiniMaxCliCredentialsCached({ ttlMs: EXTERNAL_CLI_SYNC_TTL_MS }),
+      now,
+    )
+  ) {
+    mutated = true;
   }
 
   return mutated;
