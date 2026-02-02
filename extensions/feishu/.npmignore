@@ -1,6 +1,7 @@
 # Source files (included in dist/)
-src/
-index.ts
+# Use /src/ to only exclude root src/, not dist/src/
+/src/
+/index.ts
 *.test.ts
 
 # Config files

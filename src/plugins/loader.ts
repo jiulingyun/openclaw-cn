@@ -213,6 +213,7 @@ export function loadClawdbotPlugins(options: PluginLoadOptions = {}): PluginRegi
       ? {
           alias: {
             "clawdbot/plugin-sdk": pluginSdkAlias,
+            "openclaw/plugin-sdk": pluginSdkAlias,
             "openclaw-cn/plugin-sdk": pluginSdkAlias,
           },
         }
