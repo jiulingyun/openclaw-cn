@@ -18,6 +18,11 @@ const logger = getChildLogger({ module: "feishu-streaming" });
 
 const FEISHU_BASE_URL = "https://open.feishu.cn/open-apis";
 
+export type FeishuStreamingCredentials = {
+  appId: string;
+  appSecret: string;
+};
+
 export type FeishuStreamingCardState = {
   cardId: string;
   messageId: string;
@@ -26,12 +31,53 @@ export type FeishuStreamingCardState = {
   currentText: string;
 };
 
+// Token cache
+let cachedToken: { token: string; expiresAt: number } | null = null;
+
+/**
+ * Get tenant access token (with caching)
+ */
+async function getTenantAccessToken(credentials: FeishuStreamingCredentials): Promise<string> {
+  // Check cache
+  if (cachedToken && cachedToken.expiresAt > Date.now() + 60000) {
+    return cachedToken.token;
+  }
+
+  const response = await fetch(`${FEISHU_BASE_URL}/auth/v3/tenant_access_token/internal`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      app_id: credentials.appId,
+      app_secret: credentials.appSecret,
+    }),
+  });
+
+  const result = (await response.json()) as {
+    code: number;
+    msg: string;
+    tenant_access_token?: string;
+    expire?: number;
+  };
+
+  if (result.code !== 0 || !result.tenant_access_token) {
+    throw new Error(`Failed to get tenant access token: ${result.msg}`);
+  }
+
+  // Cache token (expire 2 hours, we refresh 1 minute early)
+  cachedToken = {
+    token: result.tenant_access_token,
+    expiresAt: Date.now() + (result.expire ?? 7200) * 1000,
+  };
+
+  return result.tenant_access_token;
+}
+
 /**
  * Create a streaming card entity
  */
 export async function createStreamingCard(
-  client: Client,
-  title: string = "正在思考...",
+  credentials: FeishuStreamingCredentials,
+  title: string = "Moltbot",
 ): Promise<{ cardId: string }> {
   const cardJson = {
     schema: "2.0",
@@ -56,7 +102,7 @@ export async function createStreamingCard(
       elements: [
         {
           tag: "markdown",
-          content: "⏳ 正在处理您的请求...",
+          content: "⏳ 正在思考...",
           element_id: "streaming_content",
         },
       ],
@@ -66,7 +112,7 @@ export async function createStreamingCard(
   const response = await fetch(`${FEISHU_BASE_URL}/cardkit/v1/cards`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${await getTenantAccessToken(client)}`,
+      Authorization: `Bearer ${await getTenantAccessToken(credentials)}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -124,7 +170,7 @@ export async function sendStreamingCard(
  * Update streaming card text content
  */
 export async function updateStreamingCardText(
-  client: Client,
+  credentials: FeishuStreamingCredentials,
   cardId: string,
   elementId: string,
   text: string,
@@ -135,7 +181,7 @@ export async function updateStreamingCardText(
     {
       method: "PUT",
       headers: {
-        Authorization: `Bearer ${await getTenantAccessToken(client)}`,
+        Authorization: `Bearer ${await getTenantAccessToken(credentials)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -158,26 +204,24 @@ export async function updateStreamingCardText(
  * Close streaming mode on a card
  */
 export async function closeStreamingMode(
-  client: Client,
+  credentials: FeishuStreamingCredentials,
   cardId: string,
   sequence: number,
   finalSummary?: string,
 ): Promise<void> {
+  // Build config object - summary must be set to clear "[生成中...]"
   const configObj: Record<string, unknown> = {
     streaming_mode: false,
+    summary: { content: finalSummary || "" },
   };
-
-  if (finalSummary) {
-    configObj.summary = { content: finalSummary };
-  }
 
   const settings = { config: configObj };
 
   const response = await fetch(`${FEISHU_BASE_URL}/cardkit/v1/cards/${cardId}/settings`, {
-    method: "PUT",
+    method: "PATCH",
     headers: {
-      Authorization: `Bearer ${await getTenantAccessToken(client)}`,
-      "Content-Type": "application/json",
+      Authorization: `Bearer ${await getTenantAccessToken(credentials)}`,
+      "Content-Type": "application/json; charset=utf-8",
     },
     body: JSON.stringify({
       settings: JSON.stringify(settings),
@@ -186,6 +230,7 @@ export async function closeStreamingMode(
     }),
   });
 
+  // Check response
   const result = (await response.json()) as { code: number; msg: string };
 
   if (result.code !== 0) {
@@ -196,57 +241,18 @@ export async function closeStreamingMode(
 }
 
 /**
- * Helper to get tenant access token from the client
- * The SDK caches this internally, but we need it for direct API calls
- */
-async function getTenantAccessToken(client: Client): Promise<string> {
-  // The SDK's tokenManager handles token refresh automatically
-  // We can access it through the client's internal state
-  const tokenManager = (client as any).tokenManager;
-  if (tokenManager?.tenantAccessToken) {
-    const token = await tokenManager.tenantAccessToken;
-    if (typeof token === "string") return token;
-  }
-
-  // Fallback: use the client's internal config to get a fresh token
-  const config = (client as any).config;
-  if (!config?.appId || !config?.appSecret) {
-    throw new Error("Cannot get tenant access token: missing app credentials");
-  }
-
-  const response = await fetch(`${FEISHU_BASE_URL}/auth/v3/tenant_access_token/internal`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      app_id: config.appId,
-      app_secret: config.appSecret,
-    }),
-  });
-
-  const result = (await response.json()) as {
-    code: number;
-    msg: string;
-    tenant_access_token?: string;
-  };
-
-  if (result.code !== 0 || !result.tenant_access_token) {
-    throw new Error(`Failed to get tenant access token: ${result.msg}`);
-  }
-
-  return result.tenant_access_token;
-}
-
-/**
  * High-level streaming card manager
  */
 export class FeishuStreamingSession {
   private client: Client;
+  private credentials: FeishuStreamingCredentials;
   private state: FeishuStreamingCardState | null = null;
   private updateQueue: Promise<void> = Promise.resolve();
   private closed = false;
 
-  constructor(client: Client) {
+  constructor(client: Client, credentials: FeishuStreamingCredentials) {
     this.client = client;
+    this.credentials = credentials;
   }
 
   /**
@@ -263,7 +269,7 @@ export class FeishuStreamingSession {
     }
 
     try {
-      const { cardId } = await createStreamingCard(this.client, title);
+      const { cardId } = await createStreamingCard(this.credentials, title);
       const { messageId } = await sendStreamingCard(this.client, receiveId, cardId, receiveIdType);
 
       this.state = {
@@ -296,7 +302,7 @@ export class FeishuStreamingSession {
 
       try {
         await updateStreamingCardText(
-          this.client,
+          this.credentials,
           this.state.cardId,
           this.state.elementId,
           text,
@@ -327,7 +333,7 @@ export class FeishuStreamingSession {
       // Update final text
       if (text) {
         await updateStreamingCardText(
-          this.client,
+          this.credentials,
           this.state.cardId,
           this.state.elementId,
           text,
@@ -338,7 +344,7 @@ export class FeishuStreamingSession {
       // Close streaming mode
       this.state.sequence += 1;
       await closeStreamingMode(
-        this.client,
+        this.credentials,
         this.state.cardId,
         this.state.sequence,
         summary ?? truncateForSummary(text),

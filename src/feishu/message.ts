@@ -25,6 +25,8 @@ export type ProcessFeishuMessageOptions = {
   cfg?: ClawdbotConfig;
   accountId?: string;
   resolvedConfig?: ResolvedFeishuConfig;
+  /** Feishu app credentials for streaming card API */
+  credentials?: { appId: string; appSecret: string };
 };
 
 export async function processFeishuMessage(
@@ -226,8 +228,11 @@ export async function processFeishuMessage(
   const senderName = sender?.sender_id?.user_id || "unknown";
 
   // Streaming mode support
-  const streamingEnabled = feishuCfg.streaming !== false; // Default to true
-  const streamingSession = streamingEnabled ? new FeishuStreamingSession(client) : null;
+  const streamingEnabled = feishuCfg.streaming !== false && options.credentials; // Default to true if credentials available
+  const streamingSession =
+    streamingEnabled && options.credentials
+      ? new FeishuStreamingSession(client, options.credentials)
+      : null;
   let streamingStarted = false;
   let lastPartialText = "";
 
@@ -261,6 +266,13 @@ export async function processFeishuMessage(
       deliver: async (payload, info) => {
         const hasMedia = payload.mediaUrl || (payload.mediaUrls && payload.mediaUrls.length > 0);
         if (!payload.text && !hasMedia) return;
+
+        // Handle block replies - update streaming card with partial text
+        if (streamingSession?.isActive() && info?.kind === "block" && payload.text) {
+          logger.debug(`Updating streaming card with block text: ${payload.text.length} chars`);
+          await streamingSession.update(payload.text);
+          return;
+        }
 
         // If streaming was active, close it with the final text
         if (streamingSession?.isActive() && info?.kind === "final") {
@@ -333,9 +345,18 @@ export async function processFeishuMessage(
       },
     },
     replyOptions: {
-      disableBlockStreaming: feishuCfg.blockStreaming,
+      disableBlockStreaming: !feishuCfg.blockStreaming,
       onPartialReply: streamingSession
         ? async (payload) => {
+            if (!streamingSession.isActive() || !payload.text) return;
+            if (payload.text === lastPartialText) return;
+            lastPartialText = payload.text;
+            await streamingSession.update(payload.text);
+          }
+        : undefined,
+      onReasoningStream: streamingSession
+        ? async (payload) => {
+            // Also update on reasoning stream for extended thinking models
             if (!streamingSession.isActive() || !payload.text) return;
             if (payload.text === lastPartialText) return;
             lastPartialText = payload.text;
