@@ -5,6 +5,7 @@ import { loadConfig } from "../config/config.js";
 import { logVerbose } from "../globals.js";
 import { getChildLogger } from "../logging.js";
 import { isSenderAllowed, normalizeAllowFromWithStore, resolveSenderAllowMatch } from "./access.js";
+import { resolveAgentRoute } from "../routing/resolve-route.js";
 import {
   resolveFeishuConfig,
   resolveFeishuGroupConfig,
@@ -27,8 +28,6 @@ export type ProcessFeishuMessageOptions = {
   resolvedConfig?: ResolvedFeishuConfig;
   /** Feishu app credentials for streaming card API */
   credentials?: { appId: string; appSecret: string };
-  /** Bot name for streaming card title (optional, defaults to no title) */
-  botName?: string;
 };
 
 export async function processFeishuMessage(
@@ -56,6 +55,17 @@ export async function processFeishuMessage(
   const senderId = sender?.sender_id?.open_id || sender?.sender_id?.user_id || "unknown";
   const senderUnionId = sender?.sender_id?.union_id;
   const maxMediaBytes = feishuCfg.mediaMaxMb * 1024 * 1024;
+
+  // Resolve agent route
+  const route = resolveAgentRoute({
+    cfg,
+    channel: "feishu",
+    accountId,
+    peer: {
+      kind: isGroup ? "group" : "dm",
+      id: isGroup ? chatId : senderId,
+    },
+  });
 
   // Check if this is a supported message type
   if (!SUPPORTED_MSG_TYPES.includes(msgType)) {
@@ -244,6 +254,7 @@ export async function processFeishuMessage(
     RawBody: text || media?.placeholder || "",
     From: senderId,
     To: chatId,
+    SessionKey: route.sessionKey,
     SenderId: senderId,
     SenderName: senderName,
     ChatType: isGroup ? "group" : "dm",
@@ -251,7 +262,7 @@ export async function processFeishuMessage(
     Surface: "feishu",
     Timestamp: Number(message.create_time),
     MessageSid: message.message_id,
-    AccountId: accountId,
+    AccountId: route.accountId,
     OriginatingChannel: "feishu",
     OriginatingTo: chatId,
     // Media fields (similar to Telegram)
@@ -336,7 +347,7 @@ export async function processFeishuMessage(
         // Start streaming card when reply generation begins
         if (streamingSession && !streamingStarted) {
           try {
-            await streamingSession.start(chatId, "chat_id", options.botName);
+            await streamingSession.start(chatId, "chat_id");
             streamingStarted = true;
             logger.debug(`Started streaming card for chat ${chatId}`);
           } catch (err) {
