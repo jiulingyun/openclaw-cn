@@ -1,6 +1,6 @@
 {
   "name": "@clawdbot/open-prose",
-  "version": "2026.2.2",
+  "version": "0.1.0",
   "type": "module",
   "description": "OpenProse VM skill pack plugin (slash command + telemetry).",
   "clawdbot": {

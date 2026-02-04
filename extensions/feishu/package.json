@@ -1,6 +1,6 @@
 {
   "name": "@openclaw-cn/feishu",
-  "version": "2026.2.2",
+  "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -40,7 +40,12 @@
     }
   },
   "description": "Feishu (Larksuite) channel plugin for OpenClaw Chinese",
-  "keywords": ["openclaw", "plugin", "feishu", "larksuite"],
+  "keywords": [
+    "openclaw",
+    "plugin",
+    "feishu",
+    "larksuite"
+  ],
   "license": "MIT",
   "homepage": "https://github.com/openclaw/openclaw-cn/tree/main/extensions/feishu",
   "repository": {

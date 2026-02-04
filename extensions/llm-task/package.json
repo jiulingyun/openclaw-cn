@@ -1,6 +1,6 @@
 {
   "name": "@clawdbot/llm-task",
-  "version": "2026.2.2",
+  "version": "0.1.0",
   "type": "module",
   "description": "Clawdbot JSON-only LLM task plugin",
   "clawdbot": {

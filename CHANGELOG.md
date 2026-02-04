@@ -2,6 +2,43 @@
 
 Docs: https://docs.clawd.bot
 
+## 0.1.0
+
+> 🎉 **版本号规范化**：从本版本起，openclaw-cn 采用标准语义化版本号 (Semver)，告别日期版本。
+> 本版本整合了 2026.2.3 ~ 2026.2.5 的所有更新内容。
+
+### ✨ 新功能（Features）
+
+- **飞书多 Agent 路由**：新增飞书多 Agent 路由支持，可根据 `bindings` 配置将不同用户/群聊分发到不同 Agent (#27) - 感谢 @wsbjj
+- **飞书群聊增强**：添加群组消息引用功能、显示群组 ID、回复引用模式，增强对话上下文清晰度
+- **飞书文档提取**：添加文档链接提取功能，支持从文本和富文本消息中提取飞书文档引用
+- **中文命令支持**：添加斜杠命令格式支持、中文命令别名、命令帮助文本中文国际化
+- **工作区迁移**：添加迁移旧工作区目录功能，确保用户无缝升级到新目录
+- **火山引擎自定义 Header**：支持通过环境变量 `MODEL_AGENT_CLIENT_REQ_ID` 和 `MODEL_AGENT_CLIENT_REQ_VALUE` 为火山引擎模型请求添加自定义 Header (#24) - 感谢 @dragonforce2010
+- **消息聊天类型**：添加消息聊天类型参数，支持不同聊天场景的处理
+
+### 🔧 修复（Fixes）
+
+- **飞书富文本解析**：修复 post 富文本消息解析，支持 locale 包装格式和嵌入图片下载 (#37)
+- **依赖安装问题彻底解决**：使用 `@openclaw-cn/baileys` 替代上游 `@whiskeysockets/baileys`，彻底解决全局安装时 libsignal git 依赖导致的安装失败问题
+- **npm/yarn 兼容**：完善 libsignal 依赖替换，添加 npm `overrides` 和 yarn `resolutions` 支持
+- **Control UI 资源**：修复 npm 包缺少 Control UI 资源的问题 (#28)
+- **Feishu 扩展打包**：修复 npm 包缺少 feishu 扩展 dist 目录的问题
+- **心跳逻辑**：更新心跳跳过逻辑，使其能够处理 cron 事件
+- **崩溃修复**：修复 model.input.includes 未定义导致的崩溃 (#32)
+- **WSL/容器环境**：改进 WSL/容器环境下网关服务命令的错误提示 (#26)
+
+### 📚 文档（Docs）
+
+- 命令响应和使用说明翻译成中文（/whoami、/models、/activation、/send 等）
+- 添加火山引擎供应商文档和配置示例
+- 添加飞书多 Agent 路由配置说明、流式输出说明
+- 添加 WSL 用户 gateway restart 注意事项
+- 添加 Windows PowerShell 更新/卸载命令
+- 添加 'disconnected (1006)' 错误排查指南
+
+---
+
 ## 2026.2.5
 
 ### ✨ 新功能（Features）
