@@ -38,6 +38,12 @@ type FeishuSender = {
 
 type FeishuMention = {
   key?: string;
+  id?: {
+    open_id?: string;
+    user_id?: string;
+    union_id?: string;
+  };
+  name?: string;
 };
 
 type FeishuMessage = {
@@ -71,6 +77,8 @@ export type ProcessFeishuMessageOptions = {
   credentials?: { appId: string; appSecret: string; domain?: string };
   /** Bot name for streaming card title (optional, defaults to no title) */
   botName?: string;
+  /** Bot's open_id for detecting bot mentions in groups */
+  botOpenId?: string;
 };
 
 export async function processFeishuMessage(
@@ -234,7 +242,11 @@ export async function processFeishuMessage(
 
   // Handle @mentions for group chats
   const mentions = message.mentions ?? payload.mentions ?? [];
-  const wasMentioned = mentions.length > 0;
+  // Check if the bot itself was mentioned, not just any user
+  const botOpenId = options.botOpenId;
+  const wasMentioned = botOpenId
+    ? mentions.some((m) => m.id?.open_id === botOpenId)
+    : mentions.length > 0; // fallback if bot open_id not available
 
   // In group chat, check requireMention setting
   if (isGroup) {
