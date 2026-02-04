@@ -47,7 +47,7 @@ function formatSessionSnippet(sessionId: string) {
 
 function formatOutputBlock(text: string) {
   const trimmed = text.trim();
-  if (!trimmed) return "(no output)";
+  if (!trimmed) return "(无输出)";
   return `\`\`\`txt\n${trimmed}\n\`\`\``;
 }
 
@@ -137,11 +137,11 @@ function attachActiveWatcher(sessionId: string) {
 function buildUsageReply(): ReplyPayload {
   return {
     text: [
-      "⚙️ Usage:",
-      "- ! <command>",
+      "⚙️ 用法:",
+      "- ! <命令>",
       "- !poll | ! poll",
       "- !stop | ! stop",
-      "- /bash ... (alias; same subcommands as !)",
+      "- /bash ... (别名；与 ! 相同的子命令)",
     ].join("\n"),
   };
 }
@@ -152,24 +152,22 @@ function formatElevatedUnavailableMessage(params: {
   sessionKey?: string;
 }): string {
   const lines: string[] = [];
-  lines.push(
-    `elevated is not available right now (runtime=${params.runtimeSandboxed ? "sandboxed" : "direct"}).`,
-  );
+  lines.push(`elevated 当前不可用 (runtime=${params.runtimeSandboxed ? "沙箱" : "直接"})。`);
   if (params.failures.length > 0) {
-    lines.push(`Failing gates: ${params.failures.map((f) => `${f.gate} (${f.key})`).join(", ")}`);
+    lines.push(`失败的门控: ${params.failures.map((f) => `${f.gate} (${f.key})`).join(", ")}`);
   } else {
     lines.push(
-      "Failing gates: enabled (tools.elevated.enabled / agents.list[].tools.elevated.enabled), allowFrom (tools.elevated.allowFrom.<provider>).",
+      "失败的门控: enabled (tools.elevated.enabled / agents.list[].tools.elevated.enabled), allowFrom (tools.elevated.allowFrom.<provider>)。",
     );
   }
-  lines.push("Fix-it keys:");
+  lines.push("修复密钥:");
   lines.push("- tools.elevated.enabled");
   lines.push("- tools.elevated.allowFrom.<provider>");
   lines.push("- agents.list[].tools.elevated.enabled");
   lines.push("- agents.list[].tools.elevated.allowFrom.<provider>");
   if (params.sessionKey) {
     lines.push(
-      `See: ${formatCliCommand(`openclaw-cn sandbox explain --session ${params.sessionKey}`)}`,
+      `查看: ${formatCliCommand(`openclaw-cn sandbox explain --session ${params.sessionKey}`)}`,
     );
   }
   return lines.join("\n");
@@ -189,7 +187,7 @@ export async function handleBashChatCommand(params: {
 }): Promise<ReplyPayload> {
   if (params.cfg.commands?.bash !== true) {
     return {
-      text: "⚠️ bash is disabled. Set commands.bash=true to enable. Docs: https://docs.clawd.bot/tools/slash-commands#config",
+      text: "⚠️ bash 已禁用。设置 commands.bash=true 以启用。文档: https://docs.clawd.bot/tools/slash-commands#config",
     };
   }
 
@@ -222,7 +220,7 @@ export async function handleBashChatCommand(params: {
   }).trim();
   const request = parseBashRequest(rawBody);
   if (!request) {
-    return { text: "⚠️ Unrecognized bash request." };
+    return { text: "⚠️ 无法识别的 bash 请求。" };
   }
 
   const liveJob = ensureActiveJobState();
@@ -235,18 +233,18 @@ export async function handleBashChatCommand(params: {
     const sessionId =
       request.sessionId?.trim() || (liveJob?.state === "running" ? liveJob.sessionId : "");
     if (!sessionId) {
-      return { text: "⚙️ No active bash job." };
+      return { text: "⚙️ 没有活动的 bash 作业。" };
     }
     const { running, finished } = getScopedSession(sessionId);
     if (running) {
       attachActiveWatcher(sessionId);
       const runtimeSec = Math.max(0, Math.floor((Date.now() - running.startedAt) / 1000));
-      const tail = running.tail || "(no output yet)";
+      const tail = running.tail || "(暂无输出)";
       return {
         text: [
-          `⚙️ bash still running (session ${formatSessionSnippet(sessionId)}, ${runtimeSec}s).`,
+          `⚙️ bash 仍在运行 (会话 ${formatSessionSnippet(sessionId)}，${runtimeSec}秒)。`,
           formatOutputBlock(tail),
-          "Hint: !stop (or /bash stop)",
+          "提示: !stop (或 /bash stop)",
         ].join("\n"),
       };
     }
@@ -255,13 +253,13 @@ export async function handleBashChatCommand(params: {
         activeJob = null;
       }
       const exitLabel = finished.exitSignal
-        ? `signal ${String(finished.exitSignal)}`
-        : `code ${String(finished.exitCode ?? 0)}`;
+        ? `信号 ${String(finished.exitSignal)}`
+        : `退出码 ${String(finished.exitCode ?? 0)}`;
       const prefix = finished.status === "completed" ? "⚙️" : "⚠️";
       return {
         text: [
-          `${prefix} bash finished (session ${formatSessionSnippet(sessionId)}).`,
-          `Exit: ${exitLabel}`,
+          `${prefix} bash 已完成 (会话 ${formatSessionSnippet(sessionId)})。`,
+          `退出: ${exitLabel}`,
           formatOutputBlock(finished.aggregated || finished.tail),
         ].join("\n"),
       };
@@ -270,7 +268,7 @@ export async function handleBashChatCommand(params: {
       activeJob = null;
     }
     return {
-      text: `⚙️ No bash session found for ${formatSessionSnippet(sessionId)}.`,
+      text: `⚙️ 未找到 ${formatSessionSnippet(sessionId)} 的 bash 会话。`,
     };
   }
 
@@ -278,7 +276,7 @@ export async function handleBashChatCommand(params: {
     const sessionId =
       request.sessionId?.trim() || (liveJob?.state === "running" ? liveJob.sessionId : "");
     if (!sessionId) {
-      return { text: "⚙️ No active bash job." };
+      return { text: "⚙️ 没有活动的 bash 作业。" };
     }
     const { running } = getScopedSession(sessionId);
     if (!running) {
@@ -286,12 +284,12 @@ export async function handleBashChatCommand(params: {
         activeJob = null;
       }
       return {
-        text: `⚙️ No running bash job found for ${formatSessionSnippet(sessionId)}.`,
+        text: `⚙️ 未找到 ${formatSessionSnippet(sessionId)} 的运行中 bash 作业。`,
       };
     }
     if (!running.backgrounded) {
       return {
-        text: `⚠️ Session ${formatSessionSnippet(sessionId)} is not backgrounded.`,
+        text: `⚠️ 会话 ${formatSessionSnippet(sessionId)} 未在后台运行。`,
       };
     }
     const pid = running.pid ?? running.child?.pid;
@@ -303,16 +301,15 @@ export async function handleBashChatCommand(params: {
       activeJob = null;
     }
     return {
-      text: `⚙️ bash stopped (session ${formatSessionSnippet(sessionId)}).`,
+      text: `⚙️ bash 已停止 (会话 ${formatSessionSnippet(sessionId)})。`,
     };
   }
 
   // request.action === "run"
   if (liveJob) {
-    const label =
-      liveJob.state === "running" ? formatSessionSnippet(liveJob.sessionId) : "starting";
+    const label = liveJob.state === "running" ? formatSessionSnippet(liveJob.sessionId) : "启动中";
     return {
-      text: `⚠️ A bash job is already running (${label}). Use !poll / !stop (or /bash poll / /bash stop).`,
+      text: `⚠️ bash 作业已在运行 (${label})。使用 !poll / !stop (或 /bash poll / /bash stop)。`,
     };
   }
 
@@ -363,7 +360,7 @@ export async function handleBashChatCommand(params: {
       const snippet = formatSessionSnippet(sessionId);
       logVerbose(`Started bash session ${snippet}: ${commandText}`);
       return {
-        text: `⚙️ bash started (session ${sessionId}). Still running; use !poll / !stop (or /bash poll / /bash stop).`,
+        text: `⚙️ bash 已启动 (会话 ${sessionId})。仍在运行；使用 !poll / !stop (或 /bash poll / /bash stop)。`,
       };
     }
 
@@ -385,7 +382,7 @@ export async function handleBashChatCommand(params: {
     activeJob = null;
     const message = err instanceof Error ? err.message : String(err);
     return {
-      text: [`⚠️ bash failed: ${commandText}`, formatOutputBlock(message)].join("\n"),
+      text: [`⚠️ bash 失败: ${commandText}`, formatOutputBlock(message)].join("\n"),
     };
   }
 }

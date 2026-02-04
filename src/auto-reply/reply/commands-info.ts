@@ -97,20 +97,20 @@ export const handleWhoamiCommand: CommandHandler = async (params, allowTextComma
   }
   const senderId = params.ctx.SenderId ?? "";
   const senderUsername = params.ctx.SenderUsername ?? "";
-  const lines = ["🧭 Identity", `Channel: ${params.command.channel}`];
-  if (senderId) lines.push(`User id: ${senderId}`);
+  const lines = ["🧭 身份信息", `渠道: ${params.command.channel}`];
+  if (senderId) lines.push(`用户 ID: ${senderId}`);
   if (senderUsername) {
     const handle = senderUsername.startsWith("@") ? senderUsername : `@${senderUsername}`;
-    lines.push(`Username: ${handle}`);
+    lines.push(`用户名: ${handle}`);
   }
   if (params.ctx.ChatType === "group" && params.ctx.From) {
-    lines.push(`Chat: ${params.ctx.From}`);
+    lines.push(`群组: ${params.ctx.From}`);
   }
   if (params.ctx.MessageThreadId != null) {
-    lines.push(`Thread: ${params.ctx.MessageThreadId}`);
+    lines.push(`话题: ${params.ctx.MessageThreadId}`);
   }
   if (senderId) {
-    lines.push(`AllowFrom: ${senderId}`);
+    lines.push(`白名单配置: ${senderId}`);
   }
   return { shouldContinue: false, reply: { text: lines.join("\n") } };
 };

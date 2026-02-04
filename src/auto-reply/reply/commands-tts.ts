@@ -40,14 +40,14 @@ function ttsUsage(): ReplyPayload {
   // Keep usage in one place so help/validation stays consistent.
   return {
     text:
-      "⚙️ Usage: /tts <off|always|inbound|tagged|status|provider|limit|summary|audio> [value]" +
-      "\nExamples:\n" +
+      "⚙️ 用法: /tts <off|always|inbound|tagged|status|provider|limit|summary|audio> [参数]" +
+      "\n示例:\n" +
       "/tts always\n" +
       "/tts provider openai\n" +
       "/tts provider edge\n" +
       "/tts limit 2000\n" +
       "/tts summary off\n" +
-      "/tts audio Hello from Clawdbot",
+      "/tts audio 你好，这里是 Clawdbot",
   };
 }
 
@@ -89,11 +89,11 @@ export const handleTtsCommands: CommandHandler = async (params, allowTextCommand
         });
       }
     }
-    const label = requestedAuto === "always" ? "enabled (always)" : requestedAuto;
+    const label = requestedAuto === "always" ? "已启用 (始终)" : requestedAuto;
     return {
       shouldContinue: false,
       reply: {
-        text: requestedAuto === "off" ? "🔇 TTS disabled." : `🔊 TTS ${label}.`,
+        text: requestedAuto === "off" ? "🔇 TTS 已禁用。" : `🔊 TTS ${label}。`,
       },
     };
   }
@@ -139,7 +139,7 @@ export const handleTtsCommands: CommandHandler = async (params, allowTextCommand
     });
     return {
       shouldContinue: false,
-      reply: { text: `❌ Error generating audio: ${result.error ?? "unknown error"}` },
+      reply: { text: `❌ 生成音频时出错: ${result.error ?? "未知错误"}` },
     };
   }
 
@@ -156,13 +156,13 @@ export const handleTtsCommands: CommandHandler = async (params, allowTextCommand
         shouldContinue: false,
         reply: {
           text:
-            `🎙️ TTS provider\n` +
-            `Primary: ${currentProvider}\n` +
-            `Fallbacks: ${fallback.join(", ") || "none"}\n` +
-            `OpenAI key: ${hasOpenAI ? "✅" : "❌"}\n` +
-            `ElevenLabs key: ${hasElevenLabs ? "✅" : "❌"}\n` +
-            `Edge enabled: ${hasEdge ? "✅" : "❌"}\n` +
-            `Usage: /tts provider openai | elevenlabs | edge`,
+            `🎙️ TTS 提供商\n` +
+            `主要: ${currentProvider}\n` +
+            `备选: ${fallback.join(", ") || "无"}\n` +
+            `OpenAI 密钥: ${hasOpenAI ? "✅" : "❌"}\n` +
+            `ElevenLabs 密钥: ${hasElevenLabs ? "✅" : "❌"}\n` +
+            `Edge 已启用: ${hasEdge ? "✅" : "❌"}\n` +
+            `用法: /tts provider openai | elevenlabs | edge`,
         },
       };
     }
@@ -180,9 +180,9 @@ export const handleTtsCommands: CommandHandler = async (params, allowTextCommand
       shouldContinue: false,
       reply: {
         text:
-          `✅ TTS provider set to ${requested} (fallbacks: ${fallback.join(", ") || "none"}).` +
+          `✅ TTS 提供商已设置为 ${requested} (备选: ${fallback.join(", ") || "无"})。` +
           (requested === "edge"
-            ? "\nEnable Edge TTS in config: messages.tts.edge.enabled = true."
+            ? "\n在配置中启用 Edge TTS: messages.tts.edge.enabled = true。"
             : ""),
       },
     };
@@ -193,7 +193,7 @@ export const handleTtsCommands: CommandHandler = async (params, allowTextCommand
       const currentLimit = getTtsMaxLength(prefsPath);
       return {
         shouldContinue: false,
-        reply: { text: `📏 TTS limit: ${currentLimit} characters.` },
+        reply: { text: `📏 TTS 限制: ${currentLimit} 字符。` },
       };
     }
     const next = Number.parseInt(args.trim(), 10);
@@ -203,7 +203,7 @@ export const handleTtsCommands: CommandHandler = async (params, allowTextCommand
     setTtsMaxLength(prefsPath, next);
     return {
       shouldContinue: false,
-      reply: { text: `✅ TTS limit set to ${next} characters.` },
+      reply: { text: `✅ TTS 限制已设置为 ${next} 字符。` },
     };
   }
 
@@ -212,7 +212,7 @@ export const handleTtsCommands: CommandHandler = async (params, allowTextCommand
       const enabled = isSummarizationEnabled(prefsPath);
       return {
         shouldContinue: false,
-        reply: { text: `📝 TTS auto-summary: ${enabled ? "on" : "off"}.` },
+        reply: { text: `📝 TTS 自动摘要: ${enabled ? "开启" : "关闭"}。` },
       };
     }
     const requested = args.trim().toLowerCase();
@@ -223,7 +223,7 @@ export const handleTtsCommands: CommandHandler = async (params, allowTextCommand
     return {
       shouldContinue: false,
       reply: {
-        text: requested === "on" ? "✅ TTS auto-summary enabled." : "❌ TTS auto-summary disabled.",
+        text: requested === "on" ? "✅ TTS 自动摘要已启用。" : "❌ TTS 自动摘要已禁用。",
       },
     };
   }
@@ -237,32 +237,32 @@ export const handleTtsCommands: CommandHandler = async (params, allowTextCommand
     const providerStatus =
       provider === "edge"
         ? hasKey
-          ? "✅ enabled"
-          : "❌ disabled"
+          ? "✅ 已启用"
+          : "❌ 已禁用"
         : hasKey
-          ? "✅ key"
-          : "❌ no key";
+          ? "✅ 已配置密钥"
+          : "❌ 无密钥";
     const maxLength = getTtsMaxLength(prefsPath);
     const summarize = isSummarizationEnabled(prefsPath);
     const last = getLastTtsAttempt();
-    const autoLabel = sessionAuto ? `${autoMode} (session)` : autoMode;
+    const autoLabel = sessionAuto ? `${autoMode} (会话)` : autoMode;
     const lines = [
-      "📊 TTS status",
-      `Auto: ${enabled ? autoLabel : "off"}`,
-      `Provider: ${provider} (${providerStatus})`,
-      `Text limit: ${maxLength} chars`,
-      `Auto-summary: ${summarize ? "on" : "off"}`,
+      "📊 TTS 状态",
+      `自动: ${enabled ? autoLabel : "关闭"}`,
+      `提供商: ${provider} (${providerStatus})`,
+      `文本限制: ${maxLength} 字符`,
+      `自动摘要: ${summarize ? "开启" : "关闭"}`,
     ];
     if (last) {
       const timeAgo = Math.round((Date.now() - last.timestamp) / 1000);
       lines.push("");
-      lines.push(`Last attempt (${timeAgo}s ago): ${last.success ? "✅" : "❌"}`);
-      lines.push(`Text: ${last.textLength} chars${last.summarized ? " (summarized)" : ""}`);
+      lines.push(`上次尝试 (${timeAgo}秒前): ${last.success ? "✅" : "❌"}`);
+      lines.push(`文本: ${last.textLength} 字符${last.summarized ? " (已摘要)" : ""}`);
       if (last.success) {
-        lines.push(`Provider: ${last.provider ?? "unknown"}`);
-        lines.push(`Latency: ${last.latencyMs ?? 0}ms`);
+        lines.push(`提供商: ${last.provider ?? "未知"}`);
+        lines.push(`延迟: ${last.latencyMs ?? 0}ms`);
       } else if (last.error) {
-        lines.push(`Error: ${last.error}`);
+        lines.push(`错误: ${last.error}`);
       }
     }
     return { shouldContinue: false, reply: { text: lines.join("\n") } };

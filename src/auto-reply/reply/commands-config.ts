@@ -36,7 +36,7 @@ export const handleConfigCommand: CommandHandler = async (params, allowTextComma
     return {
       shouldContinue: false,
       reply: {
-        text: "⚠️ /config is disabled. Set commands.config=true to enable.",
+        text: "⚠️ /config 已禁用。设置 commands.config=true 以启用。",
       },
     };
   }
@@ -55,14 +55,14 @@ export const handleConfigCommand: CommandHandler = async (params, allowTextComma
       accountId: params.ctx.AccountId,
     });
     if (!allowWrites) {
-      const channelLabel = channelId ?? "this channel";
+      const channelLabel = channelId ?? "此渠道";
       const hint = channelId
         ? `channels.${channelId}.configWrites=true`
         : "channels.<channel>.configWrites=true";
       return {
         shouldContinue: false,
         reply: {
-          text: `⚠️ Config writes are disabled for ${channelLabel}. Set ${hint} to enable.`,
+          text: `⚠️ ${channelLabel} 的配置写入已禁用。设置 ${hint} 以启用。`,
         },
       };
     }
@@ -73,7 +73,7 @@ export const handleConfigCommand: CommandHandler = async (params, allowTextComma
     return {
       shouldContinue: false,
       reply: {
-        text: "⚠️ Config file is invalid; fix it before using /config.",
+        text: "⚠️ 配置文件无效；请先修复后再使用 /config。",
       },
     };
   }
@@ -94,14 +94,14 @@ export const handleConfigCommand: CommandHandler = async (params, allowTextComma
       return {
         shouldContinue: false,
         reply: {
-          text: `⚙️ Config ${pathRaw}:\n\`\`\`json\n${rendered}\n\`\`\``,
+          text: `⚙️ 配置 ${pathRaw}:\n\`\`\`json\n${rendered}\n\`\`\``,
         },
       };
     }
     const json = JSON.stringify(parsedBase, null, 2);
     return {
       shouldContinue: false,
-      reply: { text: `⚙️ Config (raw):\n\`\`\`json\n${json}\n\`\`\`` },
+      reply: { text: `⚙️ 配置 (原始):\n\`\`\`json\n${json}\n\`\`\`` },
     };
   }
 
@@ -117,7 +117,7 @@ export const handleConfigCommand: CommandHandler = async (params, allowTextComma
     if (!removed) {
       return {
         shouldContinue: false,
-        reply: { text: `⚙️ No config value found for ${configCommand.path}.` },
+        reply: { text: `⚙️ 未找到 ${configCommand.path} 的配置值。` },
       };
     }
     const validated = validateConfigObjectWithPlugins(parsedBase);
@@ -126,14 +126,14 @@ export const handleConfigCommand: CommandHandler = async (params, allowTextComma
       return {
         shouldContinue: false,
         reply: {
-          text: `⚠️ Config invalid after unset (${issue.path}: ${issue.message}).`,
+          text: `⚠️ 删除后配置无效 (${issue.path}: ${issue.message})。`,
         },
       };
     }
     await writeConfigFile(validated.config);
     return {
       shouldContinue: false,
-      reply: { text: `⚙️ Config updated: ${configCommand.path} removed.` },
+      reply: { text: `⚙️ 配置已更新: ${configCommand.path} 已删除。` },
     };
   }
 
@@ -152,7 +152,7 @@ export const handleConfigCommand: CommandHandler = async (params, allowTextComma
       return {
         shouldContinue: false,
         reply: {
-          text: `⚠️ Config invalid after set (${issue.path}: ${issue.message}).`,
+          text: `⚠️ 设置后配置无效 (${issue.path}: ${issue.message})。`,
         },
       };
     }
@@ -164,7 +164,7 @@ export const handleConfigCommand: CommandHandler = async (params, allowTextComma
     return {
       shouldContinue: false,
       reply: {
-        text: `⚙️ Config updated: ${configCommand.path}=${valueLabel ?? "null"}`,
+        text: `⚙️ 配置已更新: ${configCommand.path}=${valueLabel ?? "null"}`,
       },
     };
   }
@@ -186,7 +186,7 @@ export const handleDebugCommand: CommandHandler = async (params, allowTextComman
     return {
       shouldContinue: false,
       reply: {
-        text: "⚠️ /debug is disabled. Set commands.debug=true to enable.",
+        text: "⚠️ /debug 已禁用。设置 commands.debug=true 以启用。",
       },
     };
   }
@@ -202,14 +202,14 @@ export const handleDebugCommand: CommandHandler = async (params, allowTextComman
     if (!hasOverrides) {
       return {
         shouldContinue: false,
-        reply: { text: "⚙️ Debug overrides: (none)" },
+        reply: { text: "⚙️ 调试覆盖: (无)" },
       };
     }
     const json = JSON.stringify(overrides, null, 2);
     return {
       shouldContinue: false,
       reply: {
-        text: `⚙️ Debug overrides (memory-only):\n\`\`\`json\n${json}\n\`\`\``,
+        text: `⚙️ 调试覆盖 (仅内存):\n\`\`\`json\n${json}\n\`\`\``,
       },
     };
   }
@@ -217,7 +217,7 @@ export const handleDebugCommand: CommandHandler = async (params, allowTextComman
     resetConfigOverrides();
     return {
       shouldContinue: false,
-      reply: { text: "⚙️ Debug overrides cleared; using config on disk." },
+      reply: { text: "⚙️ 调试覆盖已清除；使用磁盘上的配置。" },
     };
   }
   if (debugCommand.action === "unset") {
@@ -225,20 +225,20 @@ export const handleDebugCommand: CommandHandler = async (params, allowTextComman
     if (!result.ok) {
       return {
         shouldContinue: false,
-        reply: { text: `⚠️ ${result.error ?? "Invalid path."}` },
+        reply: { text: `⚠️ ${result.error ?? "无效路径。"}` },
       };
     }
     if (!result.removed) {
       return {
         shouldContinue: false,
         reply: {
-          text: `⚙️ No debug override found for ${debugCommand.path}.`,
+          text: `⚙️ 未找到 ${debugCommand.path} 的调试覆盖。`,
         },
       };
     }
     return {
       shouldContinue: false,
-      reply: { text: `⚙️ Debug override removed for ${debugCommand.path}.` },
+      reply: { text: `⚙️ 已删除 ${debugCommand.path} 的调试覆盖。` },
     };
   }
   if (debugCommand.action === "set") {
@@ -246,7 +246,7 @@ export const handleDebugCommand: CommandHandler = async (params, allowTextComman
     if (!result.ok) {
       return {
         shouldContinue: false,
-        reply: { text: `⚠️ ${result.error ?? "Invalid override."}` },
+        reply: { text: `⚠️ ${result.error ?? "无效覆盖。"}` },
       };
     }
     const valueLabel =
@@ -256,7 +256,7 @@ export const handleDebugCommand: CommandHandler = async (params, allowTextComman
     return {
       shouldContinue: false,
       reply: {
-        text: `⚙️ Debug override set: ${debugCommand.path}=${valueLabel ?? "null"}`,
+        text: `⚙️ 调试覆盖已设置: ${debugCommand.path}=${valueLabel ?? "null"}`,
       },
     };
   }

@@ -48,7 +48,7 @@ export const handleCompactCommand: CommandHandler = async (params) => {
   if (!params.sessionEntry?.sessionId) {
     return {
       shouldContinue: false,
-      reply: { text: "⚙️ Compaction unavailable (missing session id)." },
+      reply: { text: "⚙️ 压缩不可用（缺少会话 ID）" },
     };
   }
   const sessionId = params.sessionEntry.sessionId;
@@ -90,12 +90,12 @@ export const handleCompactCommand: CommandHandler = async (params) => {
   const compactLabel = result.ok
     ? result.compacted
       ? result.result?.tokensBefore != null && result.result?.tokensAfter != null
-        ? `Compacted (${formatTokenCount(result.result.tokensBefore)} → ${formatTokenCount(result.result.tokensAfter)})`
+        ? `已压缩 (${formatTokenCount(result.result.tokensBefore)} → ${formatTokenCount(result.result.tokensAfter)})`
         : result.result?.tokensBefore
-          ? `Compacted (${formatTokenCount(result.result.tokensBefore)} before)`
-          : "Compacted"
-      : "Compaction skipped"
-    : "Compaction failed";
+          ? `已压缩 (压缩前 ${formatTokenCount(result.result.tokensBefore)})`
+          : "已压缩"
+      : "已跳过压缩"
+    : "压缩失败";
   if (result.ok && result.compacted) {
     await incrementCompactionCount({
       sessionEntry: params.sessionEntry,

@@ -120,22 +120,22 @@ const formatTokens = (total: number | null | undefined, contextTokens: number | 
 export const formatContextUsageShort = (
   total: number | null | undefined,
   contextTokens: number | null | undefined,
-) => `Context ${formatTokens(total, contextTokens ?? null)}`;
+) => `上下文 ${formatTokens(total, contextTokens ?? null)}`;
 
 const formatAge = (ms?: number | null) => {
-  if (!ms || ms < 0) return "unknown";
+  if (!ms || ms < 0) return "未知";
   const minutes = Math.round(ms / 60_000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1) return "刚刚";
+  if (minutes < 60) return `${minutes}分钟前`;
   const hours = Math.round(minutes / 60);
-  if (hours < 48) return `${hours}h ago`;
+  if (hours < 48) return `${hours}小时前`;
   const days = Math.round(hours / 24);
-  return `${days}d ago`;
+  return `${days}天前`;
 };
 
 const formatQueueDetails = (queue?: QueueStatus) => {
   if (!queue) return "";
-  const depth = typeof queue.depth === "number" ? `depth ${queue.depth}` : null;
+  const depth = typeof queue.depth === "number" ? `深度 ${queue.depth}` : null;
   if (!queue.showDetails) {
     return depth ? ` (${depth})` : "";
   }
@@ -144,11 +144,11 @@ const formatQueueDetails = (queue?: QueueStatus) => {
   if (typeof queue.debounceMs === "number") {
     const ms = Math.max(0, Math.round(queue.debounceMs));
     const label =
-      ms >= 1000 ? `${ms % 1000 === 0 ? ms / 1000 : (ms / 1000).toFixed(1)}s` : `${ms}ms`;
-    detailParts.push(`debounce ${label}`);
+      ms >= 1000 ? `${ms % 1000 === 0 ? ms / 1000 : (ms / 1000).toFixed(1)}秒` : `${ms}毫秒`;
+    detailParts.push(`防抖 ${label}`);
   }
-  if (typeof queue.cap === "number") detailParts.push(`cap ${queue.cap}`);
-  if (queue.dropPolicy) detailParts.push(`drop ${queue.dropPolicy}`);
+  if (typeof queue.cap === "number") detailParts.push(`上限 ${queue.cap}`);
+  if (queue.dropPolicy) detailParts.push(`丢弃 ${queue.dropPolicy}`);
   return detailParts.length ? ` (${detailParts.join(" · ")})` : "";
 };
 
@@ -213,7 +213,7 @@ const formatUsagePair = (input?: number | null, output?: number | null) => {
   if (input == null && output == null) return null;
   const inputLabel = typeof input === "number" ? formatTokenCount(input) : "?";
   const outputLabel = typeof output === "number" ? formatTokenCount(output) : "?";
-  return `🧮 Tokens: ${inputLabel} in / ${outputLabel} out`;
+  return `🧮 Token: ${inputLabel} 输入 / ${outputLabel} 输出`;
 };
 
 const formatMediaUnderstandingLine = (decisions?: MediaUnderstandingDecision[]) => {
@@ -327,8 +327,8 @@ export function buildStatusMessage(args: StatusArgs): string {
 
   const updatedAt = entry?.updatedAt;
   const sessionLine = [
-    `Session: ${args.sessionKey ?? "unknown"}`,
-    typeof updatedAt === "number" ? `updated ${formatAge(now - updatedAt)}` : "no activity",
+    `会话: ${args.sessionKey ?? "未知"}`,
+    typeof updatedAt === "number" ? `更新于 ${formatAge(now - updatedAt)}` : "无活动",
   ]
     .filter(Boolean)
     .join(" • ");
@@ -343,33 +343,33 @@ export function buildStatusMessage(args: StatusArgs): string {
     : undefined;
 
   const contextLine = [
-    `Context: ${formatTokens(totalTokens, contextTokens ?? null)}`,
-    `🧹 Compactions: ${entry?.compactionCount ?? 0}`,
+    `上下文: ${formatTokens(totalTokens, contextTokens ?? null)}`,
+    `🧹 压缩次数: ${entry?.compactionCount ?? 0}`,
   ]
     .filter(Boolean)
     .join(" · ");
 
-  const queueMode = args.queue?.mode ?? "unknown";
+  const queueMode = args.queue?.mode ?? "未知";
   const queueDetails = formatQueueDetails(args.queue);
   const verboseLabel =
-    verboseLevel === "full" ? "verbose:full" : verboseLevel === "on" ? "verbose" : null;
+    verboseLevel === "full" ? "详细:完整" : verboseLevel === "on" ? "详细" : null;
   const elevatedLabel =
     elevatedLevel && elevatedLevel !== "off"
       ? elevatedLevel === "on"
-        ? "elevated"
-        : `elevated:${elevatedLevel}`
+        ? "提权"
+        : `提权:${elevatedLevel}`
       : null;
   const optionParts = [
-    `Runtime: ${runtime.label}`,
-    `Think: ${thinkLevel}`,
+    `运行时: ${runtime.label}`,
+    `思考: ${thinkLevel}`,
     verboseLabel,
-    reasoningLevel !== "off" ? `Reasoning: ${reasoningLevel}` : null,
+    reasoningLevel !== "off" ? `推理: ${reasoningLevel}` : null,
     elevatedLabel,
   ];
   const optionsLine = optionParts.filter(Boolean).join(" · ");
   const activationParts = [
-    groupActivationValue ? `👥 Activation: ${groupActivationValue}` : null,
-    `🪢 Queue: ${queueMode}${queueDetails}`,
+    groupActivationValue ? `👥 激活: ${groupActivationValue}` : null,
+    `🪢 队列: ${queueMode}${queueDetails}`,
   ];
   const activationLine = activationParts.filter(Boolean).join(" · ");
 
@@ -397,13 +397,13 @@ export function buildStatusMessage(args: StatusArgs): string {
       : undefined;
   const costLabel = showCost && hasUsage ? formatUsd(cost) : undefined;
 
-  const modelLabel = model ? `${provider}/${model}` : "unknown";
+  const modelLabel = model ? `${provider}/${model}` : "未知";
   const authLabel = authLabelValue ? ` · 🔑 ${authLabelValue}` : "";
-  const modelLine = `🧠 Model: ${modelLabel}${authLabel}`;
+  const modelLine = `🧠 模型: ${modelLabel}${authLabel}`;
   const commit = resolveCommitHash();
   const versionLine = `🦞 Clawdbot ${VERSION}${commit ? ` (${commit})` : ""}`;
   const usagePair = formatUsagePair(inputTokens, outputTokens);
-  const costLine = costLabel ? `💵 Cost: ${costLabel}` : null;
+  const costLine = costLabel ? `💵 成本: ${costLabel}` : null;
   const usageCostLine =
     usagePair && costLine ? `${usagePair} · ${costLine}` : (usagePair ?? costLine);
   const mediaLine = formatMediaUnderstandingLine(args.mediaDecisions);
@@ -429,21 +429,21 @@ export function buildStatusMessage(args: StatusArgs): string {
 
 export function buildHelpMessage(cfg?: ClawdbotConfig): string {
   const options = [
-    "/think <level>",
+    "/think <级别>",
     "/verbose on|full|off",
     "/reasoning on|off",
     "/elevated on|off|ask|full",
-    "/model <id>",
+    "/model <ID>",
     "/usage off|tokens|full",
   ];
   if (cfg?.commands?.config === true) options.push("/config show");
   if (cfg?.commands?.debug === true) options.push("/debug show");
   return [
-    "ℹ️ Help",
-    "Shortcuts: /new reset | /compact [instructions] | /restart relink (if enabled)",
-    `Options: ${options.join(" | ")}`,
-    "Skills: /skill <name> [input]",
-    "More: /commands for all slash commands",
+    "ℹ️ 帮助",
+    "快捷方式: /new 重置 | /compact [指令] | /restart 重启 (需启用)",
+    `选项: ${options.join(" | ")}`,
+    "技能: /skill <名称> [输入]",
+    "更多: /commands 查看所有命令",
   ].join("\n");
 }
 
@@ -451,7 +451,7 @@ export function buildCommandsMessage(
   cfg?: ClawdbotConfig,
   skillCommands?: SkillCommandSpec[],
 ): string {
-  const lines = ["ℹ️ Slash commands"];
+  const lines = ["ℹ️ 斜杠命令"];
   const commands = cfg
     ? listChatCommandsForConfig(cfg, { skillCommands })
     : listChatCommands({ skillCommands });
@@ -470,16 +470,16 @@ export function buildCommandsMessage(
         seen.add(key);
         return true;
       });
-    const aliasLabel = aliases.length ? ` (aliases: ${aliases.join(", ")})` : "";
-    const scopeLabel = command.scope === "text" ? " (text-only)" : "";
+    const aliasLabel = aliases.length ? ` (别名: ${aliases.join(", ")})` : "";
+    const scopeLabel = command.scope === "text" ? " (仅文本)" : "";
     lines.push(`${primary}${aliasLabel}${scopeLabel} - ${command.description}`);
   }
   const pluginCommands = listPluginCommands();
   if (pluginCommands.length > 0) {
     lines.push("");
-    lines.push("Plugin commands:");
+    lines.push("插件命令:");
     for (const command of pluginCommands) {
-      const pluginLabel = command.pluginId ? ` (plugin: ${command.pluginId})` : "";
+      const pluginLabel = command.pluginId ? ` (插件: ${command.pluginId})` : "";
       lines.push(`/${command.name}${pluginLabel} - ${command.description}`);
     }
   }

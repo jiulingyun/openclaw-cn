@@ -72,27 +72,27 @@ function resolveSubagentTarget(
   }
   if (trimmed.includes(":")) {
     const match = runs.find((entry) => entry.childSessionKey === trimmed);
-    return match ? { entry: match } : { error: `Unknown subagent session: ${trimmed}` };
+    return match ? { entry: match } : { error: `未知子代理会话: ${trimmed}` };
   }
   const byRunId = runs.filter((entry) => entry.runId.startsWith(trimmed));
   if (byRunId.length === 1) return { entry: byRunId[0] };
   if (byRunId.length > 1) {
-    return { error: `Ambiguous run id prefix: ${trimmed}` };
+    return { error: `模糊的运行 ID 前缀: ${trimmed}` };
   }
-  return { error: `Unknown subagent id: ${trimmed}` };
+  return { error: `未知子代理 ID: ${trimmed}` };
 }
 
 function buildSubagentsHelp() {
   return [
-    "🧭 Subagents",
-    "Usage:",
+    "🧭 子代理",
+    "用法:",
     "- /subagents list",
     "- /subagents stop <id|#|all>",
     "- /subagents log <id|#> [limit] [tools]",
     "- /subagents info <id|#>",
     "- /subagents send <id|#> <message>",
     "",
-    "Ids: use the list index (#), runId prefix, or full session key.",
+    "ID: 使用列表索引 (#)、runId 前缀或完整会话密钥。",
   ].join("\n");
 }
 
@@ -172,7 +172,7 @@ export const handleSubagentsCommand: CommandHandler = async (params, allowTextCo
 
   const requesterKey = resolveRequesterSessionKey(params);
   if (!requesterKey) {
-    return { shouldContinue: false, reply: { text: "⚠️ Missing session key." } };
+    return { shouldContinue: false, reply: { text: "⚠️ 缺少会话密钥。" } };
   }
   const runs = listSubagentRunsForRequester(requesterKey);
 
@@ -182,12 +182,12 @@ export const handleSubagentsCommand: CommandHandler = async (params, allowTextCo
 
   if (action === "list") {
     if (runs.length === 0) {
-      return { shouldContinue: false, reply: { text: "🧭 Subagents: none for this session." } };
+      return { shouldContinue: false, reply: { text: "🧭 子代理: 此会话无子代理。" } };
     }
     const sorted = sortSubagentRuns(runs);
     const active = sorted.filter((entry) => !entry.endedAt);
     const done = sorted.length - active.length;
-    const lines = ["🧭 Subagents (current session)", `Active: ${active.length} · Done: ${done}`];
+    const lines = ["🧭 子代理 (当前会话)", `活动: ${active.length} · 完成: ${done}`];
     sorted.forEach((entry, index) => {
       const status = formatRunStatus(entry);
       const label = formatRunLabel(entry);
@@ -206,30 +206,30 @@ export const handleSubagentsCommand: CommandHandler = async (params, allowTextCo
   if (action === "stop") {
     const target = restTokens[0];
     if (!target) {
-      return { shouldContinue: false, reply: { text: "⚙️ Usage: /subagents stop <id|#|all>" } };
+      return { shouldContinue: false, reply: { text: "⚙️ 用法: /subagents stop <id|#|all>" } };
     }
     if (target === "all" || target === "*") {
       const { stopped } = stopSubagentsForRequester({
         cfg: params.cfg,
         requesterSessionKey: requesterKey,
       });
-      const label = stopped === 1 ? "subagent" : "subagents";
+      const label = stopped === 1 ? "个子代理" : "个子代理";
       return {
         shouldContinue: false,
-        reply: { text: `⚙️ Stopped ${stopped} ${label}.` },
+        reply: { text: `⚙️ 已停止 ${stopped} ${label}。` },
       };
     }
     const resolved = resolveSubagentTarget(runs, target);
     if (!resolved.entry) {
       return {
         shouldContinue: false,
-        reply: { text: `⚠️ ${resolved.error ?? "Unknown subagent."}` },
+        reply: { text: `⚠️ ${resolved.error ?? "未知子代理。"}` },
       };
     }
     if (resolved.entry.endedAt) {
       return {
         shouldContinue: false,
-        reply: { text: "⚙️ Subagent already finished." },
+        reply: { text: "⚙️ 子代理已结束。" },
       };
     }
 
@@ -255,20 +255,20 @@ export const handleSubagentsCommand: CommandHandler = async (params, allowTextCo
     }
     return {
       shouldContinue: false,
-      reply: { text: `⚙️ Stop requested for ${formatRunLabel(resolved.entry)}.` },
+      reply: { text: `⚙️ 已请求停止 ${formatRunLabel(resolved.entry)}。` },
     };
   }
 
   if (action === "info") {
     const target = restTokens[0];
     if (!target) {
-      return { shouldContinue: false, reply: { text: "ℹ️ Usage: /subagents info <id|#>" } };
+      return { shouldContinue: false, reply: { text: "ℹ️ 用法: /subagents info <id|#>" } };
     }
     const resolved = resolveSubagentTarget(runs, target);
     if (!resolved.entry) {
       return {
         shouldContinue: false,
-        reply: { text: `⚠️ ${resolved.error ?? "Unknown subagent."}` },
+        reply: { text: `⚠️ ${resolved.error ?? "未知子代理。"}` },
       };
     }
     const run = resolved.entry;
@@ -281,22 +281,22 @@ export const handleSubagentsCommand: CommandHandler = async (params, allowTextCo
       ? `${run.outcome.status}${run.outcome.error ? ` (${run.outcome.error})` : ""}`
       : "n/a";
     const lines = [
-      "ℹ️ Subagent info",
-      `Status: ${formatRunStatus(run)}`,
-      `Label: ${formatRunLabel(run)}`,
-      `Task: ${run.task}`,
-      `Run: ${run.runId}`,
-      `Session: ${run.childSessionKey}`,
-      `SessionId: ${sessionEntry?.sessionId ?? "n/a"}`,
-      `Transcript: ${sessionEntry?.sessionFile ?? "n/a"}`,
-      `Runtime: ${runtime}`,
-      `Created: ${formatTimestampWithAge(run.createdAt)}`,
-      `Started: ${formatTimestampWithAge(run.startedAt)}`,
-      `Ended: ${formatTimestampWithAge(run.endedAt)}`,
-      `Cleanup: ${run.cleanup}`,
-      run.archiveAtMs ? `Archive: ${formatTimestampWithAge(run.archiveAtMs)}` : undefined,
-      run.cleanupHandled ? "Cleanup handled: yes" : undefined,
-      `Outcome: ${outcome}`,
+      "ℹ️ 子代理信息",
+      `状态: ${formatRunStatus(run)}`,
+      `标签: ${formatRunLabel(run)}`,
+      `任务: ${run.task}`,
+      `运行: ${run.runId}`,
+      `会话: ${run.childSessionKey}`,
+      `会话 ID: ${sessionEntry?.sessionId ?? "n/a"}`,
+      `对话历史: ${sessionEntry?.sessionFile ?? "n/a"}`,
+      `运行时: ${runtime}`,
+      `创建: ${formatTimestampWithAge(run.createdAt)}`,
+      `启动: ${formatTimestampWithAge(run.startedAt)}`,
+      `结束: ${formatTimestampWithAge(run.endedAt)}`,
+      `清理: ${run.cleanup}`,
+      run.archiveAtMs ? `归档: ${formatTimestampWithAge(run.archiveAtMs)}` : undefined,
+      run.cleanupHandled ? "清理已处理: 是" : undefined,
+      `结果: ${outcome}`,
     ].filter(Boolean);
     return { shouldContinue: false, reply: { text: lines.join("\n") } };
   }
@@ -304,7 +304,7 @@ export const handleSubagentsCommand: CommandHandler = async (params, allowTextCo
   if (action === "log") {
     const target = restTokens[0];
     if (!target) {
-      return { shouldContinue: false, reply: { text: "📜 Usage: /subagents log <id|#> [limit]" } };
+      return { shouldContinue: false, reply: { text: "📜 用法: /subagents log <id|#> [limit]" } };
     }
     const includeTools = restTokens.some((token) => token.toLowerCase() === "tools");
     const limitToken = restTokens.find((token) => /^\d+$/.test(token));
@@ -313,7 +313,7 @@ export const handleSubagentsCommand: CommandHandler = async (params, allowTextCo
     if (!resolved.entry) {
       return {
         shouldContinue: false,
-        reply: { text: `⚠️ ${resolved.error ?? "Unknown subagent."}` },
+        reply: { text: `⚠️ ${resolved.error ?? "未知子代理。"}` },
       };
     }
     const history = (await callGateway({
@@ -323,9 +323,9 @@ export const handleSubagentsCommand: CommandHandler = async (params, allowTextCo
     const rawMessages = Array.isArray(history?.messages) ? history.messages : [];
     const filtered = includeTools ? rawMessages : stripToolMessages(rawMessages);
     const lines = formatLogLines(filtered as ChatMessage[]);
-    const header = `📜 Subagent log: ${formatRunLabel(resolved.entry)}`;
+    const header = `📜 子代理日志: ${formatRunLabel(resolved.entry)}`;
     if (lines.length === 0) {
-      return { shouldContinue: false, reply: { text: `${header}\n(no messages)` } };
+      return { shouldContinue: false, reply: { text: `${header}\n(无消息)` } };
     }
     return { shouldContinue: false, reply: { text: [header, ...lines].join("\n") } };
   }
@@ -336,14 +336,14 @@ export const handleSubagentsCommand: CommandHandler = async (params, allowTextCo
     if (!target || !message) {
       return {
         shouldContinue: false,
-        reply: { text: "✉️ Usage: /subagents send <id|#> <message>" },
+        reply: { text: "✉️ 用法: /subagents send <id|#> <message>" },
       };
     }
     const resolved = resolveSubagentTarget(runs, target);
     if (!resolved.entry) {
       return {
         shouldContinue: false,
-        reply: { text: `⚠️ ${resolved.error ?? "Unknown subagent."}` },
+        reply: { text: `⚠️ ${resolved.error ?? "未知子代理。"}` },
       };
     }
     const idempotencyKey = crypto.randomUUID();
@@ -364,8 +364,8 @@ export const handleSubagentsCommand: CommandHandler = async (params, allowTextCo
       if (response?.runId) runId = response.runId;
     } catch (err) {
       const messageText =
-        err instanceof Error ? err.message : typeof err === "string" ? err : "error";
-      return { shouldContinue: false, reply: { text: `⚠️ Send failed: ${messageText}` } };
+        err instanceof Error ? err.message : typeof err === "string" ? err : "错误";
+      return { shouldContinue: false, reply: { text: `⚠️ 发送失败: ${messageText}` } };
     }
 
     const waitMs = 30_000;
@@ -377,14 +377,14 @@ export const handleSubagentsCommand: CommandHandler = async (params, allowTextCo
     if (wait?.status === "timeout") {
       return {
         shouldContinue: false,
-        reply: { text: `⏳ Subagent still running (run ${runId.slice(0, 8)}).` },
+        reply: { text: `⏳ 子代理仍在运行 (run ${runId.slice(0, 8)})。` },
       };
     }
     if (wait?.status === "error") {
       return {
         shouldContinue: false,
         reply: {
-          text: `⚠️ Subagent error: ${wait.error ?? "unknown error"} (run ${runId.slice(0, 8)}).`,
+          text: `⚠️ 子代理错误: ${wait.error ?? "未知错误"} (run ${runId.slice(0, 8)})。`,
         },
       };
     }
@@ -400,7 +400,7 @@ export const handleSubagentsCommand: CommandHandler = async (params, allowTextCo
       shouldContinue: false,
       reply: {
         text:
-          replyText ?? `✅ Sent to ${formatRunLabel(resolved.entry)} (run ${runId.slice(0, 8)}).`,
+          replyText ?? `✅ 已发送至 ${formatRunLabel(resolved.entry)} (run ${runId.slice(0, 8)})。`,
       },
     };
   }

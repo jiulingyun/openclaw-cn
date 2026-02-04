@@ -27,11 +27,11 @@ function parseApproveCommand(raw: string): ParsedApproveCommand | null {
   if (!trimmed.toLowerCase().startsWith(COMMAND)) return null;
   const rest = trimmed.slice(COMMAND.length).trim();
   if (!rest) {
-    return { ok: false, error: "Usage: /approve <id> allow-once|allow-always|deny" };
+    return { ok: false, error: "用法: /approve <id> allow-once|allow-always|deny" };
   }
   const tokens = rest.split(/\s+/).filter(Boolean);
   if (tokens.length < 2) {
-    return { ok: false, error: "Usage: /approve <id> allow-once|allow-always|deny" };
+    return { ok: false, error: "用法: /approve <id> allow-once|allow-always|deny" };
   }
 
   const first = tokens[0].toLowerCase();
@@ -51,7 +51,7 @@ function parseApproveCommand(raw: string): ParsedApproveCommand | null {
       id: tokens[0],
     };
   }
-  return { ok: false, error: "Usage: /approve <id> allow-once|allow-always|deny" };
+  return { ok: false, error: "用法: /approve <id> allow-once|allow-always|deny" };
 }
 
 function buildResolvedByLabel(params: Parameters<CommandHandler>[0]): string {
@@ -89,13 +89,13 @@ export const handleApproveCommand: CommandHandler = async (params, allowTextComm
     return {
       shouldContinue: false,
       reply: {
-        text: `❌ Failed to submit approval: ${String(err)}`,
+        text: `❌ 提交审批失败: ${String(err)}`,
       },
     };
   }
 
   return {
     shouldContinue: false,
-    reply: { text: `✅ Exec approval ${parsed.decision} submitted for ${parsed.id}.` },
+    reply: { text: `✅ 执行审批 ${parsed.decision} 已提交，ID: ${parsed.id}。` },
   };
 };

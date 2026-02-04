@@ -125,7 +125,7 @@ function parseAllowlistCommand(raw: string): AllowlistCommand | null {
   if (action === "add" || action === "remove") {
     const entry = entryTokens.join(" ").trim();
     if (!entry) {
-      return { action: "error", message: "Usage: /allowlist add|remove <entry>" };
+      return { action: "error", message: "用法: /allowlist add|remove <entry>" };
     }
     return { action, scope, entry, channel, account, resolve, target };
   }
@@ -151,7 +151,7 @@ function normalizeAllowFrom(params: {
 }
 
 function formatEntryList(entries: string[], resolved?: Map<string, string>): string {
-  if (entries.length === 0) return "(none)";
+  if (entries.length === 0) return "(无)";
   return entries
     .map((entry) => {
       const name = resolved?.get(entry);
@@ -311,7 +311,7 @@ export const handleAllowlistCommand: CommandHandler = async (params, allowTextCo
   if (!channelId) {
     return {
       shouldContinue: false,
-      reply: { text: "⚠️ Unknown channel. Add channel=<id> to the command." },
+      reply: { text: "⚠️ 未知渠道。请在命令中添加 channel=<id>。" },
     };
   }
   const accountId = normalizeAccountId(parsed.account ?? params.ctx.AccountId);
@@ -442,15 +442,15 @@ export const handleAllowlistCommand: CommandHandler = async (params, allowTextCo
             })
           : undefined;
 
-    const lines: string[] = ["🧾 Allowlist"];
-    lines.push(`Channel: ${channelId}${accountId ? ` (account ${accountId})` : ""}`);
-    if (dmPolicy) lines.push(`DM policy: ${dmPolicy}`);
-    if (groupPolicy) lines.push(`Group policy: ${groupPolicy}`);
+    const lines: string[] = ["🧾 允许名单"];
+    lines.push(`渠道: ${channelId}${accountId ? ` (账号 ${accountId})` : ""}`);
+    if (dmPolicy) lines.push(`DM 策略: ${dmPolicy}`);
+    if (groupPolicy) lines.push(`群组策略: ${groupPolicy}`);
 
     const showDm = scope === "dm" || scope === "all";
     const showGroup = scope === "group" || scope === "all";
     if (showDm) {
-      lines.push(`DM allowFrom (config): ${formatEntryList(dmDisplay, resolvedDm)}`);
+      lines.push(`DM allowFrom (配置): ${formatEntryList(dmDisplay, resolvedDm)}`);
     }
     if (supportsStore && storeAllowFrom.length > 0) {
       const storeLabel = normalizeAllowFrom({
@@ -459,14 +459,14 @@ export const handleAllowlistCommand: CommandHandler = async (params, allowTextCo
         accountId,
         values: storeAllowFrom,
       });
-      lines.push(`Paired allowFrom (store): ${formatEntryList(storeLabel)}`);
+      lines.push(`配对 allowFrom (存储): ${formatEntryList(storeLabel)}`);
     }
     if (showGroup) {
       if (groupAllowFrom.length > 0) {
-        lines.push(`Group allowFrom (config): ${formatEntryList(groupDisplay)}`);
+        lines.push(`群组 allowFrom (配置): ${formatEntryList(groupDisplay)}`);
       }
       if (groupOverrides.length > 0) {
-        lines.push("Group overrides:");
+        lines.push("群组覆盖:");
         for (const entry of groupOverrides) {
           const normalized = normalizeAllowFrom({
             cfg: params.cfg,
@@ -485,7 +485,7 @@ export const handleAllowlistCommand: CommandHandler = async (params, allowTextCo
   if (params.cfg.commands?.config !== true) {
     return {
       shouldContinue: false,
-      reply: { text: "⚠️ /allowlist edits are disabled. Set commands.config=true to enable." },
+      reply: { text: "⚠️ /allowlist 编辑已禁用。设置 commands.config=true 以启用。" },
     };
   }
 
@@ -502,7 +502,7 @@ export const handleAllowlistCommand: CommandHandler = async (params, allowTextCo
       const hint = `channels.${channelId}.configWrites=true`;
       return {
         shouldContinue: false,
-        reply: { text: `⚠️ Config writes are disabled for ${channelId}. Set ${hint} to enable.` },
+        reply: { text: `⚠️ ${channelId} 的配置写入已禁用。设置 ${hint} 以启用。` },
       };
     }
 
@@ -511,7 +511,7 @@ export const handleAllowlistCommand: CommandHandler = async (params, allowTextCo
       return {
         shouldContinue: false,
         reply: {
-          text: `⚠️ ${channelId} does not support ${scope} allowlist edits via /allowlist.`,
+          text: `⚠️ ${channelId} 不支持通过 /allowlist 编辑 ${scope} 允许名单。`,
         },
       };
     }
@@ -520,7 +520,7 @@ export const handleAllowlistCommand: CommandHandler = async (params, allowTextCo
     if (!snapshot.valid || !snapshot.parsed || typeof snapshot.parsed !== "object") {
       return {
         shouldContinue: false,
-        reply: { text: "⚠️ Config file is invalid; fix it before using /allowlist." },
+        reply: { text: "⚠️ 配置文件无效；请先修复后再使用 /allowlist。" },
       };
     }
     const parsedConfig = structuredClone(snapshot.parsed as Record<string, unknown>);
@@ -543,7 +543,7 @@ export const handleAllowlistCommand: CommandHandler = async (params, allowTextCo
     if (normalizedEntry.length === 0) {
       return {
         shouldContinue: false,
-        reply: { text: "⚠️ Invalid allowlist entry." },
+        reply: { text: "⚠️ 无效的允许名单条目。" },
       };
     }
 
@@ -598,14 +598,14 @@ export const handleAllowlistCommand: CommandHandler = async (params, allowTextCo
         const issue = validated.issues[0];
         return {
           shouldContinue: false,
-          reply: { text: `⚠️ Config invalid after update (${issue.path}: ${issue.message}).` },
+          reply: { text: `⚠️ 更新后配置无效 (${issue.path}: ${issue.message})。` },
         };
       }
       await writeConfigFile(validated.config);
     }
 
     if (!configChanged && !shouldTouchStore) {
-      const message = parsed.action === "add" ? "✅ Already allowlisted." : "⚠️ Entry not found.";
+      const message = parsed.action === "add" ? "✅ 已在允许名单中。" : "⚠️ 未找到条目。";
       return { shouldContinue: false, reply: { text: message } };
     }
 
@@ -617,20 +617,20 @@ export const handleAllowlistCommand: CommandHandler = async (params, allowTextCo
       }
     }
 
-    const actionLabel = parsed.action === "add" ? "added" : "removed";
-    const scopeLabel = scope === "dm" ? "DM" : "group";
+    const actionLabel = parsed.action === "add" ? "已添加" : "已删除";
+    const scopeLabel = scope === "dm" ? "DM" : "群组";
     const locations: string[] = [];
     if (configChanged) {
       locations.push(`${pathPrefix}.${allowlistPath.join(".")}`);
     }
     if (shouldTouchStore) {
-      locations.push("pairing store");
+      locations.push("配对存储");
     }
-    const targetLabel = locations.length > 0 ? locations.join(" + ") : "no-op";
+    const targetLabel = locations.length > 0 ? locations.join(" + ") : "无操作";
     return {
       shouldContinue: false,
       reply: {
-        text: `✅ ${scopeLabel} allowlist ${actionLabel}: ${targetLabel}.`,
+        text: `✅ ${scopeLabel} 允许名单${actionLabel}: ${targetLabel}。`,
       },
     };
   }
@@ -638,7 +638,7 @@ export const handleAllowlistCommand: CommandHandler = async (params, allowTextCo
   if (!shouldTouchStore) {
     return {
       shouldContinue: false,
-      reply: { text: "⚠️ This channel does not support allowlist storage." },
+      reply: { text: "⚠️ 此渠道不支持允许名单存储。" },
     };
   }
 
@@ -648,10 +648,10 @@ export const handleAllowlistCommand: CommandHandler = async (params, allowTextCo
     await removeChannelAllowFromStoreEntry({ channel: channelId, entry: parsed.entry });
   }
 
-  const actionLabel = parsed.action === "add" ? "added" : "removed";
-  const scopeLabel = scope === "dm" ? "DM" : "group";
+  const actionLabel = parsed.action === "add" ? "已添加" : "已删除";
+  const scopeLabel = scope === "dm" ? "DM" : "群组";
   return {
     shouldContinue: false,
-    reply: { text: `✅ ${scopeLabel} allowlist ${actionLabel} in pairing store.` },
+    reply: { text: `✅ ${scopeLabel} 允许名单${actionLabel}到配对存储。` },
   };
 };

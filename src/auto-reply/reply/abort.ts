@@ -39,10 +39,9 @@ export function setAbortMemory(key: string, value: boolean): void {
 
 export function formatAbortReplyText(stoppedSubagents?: number): string {
   if (typeof stoppedSubagents !== "number" || stoppedSubagents <= 0) {
-    return "⚙️ Agent was aborted.";
+    return "⚙️ 已中止代理。";
   }
-  const label = stoppedSubagents === 1 ? "sub-agent" : "sub-agents";
-  return `⚙️ Agent was aborted. Stopped ${stoppedSubagents} ${label}.`;
+  return `⚙️ 已中止代理。停止了 ${stoppedSubagents} 个子代理。`;
 }
 
 function resolveSessionEntryForKey(

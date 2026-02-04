@@ -54,7 +54,7 @@ export const handleActivationCommand: CommandHandler = async (params, allowTextC
   if (!params.isGroup) {
     return {
       shouldContinue: false,
-      reply: { text: "⚙️ Group activation only applies to group chats." },
+      reply: { text: "⚙️ 群组激活设置仅适用于群聊。" },
     };
   }
   if (!params.command.isAuthorizedSender) {
@@ -66,7 +66,7 @@ export const handleActivationCommand: CommandHandler = async (params, allowTextC
   if (!activationCommand.mode) {
     return {
       shouldContinue: false,
-      reply: { text: "⚙️ Usage: /activation mention|always" },
+      reply: { text: "⚙️ 用法: /activation mention|always" },
     };
   }
   if (params.sessionEntry && params.sessionStore && params.sessionKey) {
@@ -83,7 +83,7 @@ export const handleActivationCommand: CommandHandler = async (params, allowTextC
   return {
     shouldContinue: false,
     reply: {
-      text: `⚙️ Group activation set to ${activationCommand.mode}.`,
+      text: `⚙️ 群组激活模式已设为 ${activationCommand.mode}。`,
     },
   };
 };
@@ -101,7 +101,7 @@ export const handleSendPolicyCommand: CommandHandler = async (params, allowTextC
   if (!sendPolicyCommand.mode) {
     return {
       shouldContinue: false,
-      reply: { text: "⚙️ Usage: /send on|off|inherit" },
+      reply: { text: "⚙️ 用法: /send on|off|inherit" },
     };
   }
   if (params.sessionEntry && params.sessionStore && params.sessionKey) {
@@ -126,7 +126,7 @@ export const handleSendPolicyCommand: CommandHandler = async (params, allowTextC
         : "off";
   return {
     shouldContinue: false,
-    reply: { text: `⚙️ Send policy set to ${label}.` },
+    reply: { text: `⚙️ 发送策略已设为 ${label}。` },
   };
 };
 
@@ -177,14 +177,14 @@ export const handleUsageCommand: CommandHandler = async (params, allowTextComman
 
     return {
       shouldContinue: false,
-      reply: { text: `💸 Usage cost\n${sessionLine}\n${todayLine}\n${last30Line}` },
+      reply: { text: `💸 用量成本\n${sessionLine}\n${todayLine}\n${last30Line}` },
     };
   }
 
   if (rawArgs && !requested) {
     return {
       shouldContinue: false,
-      reply: { text: "⚙️ Usage: /usage off|tokens|full|cost" },
+      reply: { text: "⚙️ 用法: /usage off|tokens|full|cost" },
     };
   }
 
@@ -209,7 +209,7 @@ export const handleUsageCommand: CommandHandler = async (params, allowTextComman
   return {
     shouldContinue: false,
     reply: {
-      text: `⚙️ Usage footer: ${next}.`,
+      text: `⚙️ 用量显示: ${next}。`,
     },
   };
 };
@@ -227,7 +227,7 @@ export const handleRestartCommand: CommandHandler = async (params, allowTextComm
     return {
       shouldContinue: false,
       reply: {
-        text: "⚠️ /restart is disabled. Set commands.restart=true to enable.",
+        text: "⚠️ /restart 已禁用。设置 commands.restart=true 启用。",
       },
     };
   }
@@ -237,24 +237,24 @@ export const handleRestartCommand: CommandHandler = async (params, allowTextComm
     return {
       shouldContinue: false,
       reply: {
-        text: "⚙️ Restarting openclaw-cn in-process (SIGUSR1); back in a few seconds.",
+        text: "⚙️ 正在进程内重启 openclaw-cn (SIGUSR1)；几秒后恢复。",
       },
     };
   }
   const restartMethod = triggerClawdbotRestart();
   if (!restartMethod.ok) {
-    const detail = restartMethod.detail ? ` Details: ${restartMethod.detail}` : "";
+    const detail = restartMethod.detail ? ` 详情: ${restartMethod.detail}` : "";
     return {
       shouldContinue: false,
       reply: {
-        text: `⚠️ Restart failed (${restartMethod.method}).${detail}`,
+        text: `⚠️ 重启失败 (${restartMethod.method})。${detail}`,
       },
     };
   }
   return {
     shouldContinue: false,
     reply: {
-      text: `⚙️ Restarting openclaw-cn via ${restartMethod.method}; give me a few seconds to come back online.`,
+      text: `⚙️ 正在通过 ${restartMethod.method} 重启 openclaw-cn；请稍等几秒恢复。`,
     },
   };
 };
@@ -342,5 +342,5 @@ export const handleAbortTrigger: CommandHandler = async (params, allowTextComman
   } else if (params.command.abortKey) {
     setAbortMemory(params.command.abortKey, true);
   }
-  return { shouldContinue: false, reply: { text: "⚙️ Agent was aborted." } };
+  return { shouldContinue: false, reply: { text: "⚙️ 已中止代理。" } };
 };

@@ -158,25 +158,25 @@ export async function resolveModelsCommandReply(params: {
 
   if (!provider) {
     const lines: string[] = [
-      "Providers:",
+      "提供商列表:",
       ...providers.map((p) =>
         formatProviderLine({ provider: p, count: byProvider.get(p)?.size ?? 0 }),
       ),
       "",
-      "Use: /models <provider>",
-      "Switch: /model <provider/model>",
+      "用法: /models <提供商>",
+      "切换: /model <提供商/模型>",
     ];
     return { text: lines.join("\n") };
   }
 
   if (!byProvider.has(provider)) {
     const lines: string[] = [
-      `Unknown provider: ${provider}`,
+      `未知提供商: ${provider}`,
       "",
-      "Available providers:",
+      "可用提供商:",
       ...providers.map((p) => `- ${p}`),
       "",
-      "Use: /models <provider>",
+      "用法: /models <提供商>",
     ];
     return { text: lines.join("\n") };
   }
@@ -186,10 +186,10 @@ export async function resolveModelsCommandReply(params: {
 
   if (total === 0) {
     const lines: string[] = [
-      `Models (${provider}) — none`,
+      `模型 (${provider}) — 无`,
       "",
-      "Browse: /models",
-      "Switch: /model <provider/model>",
+      "浏览: /models",
+      "切换: /model <提供商/模型>",
     ];
     return { text: lines.join("\n") };
   }
@@ -200,10 +200,10 @@ export async function resolveModelsCommandReply(params: {
 
   if (!all && page !== safePage) {
     const lines: string[] = [
-      `Page out of range: ${page} (valid: 1-${pageCount})`,
+      `页码超出范围: ${page} (有效: 1-${pageCount})`,
       "",
-      `Try: /models ${provider} ${safePage}`,
-      `All: /models ${provider} all`,
+      `试试: /models ${provider} ${safePage}`,
+      `全部: /models ${provider} all`,
     ];
     return { text: lines.join("\n") };
   }
@@ -212,19 +212,19 @@ export async function resolveModelsCommandReply(params: {
   const endIndexExclusive = Math.min(total, startIndex + effectivePageSize);
   const pageModels = models.slice(startIndex, endIndexExclusive);
 
-  const header = `Models (${provider}) — showing ${startIndex + 1}-${endIndexExclusive} of ${total} (page ${safePage}/${pageCount})`;
+  const header = `模型 (${provider}) — 显示 ${startIndex + 1}-${endIndexExclusive} / 共 ${total} (第 ${safePage}/${pageCount} 页)`;
 
   const lines: string[] = [header];
   for (const id of pageModels) {
     lines.push(`- ${provider}/${id}`);
   }
 
-  lines.push("", "Switch: /model <provider/model>");
+  lines.push("", "切换: /model <提供商/模型>");
   if (!all && safePage < pageCount) {
-    lines.push(`More: /models ${provider} ${safePage + 1}`);
+    lines.push(`更多: /models ${provider} ${safePage + 1}`);
   }
   if (!all) {
-    lines.push(`All: /models ${provider} all`);
+    lines.push(`全部: /models ${provider} all`);
   }
 
   const payload: ReplyPayload = { text: lines.join("\n") };
