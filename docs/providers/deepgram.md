@@ -1,29 +1,28 @@
 ---
-summary: "Deepgram transcription for inbound voice notes"
+summary: "Deepgram 语音转写（处理收到的语音消息）"
 read_when:
-  - You want Deepgram speech-to-text for audio attachments
-  - You need a quick Deepgram config example
+  - 您想用 Deepgram 对音频附件进行语音转文字
+  - 您需要 Deepgram 快速配置示例
 ---
-# Deepgram (Audio Transcription)
+# Deepgram（音频转写）
 
-Deepgram is a speech-to-text API. In Clawdbot it is used for **inbound audio/voice note
-transcription** via `tools.media.audio`.
+Deepgram 是一个语音转文字 API。在 Clawdbot 中，它通过 `tools.media.audio`
+用于**接收的音频/语音消息转写**。
 
-When enabled, Clawdbot uploads the audio file to Deepgram and injects the transcript
-into the reply pipeline (`{{Transcript}}` + `[Audio]` block). This is **not streaming**;
-it uses the pre-recorded transcription endpoint.
+启用后，Clawdbot 将音频文件上传到 Deepgram 并将转写结果注入回复管道
+（`{{Transcript}}` + `[Audio]` 块）。这**不是流式转写**，使用的是预录音转写端点。
 
-Website: https://deepgram.com  
-Docs: https://developers.deepgram.com
+官网：https://deepgram.com
+文档：https://developers.deepgram.com
 
-## Quick start
+## 快速开始
 
-1) Set your API key:
+1) 设置 API 密钥：
 ```
 DEEPGRAM_API_KEY=dg_...
 ```
 
-2) Enable the provider:
+2) 启用供应商：
 ```json5
 {
   tools: {
@@ -37,15 +36,15 @@ DEEPGRAM_API_KEY=dg_...
 }
 ```
 
-## Options
+## 选项
 
-- `model`: Deepgram model id (default: `nova-3`)
-- `language`: language hint (optional)
-- `tools.media.audio.providerOptions.deepgram.detect_language`: enable language detection (optional)
-- `tools.media.audio.providerOptions.deepgram.punctuate`: enable punctuation (optional)
-- `tools.media.audio.providerOptions.deepgram.smart_format`: enable smart formatting (optional)
+- `model`：Deepgram 模型 ID（默认：`nova-3`）
+- `language`：语言提示（可选）
+- `tools.media.audio.providerOptions.deepgram.detect_language`：启用语言检测（可选）
+- `tools.media.audio.providerOptions.deepgram.punctuate`：启用标点符号（可选）
+- `tools.media.audio.providerOptions.deepgram.smart_format`：启用智能格式化（可选）
 
-Example with language:
+指定语言示例：
 ```json5
 {
   tools: {
@@ -53,7 +52,7 @@ Example with language:
       audio: {
         enabled: true,
         models: [
-          { provider: "deepgram", model: "nova-3", language: "en" }
+          { provider: "deepgram", model: "nova-3", language: "zh" }
         ]
       }
     }
@@ -61,7 +60,7 @@ Example with language:
 }
 ```
 
-Example with Deepgram options:
+带 Deepgram 选项示例：
 ```json5
 {
   tools: {
@@ -82,8 +81,8 @@ Example with Deepgram options:
 }
 ```
 
-## Notes
+## 说明
 
-- Authentication follows the standard provider auth order; `DEEPGRAM_API_KEY` is the simplest path.
-- Override endpoints or headers with `tools.media.audio.baseUrl` and `tools.media.audio.headers` when using a proxy.
-- Output follows the same audio rules as other providers (size caps, timeouts, transcript injection).
+- 认证遵循标准供应商认证顺序；`DEEPGRAM_API_KEY` 是最简单的方式。
+- 使用代理时，可通过 `tools.media.audio.baseUrl` 和 `tools.media.audio.headers` 覆盖端点或 headers。
+- 输出遵循与其他供应商相同的音频规则（大小限制、超时、转写注入）。

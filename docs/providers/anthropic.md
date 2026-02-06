@@ -1,31 +1,31 @@
 ---
-summary: "Use Anthropic Claude via API keys or Claude Code CLI auth in Clawdbot"
+summary: "在 Clawdbot 中通过 API 密钥或 Claude Code CLI 认证使用 Anthropic Claude"
 read_when:
-  - You want to use Anthropic models in Clawdbot
-  - You want setup-token or Claude Code CLI auth instead of API keys
+  - 您想在 Clawdbot 中使用 Anthropic 模型
+  - 您想用 setup-token 或 Claude Code CLI 认证而非 API 密钥
 ---
 # Anthropic (Claude)
 
-Anthropic builds the **Claude** model family and provides access via an API.
-In Clawdbot you can authenticate with an API key or reuse **Claude Code CLI** credentials
-(setup-token or OAuth).
+Anthropic 开发了 **Claude** 模型系列，并通过 API 提供访问。
+在 Clawdbot 中，您可以使用 API 密钥认证，或复用 **Claude Code CLI** 凭证
+（setup-token 或 OAuth）。
 
-## Option A: Anthropic API key
+## 方式 A：Anthropic API 密钥
 
-**Best for:** standard API access and usage-based billing.
-Create your API key in the Anthropic Console.
+**适用场景：** 标准 API 访问，按量计费。
+在 Anthropic Console 中创建 API 密钥。
 
-### CLI setup
+### CLI 配置
 
 ```bash
 openclaw-cn onboard
-# choose: Anthropic API key
+# 选择：Anthropic API key
 
-# or non-interactive
+# 或非交互式
 openclaw-cn onboard --anthropic-api-key "$ANTHROPIC_API_KEY"
 ```
 
-### Config snippet
+### 配置示例
 
 ```json5
 {
@@ -34,12 +34,12 @@ openclaw-cn onboard --anthropic-api-key "$ANTHROPIC_API_KEY"
 }
 ```
 
-## Prompt caching (Anthropic API)
+## Prompt 缓存（Anthropic API）
 
-Clawdbot does **not** override Anthropic’s default cache TTL unless you set it.
-This is **API-only**; Claude Code CLI OAuth ignores TTL settings.
+Clawdbot **不会**覆盖 Anthropic 的默认缓存 TTL，除非您手动设置。
+此功能仅适用于 **API 密钥**；Claude Code CLI OAuth 会忽略 TTL 设置。
 
-To set the TTL per model, use `cacheControlTtl` in the model `params`:
+按模型设置 TTL，使用 `cacheControlTtl`：
 
 ```json5
 {
@@ -47,7 +47,7 @@ To set the TTL per model, use `cacheControlTtl` in the model `params`:
     defaults: {
       models: {
         "anthropic/claude-opus-4-5": {
-          params: { cacheControlTtl: "5m" } // or "1h"
+          params: { cacheControlTtl: "5m" } // 或 "1h"
         }
       }
     }
@@ -55,41 +55,41 @@ To set the TTL per model, use `cacheControlTtl` in the model `params`:
 }
 ```
 
-Clawdbot includes the `extended-cache-ttl-2025-04-11` beta flag for Anthropic API
-requests; keep it if you override provider headers (see [/gateway/configuration](/gateway/configuration)).
+Clawdbot 在 Anthropic API 请求中包含 `extended-cache-ttl-2025-04-11` beta 标志；
+如果您覆盖了供应商 headers，请保留此标志（详见 [/gateway/configuration](/gateway/configuration)）。
 
-## Option B: Claude Code CLI (setup-token or OAuth)
+## 方式 B：Claude Code CLI（setup-token 或 OAuth）
 
-**Best for:** using your Claude subscription or existing Claude Code CLI login.
+**适用场景：** 使用您的 Claude 订阅或已有的 Claude Code CLI 登录。
 
-### Where to get a setup-token
+### 获取 setup-token
 
-Setup-tokens are created by the **Claude Code CLI**, not the Anthropic Console. You can run this on **any machine**:
+setup-token 由 **Claude Code CLI** 生成，不是在 Anthropic Console 中创建。可在**任何机器**上运行：
 
 ```bash
 claude setup-token
 ```
 
-Paste the token into Clawdbot (wizard: **Anthropic token (paste setup-token)**), or run it on the gateway host:
+将 token 粘贴到 Clawdbot（向导中选择 **Anthropic token (paste setup-token)**），或在网关主机上运行：
 
 ```bash
 openclaw-cn models auth setup-token --provider anthropic
 ```
 
-If you generated the token on a different machine, paste it:
+如果您在另一台机器上生成了 token，粘贴它：
 
 ```bash
 openclaw-cn models auth paste-token --provider anthropic
 ```
 
-### CLI setup
+### CLI 配置
 
 ```bash
-# Reuse Claude Code CLI OAuth credentials if already logged in
+# 复用 Claude Code CLI OAuth 凭证（如果已登录）
 openclaw-cn onboard --auth-choice claude-cli
 ```
 
-### Config snippet
+### 配置示例
 
 ```json5
 {
@@ -97,34 +97,31 @@ openclaw-cn onboard --auth-choice claude-cli
 }
 ```
 
-## Notes
+## 说明
 
-- Generate the setup-token with `claude setup-token` and paste it, or run `openclaw-cn models auth setup-token` on the gateway host.
-- If you see “OAuth token refresh failed …” on a Claude subscription, re-auth with a setup-token or resync Claude Code CLI OAuth on the gateway host. See [/gateway/troubleshooting#oauth-token-refresh-failed-anthropic-claude-subscription](/gateway/troubleshooting#oauth-token-refresh-failed-anthropic-claude-subscription).
-- Clawdbot writes `auth.profiles["anthropic:claude-cli"].mode` as `"oauth"` so the profile
-  accepts both OAuth and setup-token credentials. Older configs using `"token"` are
-  auto-migrated on load.
-- Auth details + reuse rules are in [/concepts/oauth](/concepts/oauth).
+- 使用 `claude setup-token` 生成 token 并粘贴，或在网关主机上运行 `openclaw-cn models auth setup-token`。
+- 如果看到 "OAuth token refresh failed ..." 错误（Claude 订阅），请重新用 setup-token 认证或在网关主机上重新同步 Claude Code CLI OAuth。详见 [/gateway/troubleshooting#oauth-token-refresh-failed-anthropic-claude-subscription](/gateway/troubleshooting#oauth-token-refresh-failed-anthropic-claude-subscription)。
+- Clawdbot 将 `auth.profiles["anthropic:claude-cli"].mode` 设为 `"oauth"`，使配置文件同时接受 OAuth 和 setup-token 凭证。旧配置中的 `"token"` 在加载时会自动迁移。
+- 认证详情和复用规则见 [/concepts/oauth](/concepts/oauth)。
 
-## Troubleshooting
+## 故障排除
 
-**401 errors / token suddenly invalid**
-- Claude subscription auth can expire or be revoked. Re-run `claude setup-token`
-  and paste it into the **gateway host**.
-- If the Claude CLI login lives on a different machine, use
-  `openclaw-cn models auth paste-token --provider anthropic` on the gateway host.
+**401 错误 / token 突然失效**
+- Claude 订阅认证可能过期或被撤销。重新运行 `claude setup-token` 并粘贴到**网关主机**。
+- 如果 Claude CLI 登录在另一台机器上，在网关主机上使用
+  `openclaw-cn models auth paste-token --provider anthropic`。
 
 **No API key found for provider "anthropic"**
-- Auth is **per agent**. New agents don’t inherit the main agent’s keys.
-- Re-run onboarding for that agent, or paste a setup-token / API key on the
-  gateway host, then verify with `openclaw-cn models status`.
+- 认证是**按 agent 隔离的**。新 agent 不会继承主 agent 的密钥。
+- 为该 agent 重新运行 onboarding，或在网关主机上粘贴 setup-token / API 密钥，
+  然后用 `openclaw-cn models status` 验证。
 
 **No credentials found for profile `anthropic:default` or `anthropic:claude-cli`**
-- Run `openclaw-cn models status` to see which auth profile is active.
-- Re-run onboarding, or paste a setup-token / API key for that profile.
+- 运行 `openclaw-cn models status` 查看当前活跃的认证配置。
+- 重新运行 onboarding，或为该配置粘贴 setup-token / API 密钥。
 
 **No available auth profile (all in cooldown/unavailable)**
-- Check `openclaw-cn models status --json` for `auth.unusableProfiles`.
-- Add another Anthropic profile or wait for cooldown.
+- 检查 `openclaw-cn models status --json` 中的 `auth.unusableProfiles`。
+- 添加另一个 Anthropic 配置或等待冷却结束。
 
-More: [/gateway/troubleshooting](/gateway/troubleshooting) and [/help/faq](/help/faq).
+更多内容：[/gateway/troubleshooting](/gateway/troubleshooting) 和 [/help/faq](/help/faq)。

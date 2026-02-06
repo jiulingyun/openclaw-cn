@@ -1,29 +1,28 @@
 ---
-summary: "Model providers (LLMs) supported by Clawdbot"
+summary: "Clawdbot 支持的模型供应商（LLM）"
 read_when:
-  - You want to choose a model provider
-  - You need a quick overview of supported LLM backends
+  - 您想选择一个模型供应商
+  - 您需要快速了解支持的 LLM 后端
 ---
-# Model Providers
+# 模型供应商
 
-Clawdbot can use many LLM providers. Pick a provider, authenticate, then set the
-default model as `provider/model`.
+Clawdbot 支持多种 LLM 供应商。选择供应商、完成认证，然后将默认模型设为 `provider/model` 即可。
 
-Looking for chat channel docs (WhatsApp/Telegram/Discord/Slack/Mattermost (plugin)/etc.)? See [Channels](/channels).
+如果您在找聊天渠道文档（WhatsApp / Telegram / Discord / Slack / Mattermost（插件）等），请查看 [渠道](/channels)。
 
-## Highlight: Venius (Venice AI)
+## 推荐：Venius (Venice AI)
 
-Venius is our recommended Venice AI setup for privacy-first inference with an option to use Opus for hard tasks.
+Venius 是我们推荐的 Venice AI 配置方案，提供隐私优先的推理，并可选用 Opus 处理高难度任务。
 
-- Default: `venice/llama-3.3-70b`
-- Best overall: `venice/claude-opus-45` (Opus remains the strongest)
+- 默认模型：`venice/llama-3.3-70b`
+- 最佳综合：`venice/claude-opus-45`（Opus 仍然是最强的）
 
-See [Venice AI](/providers/venice).
+详见 [Venice AI](/providers/venice)。
 
-## Quick start
+## 快速开始
 
-1) Authenticate with the provider (usually via `openclaw-cn onboard`).
-2) Set the default model:
+1) 通过供应商完成认证（通常运行 `openclaw-cn onboard`）。
+2) 设置默认模型：
 
 ```json5
 {
@@ -31,30 +30,29 @@ See [Venice AI](/providers/venice).
 }
 ```
 
-## Provider docs
+## 供应商文档
 
-- [OpenAI (API + Codex)](/providers/openai)
-- [Anthropic (API + Claude Code CLI)](/providers/anthropic)
-- [Qwen (OAuth)](/providers/qwen)
+- [OpenAI（API + Codex）](/providers/openai)
+- [Anthropic（API + Claude Code CLI）](/providers/anthropic)
+- [Qwen（通义千问，OAuth）](/providers/qwen)
 - [OpenRouter](/providers/openrouter)
 - [Vercel AI Gateway](/providers/vercel-ai-gateway)
-- [Moonshot AI (Kimi + Kimi Code)](/providers/moonshot)
+- [Moonshot AI（月之暗面）/ Kimi + Kimi Code](/providers/moonshot)
 - [OpenCode Zen](/providers/opencode)
 - [Amazon Bedrock](/bedrock)
-- [Z.AI](/providers/zai)
-- [GLM models](/providers/glm)
+- [Z.AI（智谱）](/providers/zai)
+- [GLM 模型](/providers/glm)
 - [MiniMax](/providers/minimax)
-- [Volcengine (火山引擎/豆包)](/providers/volcengine)
-- [Venius (Venice AI, privacy-focused)](/providers/venice)
-- [Ollama (local models)](/providers/ollama)
+- [火山引擎 / 豆包](/providers/volcengine)
+- [Venius（Venice AI，隐私优先）](/providers/venice)
+- [Ollama（本地模型）](/providers/ollama)
 
-## Transcription providers
+## 语音转写供应商
 
-- [Deepgram (audio transcription)](/providers/deepgram)
+- [Deepgram（音频转写）](/providers/deepgram)
 
-## Community tools
+## 社区工具
 
-- [Claude Max API Proxy](/providers/claude-max-api-proxy) - Use Claude Max/Pro subscription as an OpenAI-compatible API endpoint
+- [Claude Max API Proxy](/providers/claude-max-api-proxy) - 将 Claude Max/Pro 订阅用作 OpenAI 兼容 API 端点
 
-For the full provider catalog (xAI, Groq, Mistral, etc.) and advanced configuration,
-see [Model providers](/concepts/model-providers).
+完整供应商目录（xAI、Groq、Mistral 等）及高级配置，请查看[模型供应商](/concepts/model-providers)。

@@ -1,18 +1,17 @@
 ---
-summary: "Configure Moonshot K2 vs Kimi Code (separate providers + keys)"
+summary: "配置 Moonshot（月之暗面）K2 与 Kimi Code（独立供应商和密钥）"
 read_when:
-  - You want Moonshot K2 (Moonshot Open Platform) vs Kimi Code setup
-  - You need to understand separate endpoints, keys, and model refs
-  - You want copy/paste config for either provider
+  - 您想配置 Moonshot（月之暗面）K2 或 Kimi Code
+  - 您需要了解它们各自的端点、密钥和模型引用
+  - 您需要可直接复制的配置示例
 ---
 
-# Moonshot AI (Kimi)
+# Moonshot AI（月之暗面）/ Kimi
 
-Moonshot provides the Kimi API with OpenAI-compatible endpoints. Configure the
-provider and set the default model to `moonshot/kimi-k2-0905-preview`, or use
-Kimi Code with `kimi-code/kimi-for-coding`.
+Moonshot（月之暗面）提供 Kimi API，兼容 OpenAI 接口格式。配置供应商后将默认模型
+设为 `moonshot/kimi-k2-0905-preview`，或使用 Kimi Code 的 `kimi-code/kimi-for-coding`。
 
-Current Kimi K2 model IDs:
+当前 Kimi K2 模型 ID：
 {/* moonshot-kimi-k2-ids:start */}
 - `kimi-k2-0905-preview`
 - `kimi-k2-turbo-preview`
@@ -24,15 +23,18 @@ Current Kimi K2 model IDs:
 openclaw-cn onboard --auth-choice moonshot-api-key
 ```
 
-Kimi Code:
+Kimi Code：
 
 ```bash
 openclaw-cn onboard --auth-choice kimi-code-api-key
 ```
 
-Note: Moonshot and Kimi Code are separate providers. Keys are not interchangeable, endpoints differ, and model refs differ (Moonshot uses `moonshot/...`, Kimi Code uses `kimi-code/...`).
+注意：Moonshot（月之暗面）和 Kimi Code 是**两个独立的供应商**。API 密钥不互通，端点不同，模型引用也不同（Moonshot 使用 `moonshot/...`，Kimi Code 使用 `kimi-code/...`）。
 
-## Config snippet (Moonshot API)
+## 配置示例（Moonshot API）
+
+> **国内用户请注意：** 下方配置默认使用国内端点 `api.moonshot.cn`。
+> 海外用户如需使用国际端点，请将 `baseUrl` 改为 `https://api.moonshot.ai/v1`。
 
 ```json5
 {
@@ -54,7 +56,8 @@ Note: Moonshot and Kimi Code are separate providers. Keys are not interchangeabl
     mode: "merge",
     providers: {
       moonshot: {
-        baseUrl: "https://api.moonshot.ai/v1",
+        // 国内端点（默认）；海外用户请改为 https://api.moonshot.ai/v1
+        baseUrl: "https://api.moonshot.cn/v1",
         apiKey: "${MOONSHOT_API_KEY}",
         api: "openai-completions",
         models: [
@@ -142,10 +145,10 @@ Note: Moonshot and Kimi Code are separate providers. Keys are not interchangeabl
 }
 ```
 
-## Notes
+## 说明
 
-- Moonshot model refs use `moonshot/<modelId>`. Kimi Code model refs use `kimi-code/<modelId>`.
-- Override pricing and context metadata in `models.providers` if needed.
-- If Moonshot publishes different context limits for a model, adjust
-  `contextWindow` accordingly.
-- Use `https://api.moonshot.cn/v1` if you need the China endpoint.
+- Moonshot（月之暗面）模型引用格式为 `moonshot/<modelId>`，Kimi Code 模型引用格式为 `kimi-code/<modelId>`。
+- 如需自定义定价和上下文元数据，可在 `models.providers` 中覆盖。
+- 如果 Moonshot（月之暗面）发布了不同的上下文长度限制，请相应调整 `contextWindow`。
+- **国内端点：** `https://api.moonshot.cn/v1`（本文档默认）
+- **海外端点：** `https://api.moonshot.ai/v1`
