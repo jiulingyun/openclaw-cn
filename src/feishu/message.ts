@@ -492,17 +492,19 @@ export async function processFeishuMessage(
         const hasMedia = payload.mediaUrl || (payload.mediaUrls && payload.mediaUrls.length > 0);
         if (!payload.text && !hasMedia) return;
 
-        // Block replies are now handled by onPartialReply with chunking/throttling
-        // Skip block payloads here to avoid duplicate updates
-        if (info?.kind === "block") return;
+        // Block replies are handled by onPartialReply with chunking/throttling
+        // Only skip block payloads when streaming is active (otherwise they need normal delivery)
+        if (info?.kind === "block" && streamingSession?.isActive()) return;
 
         // If streaming was active, close it with the final text
         if (streamingSession?.isActive() && info?.kind === "final") {
           // Use payload.text if available, otherwise fallback to lastPartialText
           const finalText = payload.text || lastPartialText;
-          await streamingSession.close(finalText);
+          const closed = await streamingSession.close(finalText);
           streamingStarted = false;
-          return; // Card already contains the final text
+          if (closed) return; // Card successfully contains the final text
+          // Streaming card failed — fall through to send as regular message
+          logger.warn("Streaming card close failed, falling back to regular message");
         }
 
         // Handle media URLs

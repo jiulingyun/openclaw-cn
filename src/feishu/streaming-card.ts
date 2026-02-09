@@ -212,7 +212,7 @@ export async function closeStreamingMode(
   cardId: string,
   sequence: number,
   finalSummary?: string,
-): Promise<void> {
+): Promise<boolean> {
   // Build config object - summary must be set to clear "[生成中...]"
   const configObj: Record<string, unknown> = {
     streaming_mode: false,
@@ -239,9 +239,11 @@ export async function closeStreamingMode(
 
   if (result.code !== 0) {
     logger.warn(`Failed to close streaming mode: ${result.msg}`);
-  } else {
-    logger.debug(`Closed streaming mode for card: ${cardId}`);
+    return false;
   }
+
+  logger.debug(`Closed streaming mode for card: ${cardId}`);
+  return true;
 }
 
 /**
@@ -323,8 +325,8 @@ export class FeishuStreamingSession {
   /**
    * Finalize and close the streaming session
    */
-  async close(finalText?: string, summary?: string): Promise<void> {
-    if (!this.state || this.closed) return;
+  async close(finalText?: string, summary?: string): Promise<boolean> {
+    if (!this.state || this.closed) return false;
     this.closed = true;
 
     // Wait for pending updates
@@ -347,16 +349,23 @@ export class FeishuStreamingSession {
 
       // Close streaming mode
       this.state.sequence += 1;
-      await closeStreamingMode(
+      const closed = await closeStreamingMode(
         this.credentials,
         this.state.cardId,
         this.state.sequence,
         summary ?? truncateForSummary(text),
       );
 
+      if (!closed) {
+        logger.warn(`Streaming card close API failed, caller should fallback`);
+        return false;
+      }
+
       logger.info(`Closed streaming session: cardId=${this.state.cardId}`);
+      return true;
     } catch (err) {
       logger.error(`Failed to close streaming session: ${String(err)}`);
+      return false;
     }
   }
 
