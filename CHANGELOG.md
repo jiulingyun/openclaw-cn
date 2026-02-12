@@ -19,6 +19,7 @@ Docs: https://docs.clawd.bot
 
 ### 🔧 修复（Fixes）
 
+- **飞书流式卡片 fallback**：改进 `closeStreamingMode` 返回值检查，API 失败时正确回退到普通消息 (#57) - 感谢 @Y1fe1Zh0u
 - **飞书富文本解析**：修复 post 富文本消息解析，支持 locale 包装格式和嵌入图片下载 (#37)
 - **依赖安装问题彻底解决**：使用 `@openclaw-cn/baileys` 替代上游 `@whiskeysockets/baileys`，彻底解决全局安装时 libsignal git 依赖导致的安装失败问题
 - **npm/yarn 兼容**：完善 libsignal 依赖替换，添加 npm `overrides` 和 yarn `resolutions` 支持
