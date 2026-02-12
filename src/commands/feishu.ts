@@ -1,9 +1,9 @@
 import { Command } from "commander";
 import { loadConfig } from "../config/config.js";
-import { probeFeishu } from "../feishu/probe.js";
 import { resolveFeishuAccount, listFeishuAccountIds } from "../feishu/accounts.js";
-import { sendMessageFeishu } from "../feishu/send.js";
 import { getFeishuClient } from "../feishu/client.js";
+import { probeFeishu } from "../feishu/probe.js";
+import { sendMessageFeishu } from "../feishu/send.js";
 
 export function registerFeishuCommand(program: Command) {
   const feishuCmd = program.command("feishu").description("飞书调试工具");
@@ -40,6 +40,7 @@ export function registerFeishuCommand(program: Command) {
         account.config.appId,
         account.config.appSecret,
         Number(opts.timeout),
+        account.config.domain,
       );
 
       if (opts.json) {
@@ -87,7 +88,11 @@ export function registerFeishuCommand(program: Command) {
       console.log(`正在发送消息到: ${opts.to}`);
 
       try {
-        const client = getFeishuClient(account.config.appId, account.config.appSecret);
+        const client = getFeishuClient(
+          account.config.appId,
+          account.config.appSecret,
+          account.config.domain,
+        );
         const result = await sendMessageFeishu(
           client,
           opts.to,

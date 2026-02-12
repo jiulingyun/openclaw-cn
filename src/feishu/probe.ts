@@ -2,7 +2,12 @@ import { getChildLogger } from "../logging.js";
 
 const logger = getChildLogger({ module: "feishu-probe" });
 
-const FEISHU_API_BASE = "https://open.feishu.cn/open-apis";
+import type { FeishuDomain } from "../config/types.feishu.js";
+
+const FEISHU_API_BASES: Record<string, string> = {
+  feishu: "https://open.feishu.cn/open-apis",
+  lark: "https://open.larksuite.com/open-apis",
+};
 
 export type FeishuProbe = {
   ok: boolean;
@@ -51,7 +56,9 @@ export async function probeFeishu(
   appId: string,
   appSecret: string,
   timeoutMs: number = 5000,
+  domain?: FeishuDomain,
 ): Promise<FeishuProbe> {
+  const apiBase = FEISHU_API_BASES[domain ?? "feishu"];
   const started = Date.now();
 
   const result: FeishuProbe = {
@@ -63,7 +70,7 @@ export async function probeFeishu(
   try {
     // Step 1: Get tenant_access_token
     const tokenRes = await fetchWithTimeout(
-      `${FEISHU_API_BASE}/auth/v3/tenant_access_token/internal`,
+      `${apiBase}/auth/v3/tenant_access_token/internal`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json; charset=utf-8" },
@@ -83,7 +90,7 @@ export async function probeFeishu(
 
     // Step 2: Get bot info
     const botRes = await fetchWithTimeout(
-      `${FEISHU_API_BASE}/bot/v3/info`,
+      `${apiBase}/bot/v3/info`,
       {
         method: "GET",
         headers: {

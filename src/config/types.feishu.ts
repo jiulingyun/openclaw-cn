@@ -31,6 +31,9 @@ export type FeishuGroupConfig = {
   replyToMode?: ReplyToMode;
 };
 
+/** Feishu domain type: "feishu" for China (open.feishu.cn), "lark" for international (open.larksuite.com). */
+export type FeishuDomain = "feishu" | "lark";
+
 export type FeishuAccountConfig = {
   /** Optional display name for this account (used in CLI/UI lists). */
   name?: string;
@@ -38,6 +41,12 @@ export type FeishuAccountConfig = {
   appId: string;
   /** Feishu App Secret. */
   appSecret: string;
+  /**
+   * API domain to use:
+   * - "feishu" (default): China region (open.feishu.cn)
+   * - "lark": International region (open.larksuite.com)
+   */
+  domain?: FeishuDomain;
   /** Path to file containing app secret (for secret managers). */
   appSecretFile?: string;
   /** Bot display name. */

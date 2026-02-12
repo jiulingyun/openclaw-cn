@@ -1,6 +1,6 @@
 import { loadConfig } from "../config/config.js";
 import { normalizeAccountId } from "../routing/session-key.js";
-import type { FeishuConfig, FeishuAccountConfig } from "../config/types.feishu.js";
+import type { FeishuConfig, FeishuAccountConfig, FeishuDomain } from "../config/types.feishu.js";
 
 export type ResolvedFeishuAccount = {
   accountId: string;
@@ -48,9 +48,11 @@ export function resolveFeishuAccount(params: {
     process.env.FEISHU_APP_ID &&
     process.env.FEISHU_APP_SECRET
   ) {
+    const envDomain = process.env.FEISHU_DOMAIN?.toLowerCase();
     config = {
       appId: process.env.FEISHU_APP_ID,
       appSecret: process.env.FEISHU_APP_SECRET,
+      domain: envDomain === "lark" ? "lark" : undefined,
     };
     tokenSource = "env";
   }

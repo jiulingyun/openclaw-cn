@@ -1,10 +1,16 @@
 import type { ClawdbotConfig } from "../config/config.js";
 import type { DmPolicy, GroupPolicy, ReplyToMode } from "../config/types.base.js";
-import type { FeishuAccountConfig, FeishuGroupConfig } from "../config/types.feishu.js";
+import type {
+  FeishuAccountConfig,
+  FeishuDomain,
+  FeishuGroupConfig,
+} from "../config/types.feishu.js";
 import { firstDefined } from "./access.js";
 
 export type ResolvedFeishuConfig = {
   enabled: boolean;
+  /** API domain: "feishu" (China) or "lark" (international). */
+  domain: FeishuDomain;
   dmPolicy: DmPolicy;
   groupPolicy: GroupPolicy;
   allowFrom: string[];
@@ -37,6 +43,7 @@ export function resolveFeishuConfig(params: {
   // Merge with precedence: account > feishu top-level > channel defaults > hardcoded defaults
   return {
     enabled: firstDefined(accountCfg?.enabled, feishuCfg?.enabled, true) ?? true,
+    domain: firstDefined(accountCfg?.domain, feishuCfg?.domain) ?? "feishu",
     dmPolicy: firstDefined(accountCfg?.dmPolicy, feishuCfg?.dmPolicy) ?? "pairing",
     groupPolicy:
       firstDefined(accountCfg?.groupPolicy, feishuCfg?.groupPolicy, defaults?.groupPolicy) ??
