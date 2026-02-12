@@ -1,4 +1,5 @@
 import { listFeishuAccountIds, resolveDefaultFeishuAccountId, resolveFeishuAccount, promptAccountId, normalizeAccountId, DEFAULT_ACCOUNT_ID, } from "openclaw/plugin-sdk";
+/** @type {import("openclaw/plugin-sdk").ChannelOnboardingAdapter} */
 export const feishuOnboardingAdapter = {
     channel: "feishu",
     getStatus: async ({ cfg }) => {
@@ -43,21 +44,32 @@ export const feishuOnboardingAdapter = {
                 return { cfg: next, accountId };
             }
         }
+        // Prompt for domain (Feishu China vs Lark International) first
+        const currentDomain = resolved.config.domain ?? "feishu";
+        const domain = await prompter.select({
+            message: "选择平台 / Select platform",
+            options: [
+                { value: "feishu", label: "飞书（国内版）", hint: "open.feishu.cn" },
+                { value: "lark", label: "Lark（国际版）", hint: "open.larksuite.com" },
+            ],
+            initialValue: currentDomain,
+        });
+        const platformLabel = domain === "lark" ? "Lark" : "飞书";
         let appId = resolved.config.appId;
         if (!appId) {
             appId = String(await prompter.text({
-                message: "Enter Feishu App ID (cli_...)",
+                message: `输入 ${platformLabel} App ID (cli_...)`,
                 validate: (val) => (val?.trim() ? undefined : "Required"),
             })).trim();
         }
         let appSecret = resolved.config.appSecret;
         if (!appSecret) {
             appSecret = String(await prompter.text({
-                message: "Enter Feishu App Secret",
+                message: `输入 ${platformLabel} App Secret`,
                 validate: (val) => (val?.trim() ? undefined : "Required"),
             })).trim();
         }
-        next = updateFeishuConfig(next, accountId, { appId, appSecret, enabled: true });
+        next = updateFeishuConfig(next, accountId, { appId, appSecret, domain, enabled: true });
         return { cfg: next, accountId };
     },
     disable: (cfg) => {
