@@ -2,7 +2,7 @@
  * OpenClaw Memory (LanceDB) Plugin
  *
  * Long-term memory with vector search for AI conversations.
- * Uses LanceDB for storage and OpenAI for embeddings.
+ * Uses LanceDB for storage and OpenAI/Doubao for embeddings.
  * Provides seamless auto-recall and auto-capture via lifecycle hooks.
  */
 
@@ -15,6 +15,7 @@ import {
   DEFAULT_CAPTURE_MAX_CHARS,
   MEMORY_CATEGORIES,
   type MemoryCategory,
+  type MemoryConfig,
   memoryConfigSchema,
   vectorDimsForModel,
 } from "./config.js";
@@ -157,7 +158,7 @@ class MemoryDB {
 }
 
 // ============================================================================
-// OpenAI Embeddings
+// Embeddings Providers
 // ============================================================================
 
 class Embeddings {
@@ -177,6 +178,197 @@ class Embeddings {
     });
     return response.data[0].embedding;
   }
+}
+
+type FetchResponse = {
+  ok: boolean;
+  status: number;
+  text(): Promise<string>;
+};
+
+class DoubaoEmbeddings {
+  private readonly endpoint: string;
+  private readonly dimensions: number;
+  private readonly retry: {
+    maxRetries: number;
+    initialDelayMs: number;
+    maxDelayMs: number;
+    timeoutMs: number;
+  };
+
+  constructor(
+    private readonly apiKey: string,
+    private readonly model: string,
+    url?: string,
+    retry?: {
+      maxRetries: number;
+      initialDelayMs: number;
+      maxDelayMs: number;
+      timeoutMs: number;
+    },
+  ) {
+    this.dimensions = vectorDimsForModel(model);
+    this.endpoint = this.buildEndpoint(url);
+    this.retry = retry ?? {
+      maxRetries: 3,
+      initialDelayMs: 1000,
+      maxDelayMs: 30000,
+      timeoutMs: 30000,
+    };
+  }
+
+  private buildEndpoint(url?: string): string {
+    const defaultBaseUrl = "https://operator.las.cn-beijing.volces.com";
+    let base = (url ?? defaultBaseUrl).trim();
+    if (!base.startsWith("http://") && !base.startsWith("https://")) {
+      base = `https://${base}`;
+    }
+    return base;
+  }
+
+  private async doFetch(text: string): Promise<number[]> {
+    const payload = {
+      model: this.model,
+      input: [{ type: "text", text }],
+      encoding_format: "float" as const,
+      dimensions: this.dimensions,
+    };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.retry.timeoutMs);
+
+    let response: FetchResponse;
+    try {
+      response = (await fetch(this.endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      })) as FetchResponse;
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err instanceof Error) {
+        if (err.name === "AbortError") {
+          throw new Error(`Doubao embeddings request timed out after ${this.retry.timeoutMs}ms`);
+        }
+        throw new Error(`Doubao embeddings request failed: ${err.message}`);
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    let rawText: string;
+    try {
+      rawText = await response.text();
+    } catch (err) {
+      throw new Error(
+        `Failed to read Doubao embeddings response (status ${response.status}): ${String(err)}`,
+      );
+    }
+
+    let body: unknown;
+    if (rawText) {
+      try {
+        body = JSON.parse(rawText) as unknown;
+      } catch (err) {
+        throw new Error(
+          `Failed to parse Doubao embeddings response JSON (status ${response.status}): ${String(
+            err,
+          )}; body=${rawText}`,
+        );
+      }
+    } else {
+      body = {};
+    }
+
+    if (!response.ok) {
+      const errorMessage =
+        (body as { error?: unknown }).error || `Request failed with status ${response.status}`;
+      throw new Error(
+        typeof errorMessage === "string" ? errorMessage : JSON.stringify(errorMessage),
+      );
+    }
+
+    const embedding = (body as { data?: { embedding?: number[] } }).data?.embedding;
+    if (!embedding || !Array.isArray(embedding)) {
+      const errorMessage =
+        (body as { error?: unknown }).error || "No embedding returned from Doubao API";
+      throw new Error(
+        typeof errorMessage === "string" ? errorMessage : JSON.stringify(errorMessage),
+      );
+    }
+
+    return embedding;
+  }
+
+  async embed(text: string): Promise<number[]> {
+    let lastError: Error | null = null;
+    let delay = this.retry.initialDelayMs;
+
+    for (let attempt = 0; attempt <= this.retry.maxRetries; attempt++) {
+      if (attempt != 0) {
+        console.log(`Doubao embeddings: retrying attempt ${attempt} after error: ${lastError}`);
+      }
+      try {
+        return await this.doFetch(text);
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+
+        // Don't retry if this was the last attempt
+        if (attempt >= this.retry.maxRetries) {
+          console.log(`Doubao embeddings: reached max retries ${this.retry.maxRetries}, giving up`);
+          break;
+        }
+
+        // Check if error is retryable (network errors, 5xx, 429)
+        const isRetryable = this.isRetryableError(lastError);
+        if (!isRetryable) {
+          console.log(`Doubao embeddings: non-retryable error: ${lastError.message}`);
+          throw lastError;
+        }
+
+        // Exponential backoff before next retry
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        delay = Math.min(delay * 2, this.retry.maxDelayMs);
+      }
+    }
+
+    throw lastError;
+  }
+
+  private isRetryableError(error: Error): boolean {
+    // Retry on timeout, network errors, and server errors
+    const message = error.message.toLowerCase();
+    if (
+      message.includes("timed out") ||
+      message.includes("fetch failed") ||
+      message.includes("network")
+    ) {
+      return true;
+    }
+    // Retry on 5xx errors and rate limiting (429)
+    if (message.includes("status 5") || message.includes("status 429")) {
+      return true;
+    }
+    return false;
+  }
+}
+
+function createEmbeddings(
+  cfg: MemoryConfig["embedding"],
+  api: OpenClawPluginApi,
+): { embed(text: string): Promise<number[]> } {
+  if (cfg.provider === "doubao") {
+    api.logger.warn(`memory-lancedb: used doubao embedding.`);
+    return new DoubaoEmbeddings(cfg.apiKey, cfg.model!, cfg.url, cfg.retry);
+  }
+
+  api.logger.warn(`memory-lancedb: used openai embedding.`);
+  return new Embeddings(cfg.apiKey, cfg.model!);
 }
 
 // ============================================================================
@@ -293,9 +485,9 @@ const memoryPlugin = {
   register(api: OpenClawPluginApi) {
     const cfg = memoryConfigSchema.parse(api.pluginConfig);
     const resolvedDbPath = api.resolvePath(cfg.dbPath!);
-    const vectorDim = vectorDimsForModel(cfg.embedding.model ?? "text-embedding-3-small");
+    const vectorDim = vectorDimsForModel(cfg.embedding.model!);
     const db = new MemoryDB(resolvedDbPath, vectorDim);
-    const embeddings = new Embeddings(cfg.embedding.apiKey, cfg.embedding.model!);
+    const embeddings = createEmbeddings(cfg.embedding, api);
 
     api.logger.info(`memory-lancedb: plugin registered (db: ${resolvedDbPath}, lazy init)`);
 

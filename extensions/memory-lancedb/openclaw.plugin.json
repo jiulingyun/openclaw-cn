@@ -3,15 +3,20 @@
   "kind": "memory",
   "uiHints": {
     "embedding.apiKey": {
-      "label": "OpenAI API Key",
+      "label": "Embedding API Key",
       "sensitive": true,
       "placeholder": "sk-proj-...",
-      "help": "API key for OpenAI embeddings (or use ${OPENAI_API_KEY})"
+      "help": "API key for embeddings (OpenAI or Doubao). You can also use ${OPENAI_API_KEY} or ${LAS_API_KEY}."
     },
     "embedding.model": {
       "label": "Embedding Model",
       "placeholder": "text-embedding-3-small",
-      "help": "OpenAI embedding model to use"
+      "help": "Embedding model to use (e.g. text-embedding-3-small, doubao-embedding-vision-251215)"
+    },
+    "embedding.provider": {
+      "label": "Embedding Provider",
+      "placeholder": "openai",
+      "help": "Embedding provider: 'openai' (default) or 'doubao'."
     },
     "dbPath": {
       "label": "Database Path",
@@ -42,13 +47,19 @@
             "type": "string",
             "enum": [
               "text-embedding-3-small",
-              "text-embedding-3-large"
+              "text-embedding-3-large",
+              "doubao-embedding-vision-251215"
             ]
+          },
+          "provider": {
+            "type": "string",
+            "enum": ["openai", "doubao"]
+          },
+          "url": {
+            "type": "string"
           }
         },
-        "required": [
-          "apiKey"
-        ]
+        "required": ["apiKey"]
       },
       "dbPath": {
         "type": "string"
@@ -60,8 +71,6 @@
         "type": "boolean"
       }
     },
-    "required": [
-      "embedding"
-    ]
+    "required": ["embedding"]
   }
 }
