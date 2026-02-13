@@ -18,7 +18,9 @@ function createTestContext() {
       warn,
     },
     state: {
-      toolMetaById: new Map<string, string | undefined>(),
+      toolMetaById: new Map(),
+      toolStartTimeById: new Map<string, number>(),
+      toolArgsById: new Map<string, Record<string, unknown> | undefined>(),
       toolSummaryById: new Set<string>(),
       pendingMessagingTargets: new Map<string, unknown>(),
       pendingMessagingTexts: new Map<string, string>(),
