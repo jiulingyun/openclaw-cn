@@ -6,11 +6,21 @@ import type {
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import type { ClientToolDefinition } from "./pi-embedded-runner/run/params.js";
 import { logDebug, logError } from "../logger.js";
+import { getGlobalHookRunner } from "../plugins/hook-runner-global.js";
+import {
+  consumeAdjustedParamsForToolCall,
+  isToolWrappedWithBeforeToolCallHook,
+  runBeforeToolCallHook,
+} from "./pi-tools.before-tool-call.js";
 import { normalizeToolName } from "./tool-policy.js";
 import { jsonResult } from "./tools/common.js";
 
 // biome-ignore lint/suspicious/noExplicitAny: TypeBox schema type from pi-agent-core uses a different module instance.
 type AnyAgentTool = AgentTool<any, unknown>;
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 function describeToolExecutionError(err: unknown): {
   message: string;
@@ -27,6 +37,7 @@ export function toToolDefinitions(tools: AnyAgentTool[]): ToolDefinition[] {
   return tools.map((tool) => {
     const name = tool.name || "tool";
     const normalizedName = normalizeToolName(name);
+    const beforeHookWrapped = isToolWrappedWithBeforeToolCallHook(tool);
     return {
       name,
       label: tool.label ?? name,
@@ -42,15 +53,56 @@ export function toToolDefinitions(tools: AnyAgentTool[]): ToolDefinition[] {
       ): Promise<AgentToolResult<unknown>> => {
         // KNOWN: pi-coding-agent `ToolDefinition.execute` has a different signature/order
         // than pi-agent-core `AgentTool.execute`. This adapter keeps our existing tools intact.
+        let executeParams = params;
         try {
-          return await tool.execute(toolCallId, params, signal, onUpdate);
+          if (!beforeHookWrapped) {
+            const hookOutcome = await runBeforeToolCallHook({
+              toolName: name,
+              params,
+              toolCallId,
+            });
+            if (hookOutcome.blocked) {
+              throw new Error(hookOutcome.reason);
+            }
+            executeParams = hookOutcome.params;
+          }
+          const result = await tool.execute(toolCallId, executeParams, signal, onUpdate);
+          const afterParams = beforeHookWrapped
+            ? (consumeAdjustedParamsForToolCall(toolCallId) ?? executeParams)
+            : executeParams;
+
+          // Call after_tool_call hook
+          const hookRunner = getGlobalHookRunner();
+          if (hookRunner?.hasHooks("after_tool_call")) {
+            try {
+              await hookRunner.runAfterToolCall(
+                {
+                  toolName: name,
+                  params: isPlainObject(afterParams) ? afterParams : {},
+                  result,
+                },
+                { toolName: name },
+              );
+            } catch (hookErr) {
+              logDebug(
+                `after_tool_call hook failed: tool=${normalizedName} error=${String(hookErr)}`,
+              );
+            }
+          }
+
+          return result;
         } catch (err) {
           if (signal?.aborted) throw err;
           const name =
             err && typeof err === "object" && "name" in err
               ? String((err as { name?: unknown }).name)
               : "";
-          if (name === "AbortError") throw err;
+          if (name === "AbortError") {
+            throw err;
+          }
+          if (beforeHookWrapped) {
+            consumeAdjustedParamsForToolCall(toolCallId);
+          }
           const described = describeToolExecutionError(err);
           if (described.stack && described.stack !== described.message) {
             logDebug(`tools: ${normalizedName} failed stack:\n${described.stack}`);
