@@ -1,14 +1,11 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-
-import {
-  resolveSessionFilePath,
-  resolveSessionTranscriptPath,
-  resolveSessionTranscriptPathInDir,
-} from "../config/sessions.js";
-import { stripEnvelope } from "./chat-sanitize.js";
 import type { SessionPreviewItem } from "./session-utils.types.js";
+import { resolveSessionTranscriptPath } from "../config/sessions.js";
+import { resolveRequiredHomeDir } from "../infra/home-dir.js";
+import { extractToolCallNames, hasToolCall } from "../utils/transcript-tools.js";
+import { stripEnvelope } from "./chat-sanitize.js";
 
 export function readSessionMessages(
   sessionId: string,
@@ -18,16 +15,37 @@ export function readSessionMessages(
   const candidates = resolveSessionTranscriptCandidates(sessionId, storePath, sessionFile);
 
   const filePath = candidates.find((p) => fs.existsSync(p));
-  if (!filePath) return [];
+  if (!filePath) {
+    return [];
+  }
 
   const lines = fs.readFileSync(filePath, "utf-8").split(/\r?\n/);
   const messages: unknown[] = [];
   for (const line of lines) {
-    if (!line.trim()) continue;
+    if (!line.trim()) {
+      continue;
+    }
     try {
       const parsed = JSON.parse(line);
       if (parsed?.message) {
         messages.push(parsed.message);
+        continue;
+      }
+
+      // Compaction entries are not "message" records, but they're useful context for debugging.
+      // Emit a lightweight synthetic message that the Web UI can render as a divider.
+      if (parsed?.type === "compaction") {
+        const ts = typeof parsed.timestamp === "string" ? Date.parse(parsed.timestamp) : Number.NaN;
+        const timestamp = Number.isFinite(ts) ? ts : Date.now();
+        messages.push({
+          role: "system",
+          content: [{ type: "text", text: "Compaction" }],
+          timestamp,
+          __openclaw: {
+            kind: "compaction",
+            id: typeof parsed.id === "string" ? parsed.id : undefined,
+          },
+        });
       }
     } catch {
       // ignore bad lines
@@ -43,79 +61,25 @@ export function resolveSessionTranscriptCandidates(
   agentId?: string,
 ): string[] {
   const candidates: string[] = [];
-  const pushCandidate = (resolve: () => string): void => {
-    try {
-      candidates.push(resolve());
-    } catch {
-      // Ignore invalid paths/IDs and keep scanning other safe candidates.
-    }
-  };
-
+  if (sessionFile) {
+    candidates.push(sessionFile);
+  }
   if (storePath) {
-    const sessionsDir = path.dirname(storePath);
-    if (sessionFile) {
-      pushCandidate(() =>
-        resolveSessionFilePath(sessionId, { sessionFile }, { sessionsDir, agentId }),
-      );
-    }
-    pushCandidate(() => resolveSessionTranscriptPathInDir(sessionId, sessionsDir));
-  } else if (sessionFile) {
-    if (agentId) {
-      pushCandidate(() => resolveSessionFilePath(sessionId, { sessionFile }, { agentId }));
-    } else {
-      const trimmed = sessionFile.trim();
-      if (trimmed) {
-        candidates.push(path.resolve(trimmed));
-      }
-    }
+    const dir = path.dirname(storePath);
+    candidates.push(path.join(dir, `${sessionId}.jsonl`));
   }
-
   if (agentId) {
-    pushCandidate(() => resolveSessionTranscriptPath(sessionId, agentId));
+    candidates.push(resolveSessionTranscriptPath(sessionId, agentId));
   }
-
-  const legacyDir = path.join(os.homedir(), ".openclaw", "sessions");
-  pushCandidate(() => resolveSessionTranscriptPathInDir(sessionId, legacyDir));
-
-  return Array.from(new Set(candidates));
+  const home = resolveRequiredHomeDir(process.env, os.homedir);
+  candidates.push(path.join(home, ".openclaw", "sessions", `${sessionId}.jsonl`));
+  return candidates;
 }
 
-export type ArchiveFileReason = "bak" | "reset" | "deleted";
-
-export function archiveFileOnDisk(filePath: string, reason: ArchiveFileReason): string {
+export function archiveFileOnDisk(filePath: string, reason: string): string {
   const ts = new Date().toISOString().replaceAll(":", "-");
   const archived = `${filePath}.${reason}.${ts}`;
   fs.renameSync(filePath, archived);
-  return archived;
-}
-
-/**
- * Archives all transcript files for a given session.
- * Best-effort: silently skips files that don't exist or fail to rename.
- */
-export function archiveSessionTranscripts(opts: {
-  sessionId: string;
-  storePath: string | undefined;
-  sessionFile?: string;
-  agentId?: string;
-  reason: "reset" | "deleted";
-}): string[] {
-  const archived: string[] = [];
-  for (const candidate of resolveSessionTranscriptCandidates(
-    opts.sessionId,
-    opts.storePath,
-    opts.sessionFile,
-    opts.agentId,
-  )) {
-    if (!fs.existsSync(candidate)) {
-      continue;
-    }
-    try {
-      archived.push(archiveFileOnDisk(candidate, opts.reason));
-    } catch {
-      // Best-effort.
-    }
-  }
   return archived;
 }
 
@@ -131,7 +95,9 @@ export function capArrayByJsonBytes<T>(
   items: T[],
   maxBytes: number,
 ): { items: T[]; bytes: number } {
-  if (items.length === 0) return { items, bytes: 2 };
+  if (items.length === 0) {
+    return { items, bytes: 2 };
+  }
   const parts = items.map((item) => jsonUtf8Bytes(item));
   let bytes = 2 + parts.reduce((a, b) => a + b, 0) + (items.length - 1);
   let start = 0;
@@ -151,13 +117,21 @@ type TranscriptMessage = {
 };
 
 function extractTextFromContent(content: TranscriptMessage["content"]): string | null {
-  if (typeof content === "string") return content.trim() || null;
-  if (!Array.isArray(content)) return null;
+  if (typeof content === "string") {
+    return content.trim() || null;
+  }
+  if (!Array.isArray(content)) {
+    return null;
+  }
   for (const part of content) {
-    if (!part || typeof part.text !== "string") continue;
+    if (!part || typeof part.text !== "string") {
+      continue;
+    }
     if (part.type === "text" || part.type === "output_text" || part.type === "input_text") {
       const trimmed = part.text.trim();
-      if (trimmed) return trimmed;
+      if (trimmed) {
+        return trimmed;
+      }
     }
   }
   return null;
@@ -171,25 +145,33 @@ export function readFirstUserMessageFromTranscript(
 ): string | null {
   const candidates = resolveSessionTranscriptCandidates(sessionId, storePath, sessionFile, agentId);
   const filePath = candidates.find((p) => fs.existsSync(p));
-  if (!filePath) return null;
+  if (!filePath) {
+    return null;
+  }
 
   let fd: number | null = null;
   try {
     fd = fs.openSync(filePath, "r");
     const buf = Buffer.alloc(8192);
     const bytesRead = fs.readSync(fd, buf, 0, buf.length, 0);
-    if (bytesRead === 0) return null;
+    if (bytesRead === 0) {
+      return null;
+    }
     const chunk = buf.toString("utf-8", 0, bytesRead);
     const lines = chunk.split(/\r?\n/).slice(0, MAX_LINES_TO_SCAN);
 
     for (const line of lines) {
-      if (!line.trim()) continue;
+      if (!line.trim()) {
+        continue;
+      }
       try {
         const parsed = JSON.parse(line);
         const msg = parsed?.message as TranscriptMessage | undefined;
         if (msg?.role === "user") {
           const text = extractTextFromContent(msg.content);
-          if (text) return text;
+          if (text) {
+            return text;
+          }
         }
       } catch {
         // skip malformed lines
@@ -198,7 +180,9 @@ export function readFirstUserMessageFromTranscript(
   } catch {
     // file read error
   } finally {
-    if (fd !== null) fs.closeSync(fd);
+    if (fd !== null) {
+      fs.closeSync(fd);
+    }
   }
   return null;
 }
@@ -214,14 +198,18 @@ export function readLastMessagePreviewFromTranscript(
 ): string | null {
   const candidates = resolveSessionTranscriptCandidates(sessionId, storePath, sessionFile, agentId);
   const filePath = candidates.find((p) => fs.existsSync(p));
-  if (!filePath) return null;
+  if (!filePath) {
+    return null;
+  }
 
   let fd: number | null = null;
   try {
     fd = fs.openSync(filePath, "r");
     const stat = fs.fstatSync(fd);
     const size = stat.size;
-    if (size === 0) return null;
+    if (size === 0) {
+      return null;
+    }
 
     const readStart = Math.max(0, size - LAST_MSG_MAX_BYTES);
     const readLen = Math.min(size, LAST_MSG_MAX_BYTES);
@@ -239,7 +227,9 @@ export function readLastMessagePreviewFromTranscript(
         const msg = parsed?.message as TranscriptMessage | undefined;
         if (msg?.role === "user" || msg?.role === "assistant") {
           const text = extractTextFromContent(msg.content);
-          if (text) return text;
+          if (text) {
+            return text;
+          }
         }
       } catch {
         // skip malformed
@@ -248,7 +238,9 @@ export function readLastMessagePreviewFromTranscript(
   } catch {
     // file error
   } finally {
-    if (fd !== null) fs.closeSync(fd);
+    if (fd !== null) {
+      fs.closeSync(fd);
+    }
   }
   return null;
 }
@@ -271,7 +263,9 @@ type TranscriptPreviewMessage = {
 };
 
 function normalizeRole(role: string | undefined, isTool: boolean): SessionPreviewItem["role"] {
-  if (isTool) return "tool";
+  if (isTool) {
+    return "tool";
+  }
   switch ((role ?? "").toLowerCase()) {
     case "user":
       return "user";
@@ -287,8 +281,12 @@ function normalizeRole(role: string | undefined, isTool: boolean): SessionPrevie
 }
 
 function truncatePreviewText(text: string, maxChars: number): string {
-  if (maxChars <= 0 || text.length <= maxChars) return text;
-  if (maxChars <= 3) return text.slice(0, maxChars);
+  if (maxChars <= 0 || text.length <= maxChars) {
+    return text;
+  }
+  if (maxChars <= 3) {
+    return text.slice(0, maxChars);
+  }
   return `${text.slice(0, maxChars - 3)}...`;
 }
 
@@ -313,36 +311,22 @@ function extractPreviewText(message: TranscriptPreviewMessage): string | null {
 }
 
 function isToolCall(message: TranscriptPreviewMessage): boolean {
-  if (message.toolName || message.tool_name) return true;
-  if (!Array.isArray(message.content)) return false;
-  return message.content.some((entry) => {
-    if (entry?.name) return true;
-    const raw = typeof entry?.type === "string" ? entry.type.toLowerCase() : "";
-    return raw === "toolcall" || raw === "tool_call";
-  });
+  return hasToolCall(message as Record<string, unknown>);
 }
 
 function extractToolNames(message: TranscriptPreviewMessage): string[] {
-  const names: string[] = [];
-  if (Array.isArray(message.content)) {
-    for (const entry of message.content) {
-      if (typeof entry?.name === "string" && entry.name.trim()) {
-        names.push(entry.name.trim());
-      }
-    }
-  }
-  const toolName = typeof message.toolName === "string" ? message.toolName : message.tool_name;
-  if (typeof toolName === "string" && toolName.trim()) {
-    names.push(toolName.trim());
-  }
-  return names;
+  return extractToolCallNames(message as Record<string, unknown>);
 }
 
 function extractMediaSummary(message: TranscriptPreviewMessage): string | null {
-  if (!Array.isArray(message.content)) return null;
+  if (!Array.isArray(message.content)) {
+    return null;
+  }
   for (const entry of message.content) {
     const raw = typeof entry?.type === "string" ? entry.type.trim().toLowerCase() : "";
-    if (!raw || raw === "text" || raw === "toolcall" || raw === "tool_call") continue;
+    if (!raw || raw === "text" || raw === "toolcall" || raw === "tool_call") {
+      continue;
+    }
     return `[${raw}]`;
   }
   return null;
@@ -364,15 +348,21 @@ function buildPreviewItems(
         const shown = toolNames.slice(0, 2);
         const overflow = toolNames.length - shown.length;
         text = `call ${shown.join(", ")}`;
-        if (overflow > 0) text += ` +${overflow}`;
+        if (overflow > 0) {
+          text += ` +${overflow}`;
+        }
       }
     }
     if (!text) {
       text = extractMediaSummary(message);
     }
-    if (!text) continue;
+    if (!text) {
+      continue;
+    }
     let trimmed = text.trim();
-    if (!trimmed) continue;
+    if (!trimmed) {
+      continue;
+    }
     if (role === "user") {
       trimmed = stripEnvelope(trimmed);
     }
@@ -380,7 +370,9 @@ function buildPreviewItems(
     items.push({ role, text: trimmed });
   }
 
-  if (items.length <= maxItems) return items;
+  if (items.length <= maxItems) {
+    return items;
+  }
   return items.slice(-maxItems);
 }
 
@@ -394,7 +386,9 @@ function readRecentMessagesFromTranscript(
     fd = fs.openSync(filePath, "r");
     const stat = fs.fstatSync(fd);
     const size = stat.size;
-    if (size === 0) return [];
+    if (size === 0) {
+      return [];
+    }
 
     const readStart = Math.max(0, size - readBytes);
     const readLen = Math.min(size, readBytes);
@@ -413,17 +407,21 @@ function readRecentMessagesFromTranscript(
         const msg = parsed?.message as TranscriptPreviewMessage | undefined;
         if (msg && typeof msg === "object") {
           collected.push(msg);
-          if (collected.length >= maxMessages) break;
+          if (collected.length >= maxMessages) {
+            break;
+          }
         }
       } catch {
         // skip malformed lines
       }
     }
-    return collected.reverse();
+    return collected.toReversed();
   } catch {
     return [];
   } finally {
-    if (fd !== null) fs.closeSync(fd);
+    if (fd !== null) {
+      fs.closeSync(fd);
+    }
   }
 }
 
@@ -437,7 +435,9 @@ export function readSessionPreviewItemsFromTranscript(
 ): SessionPreviewItem[] {
   const candidates = resolveSessionTranscriptCandidates(sessionId, storePath, sessionFile, agentId);
   const filePath = candidates.find((p) => fs.existsSync(p));
-  if (!filePath) return [];
+  if (!filePath) {
+    return [];
+  }
 
   const boundedItems = Math.max(1, Math.min(maxItems, 50));
   const boundedChars = Math.max(20, Math.min(maxChars, 2000));
