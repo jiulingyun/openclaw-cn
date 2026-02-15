@@ -1,9 +1,16 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it, vi } from "vitest";
-import type { ClawdbotConfig } from "../../config/config.js";
-import { isAbortTrigger, tryFastAbortFromMessage } from "./abort.js";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { OpenClawConfig } from "../../config/config.js";
+import {
+  getAbortMemory,
+  getAbortMemorySizeForTest,
+  isAbortTrigger,
+  resetAbortMemoryForTest,
+  setAbortMemory,
+  tryFastAbortFromMessage,
+} from "./abort.js";
 import { enqueueFollowupRun, getFollowupQueueDepth, type FollowupRun } from "./queue.js";
 import { initSessionState } from "./session.js";
 import { buildTestCtx } from "./test-ctx.js";
@@ -28,10 +35,14 @@ vi.mock("../../agents/subagent-registry.js", () => ({
 }));
 
 describe("abort detection", () => {
+  afterEach(() => {
+    resetAbortMemoryForTest();
+  });
+
   it("triggerBodyNormalized extracts /stop from RawBody for abort detection", async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-abort-"));
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-abort-"));
     const storePath = path.join(root, "sessions.json");
-    const cfg = { session: { store: storePath } } as ClawdbotConfig;
+    const cfg = { session: { store: storePath } } as OpenClawConfig;
 
     const groupMessageCtx = {
       Body: `[Context]\nJake: /stop\n[from: Jake]`,
@@ -62,10 +73,28 @@ describe("abort detection", () => {
     expect(isAbortTrigger("/stop")).toBe(false);
   });
 
+  it("removes abort memory entry when flag is reset", () => {
+    setAbortMemory("session-1", true);
+    expect(getAbortMemory("session-1")).toBe(true);
+
+    setAbortMemory("session-1", false);
+    expect(getAbortMemory("session-1")).toBeUndefined();
+    expect(getAbortMemorySizeForTest()).toBe(0);
+  });
+
+  it("caps abort memory tracking to a bounded max size", () => {
+    for (let i = 0; i < 2105; i += 1) {
+      setAbortMemory(`session-${i}`, true);
+    }
+    expect(getAbortMemorySizeForTest()).toBe(2000);
+    expect(getAbortMemory("session-0")).toBeUndefined();
+    expect(getAbortMemory("session-2104")).toBe(true);
+  });
+
   it("fast-aborts even when text commands are disabled", async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-abort-"));
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-abort-"));
     const storePath = path.join(root, "sessions.json");
-    const cfg = { session: { store: storePath }, commands: { text: false } } as ClawdbotConfig;
+    const cfg = { session: { store: storePath }, commands: { text: false } } as OpenClawConfig;
 
     const result = await tryFastAbortFromMessage({
       ctx: buildTestCtx({
@@ -85,9 +114,9 @@ describe("abort detection", () => {
   });
 
   it("fast-abort clears queued followups and session lane", async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-abort-"));
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-abort-"));
     const storePath = path.join(root, "sessions.json");
-    const cfg = { session: { store: storePath } } as ClawdbotConfig;
+    const cfg = { session: { store: storePath } } as OpenClawConfig;
     const sessionKey = "telegram:123";
     const sessionId = "session-123";
     await fs.writeFile(
@@ -150,9 +179,9 @@ describe("abort detection", () => {
   });
 
   it("fast-abort stops active subagent runs for requester session", async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-abort-"));
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-abort-"));
     const storePath = path.join(root, "sessions.json");
-    const cfg = { session: { store: storePath } } as ClawdbotConfig;
+    const cfg = { session: { store: storePath } } as OpenClawConfig;
     const sessionKey = "telegram:parent";
     const childKey = "agent:main:subagent:child-1";
     const sessionId = "session-parent";
