@@ -257,7 +257,7 @@ export async function handleDiscordMessagingAction(
           );
         }
         assertMediaNotDataUrl(mediaUrl);
-        const result = await sendVoiceMessageDiscord(to, mediaUrl, {
+        const result = await sendMessageDiscord(to, mediaUrl, {
           ...(accountId ? { accountId } : {}),
           replyTo,
           silent,

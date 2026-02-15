@@ -280,3 +280,8 @@ export function resolveJobPayloadTextForMain(job: CronJob): string | undefined {
   const text = normalizePayloadToSystemText(job.payload);
   return text.trim() ? text : undefined;
 }
+
+export function recomputeNextRunsForMaintenance(_state: unknown, _now?: Date): boolean {
+  // Stub: maintenance recompute is handled by the scheduler
+  return false;
+}

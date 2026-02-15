@@ -1,5 +1,5 @@
-import type { OpenClawConfig } from "../config/config.js";
-import { LITELLM_DEFAULT_MODEL_REF } from "./onboard-auth.credentials.js";
+import type { ClawdbotConfig } from "../config/config.js";
+import { ZAI_DEFAULT_MODEL_REF } from "./onboard-auth.credentials.js";
 
 export const LITELLM_BASE_URL = "http://localhost:4000";
 export const LITELLM_DEFAULT_MODEL_ID = "claude-opus-4-6";
@@ -32,11 +32,11 @@ function buildLitellmModelDefinition(): {
   };
 }
 
-export function applyLitellmProviderConfig(cfg: OpenClawConfig): OpenClawConfig {
+export function applyLitellmProviderConfig(cfg: ClawdbotConfig): ClawdbotConfig {
   const models = { ...cfg.agents?.defaults?.models };
-  models[LITELLM_DEFAULT_MODEL_REF] = {
-    ...models[LITELLM_DEFAULT_MODEL_REF],
-    alias: models[LITELLM_DEFAULT_MODEL_REF]?.alias ?? "LiteLLM",
+  models[ZAI_DEFAULT_MODEL_REF] = {
+    ...models[ZAI_DEFAULT_MODEL_REF],
+    alias: models[ZAI_DEFAULT_MODEL_REF]?.alias ?? "LiteLLM",
   };
 
   const providers = { ...cfg.models?.providers };
@@ -77,7 +77,7 @@ export function applyLitellmProviderConfig(cfg: OpenClawConfig): OpenClawConfig 
   };
 }
 
-export function applyLitellmConfig(cfg: OpenClawConfig): OpenClawConfig {
+export function applyLitellmConfig(cfg: ClawdbotConfig): ClawdbotConfig {
   const next = applyLitellmProviderConfig(cfg);
   const existingModel = next.agents?.defaults?.model;
   return {
@@ -92,7 +92,7 @@ export function applyLitellmConfig(cfg: OpenClawConfig): OpenClawConfig {
                 fallbacks: (existingModel as { fallbacks?: string[] }).fallbacks,
               }
             : undefined),
-          primary: LITELLM_DEFAULT_MODEL_REF,
+          primary: ZAI_DEFAULT_MODEL_REF,
         },
       },
     },

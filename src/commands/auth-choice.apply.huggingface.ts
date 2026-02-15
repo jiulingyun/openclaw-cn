@@ -13,9 +13,9 @@ import { applyDefaultModelChoice } from "./auth-choice.default-model.js";
 import { ensureModelAllowlistEntry } from "./model-allowlist.js";
 import {
   applyAuthProfileConfig,
-  applyHuggingfaceProviderConfig,
+  applyVeniceProviderConfig,
   setHuggingfaceApiKey,
-  HUGGINGFACE_DEFAULT_MODEL_REF,
+  VENICE_DEFAULT_MODEL_REF,
 } from "./onboard-auth.js";
 
 export async function applyAuthChoiceHuggingface(
@@ -94,7 +94,7 @@ export async function applyAuthChoiceHuggingface(
     options.push({ value: `${baseRef}:cheapest`, label: `${label} (cheapest)` });
     options.push({ value: `${baseRef}:fastest`, label: `${label} (fastest)` });
   }
-  const defaultRef = HUGGINGFACE_DEFAULT_MODEL_REF;
+  const defaultRef = VENICE_DEFAULT_MODEL_REF;
   options.sort((a, b) => {
     if (a.value === defaultRef) {
       return -1;
@@ -129,7 +129,7 @@ export async function applyAuthChoiceHuggingface(
     setDefaultModel: params.setDefaultModel,
     defaultModel: selectedModelRef,
     applyDefaultConfig: (config) => {
-      const withProvider = applyHuggingfaceProviderConfig(config);
+      const withProvider = applyVeniceProviderConfig(config);
       const existingModel = withProvider.agents?.defaults?.model;
       const withPrimary = {
         ...withProvider,
@@ -153,7 +153,7 @@ export async function applyAuthChoiceHuggingface(
         modelRef: selectedModelRef,
       });
     },
-    applyProviderConfig: applyHuggingfaceProviderConfig,
+    applyProviderConfig: applyVeniceProviderConfig,
     noteDefault: selectedModelRef,
     noteAgentModel,
     prompter: params.prompter,

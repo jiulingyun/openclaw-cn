@@ -3,7 +3,7 @@ import type { ZodIssue } from "zod";
 import type { ClawdbotConfig } from "../config/config.js";
 import {
   ClawdbotSchema,
-  CONFIG_PATH_OPENCLAW,
+  CONFIG_PATH,
   migrateLegacyConfig,
   readConfigFileSnapshot,
 } from "../config/config.js";
@@ -218,5 +218,5 @@ export async function loadAndMaybeMigrateDoctorConfig(params: {
 
   noteOpencodeProviderOverrides(cfg);
 
-  return { cfg, path: snapshot.path ?? CONFIG_PATH_OPENCLAW, shouldWriteConfig };
+  return { cfg, path: snapshot.path ?? CONFIG_PATH, shouldWriteConfig };
 }

@@ -74,7 +74,7 @@ function normalizeAllowFromEntry(params: {
 
 function resolveOwnerAllowFromList(params: {
   dock?: ChannelDock;
-  cfg: OpenClawConfig;
+  cfg: ClawdbotConfig;
   accountId?: string | null;
   providerId?: ChannelId;
 }): string[] {

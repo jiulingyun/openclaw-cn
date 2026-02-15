@@ -362,10 +362,10 @@ vi.mock("../config/config.js", async () => {
 
   return {
     ...actual,
-    get CONFIG_PATH_OPENCLAW() {
+    get CONFIG_PATH() {
       return resolveConfigPath();
     },
-    get STATE_DIR_OPENCLAW() {
+    get STATE_DIR() {
       return path.dirname(resolveConfigPath());
     },
     get isNixMode() {

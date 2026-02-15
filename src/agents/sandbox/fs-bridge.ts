@@ -1,5 +1,5 @@
 import type { SandboxContext, SandboxWorkspaceAccess } from "./types.js";
-import { execDockerRaw, type ExecDockerRawResult } from "./docker.js";
+import { execDocker, type ExecDockerRawResult } from "./docker.js";
 import {
   buildSandboxFsMounts,
   resolveSandboxFsPathWithMounts,
@@ -204,7 +204,7 @@ class SandboxFsBridgeImpl implements SandboxFsBridge {
     if (options.args?.length) {
       dockerArgs.push(...options.args);
     }
-    return execDockerRaw(dockerArgs, {
+    return execDocker(dockerArgs, {
       input: options.stdin,
       allowFailure: options.allowFailure,
       signal: options.signal,

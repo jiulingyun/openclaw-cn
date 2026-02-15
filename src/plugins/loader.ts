@@ -453,3 +453,6 @@ export function loadClawdbotPlugins(options: PluginLoadOptions = {}): PluginRegi
   initializeGlobalHookRunner(registry);
   return registry;
 }
+
+/** @deprecated Use loadClawdbotPlugins instead */
+export const loadOpenClawPlugins = loadClawdbotPlugins;

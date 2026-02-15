@@ -107,6 +107,7 @@ export async function loadInternalHooks(
 
   // 2. Load legacy config handlers (backwards compatibility)
   const handlers = cfg.hooks.internal.handlers ?? [];
+  const log = { error: (...args: unknown[]) => console.error("[hooks/loader]", ...args) };
   for (const handlerConfig of handlers) {
     try {
       // Legacy handler paths: keep them workspace-relative.

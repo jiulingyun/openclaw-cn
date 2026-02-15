@@ -7,7 +7,7 @@ import { cancel, isCancel } from "@clack/prompts";
 
 import { DEFAULT_AGENT_WORKSPACE_DIR, ensureAgentWorkspace } from "../agents/workspace.js";
 import type { ClawdbotConfig } from "../config/config.js";
-import { CONFIG_PATH_OPENCLAW } from "../config/config.js";
+import { CONFIG_PATH } from "../config/config.js";
 import { resolveSessionTranscriptsDirForAgent } from "../config/sessions.js";
 import { callGateway } from "../gateway/call.js";
 import { normalizeControlUiBasePath } from "../gateway/control-ui-shared.js";
@@ -279,7 +279,7 @@ export async function moveToTrash(pathname: string, runtime: RuntimeEnv): Promis
 }
 
 export async function handleReset(scope: ResetScope, workspaceDir: string, runtime: RuntimeEnv) {
-  await moveToTrash(CONFIG_PATH_OPENCLAW, runtime);
+  await moveToTrash(CONFIG_PATH, runtime);
   if (scope === "config") return;
   await moveToTrash(path.join(CONFIG_DIR, "credentials"), runtime);
   await moveToTrash(resolveSessionTranscriptsDirForAgent(), runtime);

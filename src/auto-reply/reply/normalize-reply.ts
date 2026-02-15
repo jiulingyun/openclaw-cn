@@ -8,6 +8,8 @@ import {
 } from "./response-prefix-template.js";
 import { hasLineDirectives, parseLineDirectives } from "./line-directives.js";
 
+export type NormalizeReplySkipReason = "empty" | "silent" | "heartbeat";
+
 export type NormalizeReplyOptions = {
   responsePrefix?: string;
   /** Context for template variable interpolation in responsePrefix */

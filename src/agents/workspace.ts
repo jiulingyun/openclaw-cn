@@ -7,6 +7,18 @@ import { isSubagentSessionKey } from "../routing/session-key.js";
 import { resolveUserPath } from "../utils.js";
 import { resolveWorkspaceTemplateDir } from "./workspace-templates.js";
 
+/**
+ * Migrate legacy workspace directory on gateway startup.
+ * Currently a no-op in the Chinese fork (no legacy directories to migrate).
+ */
+export async function migrateWorkspaceIfNeeded(): Promise<{
+  migrated: boolean;
+  legacyDir?: string;
+  newDir?: string;
+}> {
+  return { migrated: false };
+}
+
 export function resolveDefaultAgentWorkspaceDir(
   env: NodeJS.ProcessEnv = process.env,
   homedir: () => string = os.homedir,

@@ -1,4 +1,4 @@
-import type { OpenClawConfig } from "../../config/config.js";
+import type { ClawdbotConfig } from "../../config/config.js";
 import type { CommandHandler } from "./commands-types.js";
 import {
   abortEmbeddedPiRun,
@@ -6,11 +6,7 @@ import {
   isEmbeddedPiRunActive,
   waitForEmbeddedPiRunEnd,
 } from "../../agents/pi-embedded.js";
-import {
-  resolveFreshSessionTotalTokens,
-  resolveSessionFilePath,
-  resolveSessionFilePathOptions,
-} from "../../config/sessions.js";
+import { resolveFreshSessionTotalTokens, resolveSessionFilePath } from "../../config/sessions.js";
 import { logVerbose } from "../../globals.js";
 import { enqueueSystemEvent } from "../../infra/system-events.js";
 import { formatContextUsageShort, formatTokenCount } from "../status.js";
@@ -20,7 +16,7 @@ import { incrementCompactionCount } from "./session-updates.js";
 function extractCompactInstructions(params: {
   rawBody?: string;
   ctx: import("../templating.js").MsgContext;
-  cfg: OpenClawConfig;
+  cfg: ClawdbotConfig;
   agentId?: string;
   isGroup: boolean;
 }): string | undefined {
@@ -86,7 +82,7 @@ export const handleCompactCommand: CommandHandler = async (params) => {
     sessionFile: resolveSessionFilePath(
       sessionId,
       params.sessionEntry,
-      resolveSessionFilePathOptions({
+      resolveSessionFilePath({
         agentId: params.agentId,
         storePath: params.storePath,
       }),

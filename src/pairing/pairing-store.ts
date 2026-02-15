@@ -464,3 +464,8 @@ export async function approveChannelPairingCode(params: {
     },
   );
 }
+
+/** @deprecated Use readChannelAllowFromStore instead */
+export const readProviderAllowFromStore = readChannelAllowFromStore;
+/** @deprecated Use upsertChannelPairingRequest instead */
+export const upsertProviderPairingRequest = upsertChannelPairingRequest;

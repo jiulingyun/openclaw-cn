@@ -6,11 +6,7 @@ import {
   normalizeApiKeyInput,
   validateApiKeyInput,
 } from "./auth-choice.api-key.js";
-import {
-  applyAuthProfileConfig,
-  applyVolcengineConfig,
-  setVolcengineApiKey,
-} from "./onboard-auth.js";
+import { applyAuthProfileConfig, applyVeniceConfig, setVeniceApiKey } from "./onboard-auth.js";
 
 export async function applyAuthChoiceVolcengine(
   params: ApplyAuthChoiceParams,
@@ -54,7 +50,7 @@ export async function applyAuthChoiceVolcengine(
   }
 
   // Save API Key
-  await setVolcengineApiKey(apiKey, params.agentDir);
+  await setVeniceApiKey(apiKey, params.agentDir);
 
   // 2. Models (Used for config generation later)
 
@@ -168,7 +164,7 @@ export async function applyAuthChoiceVolcengine(
 
   if (params.agentId) {
     // If setting for a specific agent, we need to handle it specially
-    nextConfig = applyVolcengineConfig(nextConfig, modelId);
+    nextConfig = applyVeniceConfig(nextConfig, modelId);
     // But then force the agent override
     nextConfig = {
       ...nextConfig,
@@ -185,7 +181,7 @@ export async function applyAuthChoiceVolcengine(
     };
   } else {
     // Workspace default
-    nextConfig = applyVolcengineConfig(nextConfig, modelId);
+    nextConfig = applyVeniceConfig(nextConfig, modelId);
   }
 
   return { config: nextConfig, agentModelOverride: modelId };

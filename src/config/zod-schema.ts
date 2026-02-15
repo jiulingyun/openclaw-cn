@@ -630,3 +630,6 @@ export const ClawdbotSchema = z
       }
     }
   });
+
+/** @deprecated Use ClawdbotSchema instead */
+export const OpenClawSchema = ClawdbotSchema;

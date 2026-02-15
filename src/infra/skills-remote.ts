@@ -1,5 +1,5 @@
 import type { SkillEligibilityContext, SkillEntry } from "../agents/skills.js";
-import type { OpenClawConfig } from "../config/config.js";
+import type { ClawdbotConfig } from "../config/config.js";
 import type { NodeRegistry } from "../gateway/node-registry.js";
 import { resolveAgentWorkspaceDir, resolveDefaultAgentId } from "../agents/agent-scope.js";
 import { loadWorkspaceSkillEntries } from "../agents/skills.js";
@@ -172,7 +172,7 @@ export function removeRemoteNodeInfo(nodeId: string) {
   remoteNodes.delete(nodeId);
 }
 
-function listWorkspaceDirs(cfg: OpenClawConfig): string[] {
+function listWorkspaceDirs(cfg: ClawdbotConfig): string[] {
   const dirs = new Set<string>();
   const list = cfg.agents?.list;
   if (Array.isArray(list)) {
@@ -257,7 +257,7 @@ export async function refreshRemoteNodeBins(params: {
   platform?: string;
   deviceFamily?: string;
   commands?: string[];
-  cfg: OpenClawConfig;
+  cfg: ClawdbotConfig;
   timeoutMs?: number;
 }) {
   if (!remoteRegistry) {
@@ -348,7 +348,7 @@ export function getRemoteSkillEligibility(): SkillEligibilityContext["remote"] |
   };
 }
 
-export async function refreshRemoteBinsForConnectedNodes(cfg: OpenClawConfig) {
+export async function refreshRemoteBinsForConnectedNodes(cfg: ClawdbotConfig) {
   if (!remoteRegistry) {
     return;
   }

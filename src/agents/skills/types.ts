@@ -67,6 +67,8 @@ export type SkillEntry = {
   skill: Skill;
   frontmatter: ParsedSkillFrontmatter;
   openclaw?: OpenclawSkillMetadata;
+  /** Upstream alias for openclaw metadata. */
+  metadata?: OpenclawSkillMetadata;
   invocation?: SkillInvocationPolicy;
 };
 

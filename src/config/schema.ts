@@ -1001,7 +1001,7 @@ function buildBaseConfigSchema(): ConfigSchemaResponse {
     target: "draft-07",
     unrepresentable: "any",
   });
-  schema.title = "OpenClawConfig";
+  schema.title = "ClawdbotConfig";
   const hints = applySensitiveHints(buildBaseHints());
   const next = {
     schema: stripChannelSchema(schema),

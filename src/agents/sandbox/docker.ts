@@ -1,5 +1,11 @@
 import { spawn } from "node:child_process";
 
+export type ExecDockerRawResult = {
+  stdout: Buffer;
+  stderr: Buffer;
+  code: number;
+};
+
 import { defaultRuntime } from "../../runtime.js";
 import { formatCliCommand } from "../../cli/command-format.js";
 import { DEFAULT_SANDBOX_IMAGE, SANDBOX_AGENT_WORKSPACE_MOUNT } from "./constants.js";

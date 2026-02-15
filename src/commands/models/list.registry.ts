@@ -9,7 +9,7 @@ import {
   resolveAwsSdkEnvVarName,
   resolveEnvApiKey,
 } from "../../agents/model-auth.js";
-import { ensureClawdbotModelsJson } from "../../agents/models-config.js";
+import { ensureOpenClawModelsJson } from "../../agents/models-config.js";
 import type { ClawdbotConfig } from "../../config/config.js";
 import type { ModelRow } from "./list.types.js";
 import { modelKey } from "./shared.js";
@@ -39,7 +39,7 @@ const hasAuthForProvider = (provider: string, cfg: ClawdbotConfig, authStore: Au
 };
 
 export async function loadModelRegistry(cfg: ClawdbotConfig) {
-  await ensureClawdbotModelsJson(cfg);
+  await ensureOpenClawModelsJson(cfg);
   const agentDir = resolveClawdbotAgentDir();
   const authStorage = discoverAuthStorage(agentDir);
   const registry = discoverModels(authStorage, agentDir);

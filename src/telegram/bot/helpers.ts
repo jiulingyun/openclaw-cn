@@ -99,6 +99,17 @@ export function buildTelegramGroupFrom(chatId: number | string, messageThreadId?
   return `telegram:group:${buildTelegramGroupPeerId(chatId, messageThreadId)}`;
 }
 
+export function buildTelegramParentPeer(params: {
+  isGroup: boolean;
+  resolvedThreadId?: number;
+  chatId: number | string;
+}): { kind: "group"; id: string } | undefined {
+  if (!params.isGroup || params.resolvedThreadId == null) {
+    return undefined;
+  }
+  return { kind: "group", id: String(params.chatId) };
+}
+
 export function buildSenderName(msg: Message) {
   const name =
     [msg.from?.first_name, msg.from?.last_name].filter(Boolean).join(" ").trim() ||

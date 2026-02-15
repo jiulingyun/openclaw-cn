@@ -369,3 +369,44 @@ export function listSubagentRunsForRequester(requesterSessionKey: string): Subag
 export function initSubagentRegistry() {
   restoreSubagentRunsOnce();
 }
+
+export function clearSubagentRunSteerRestart(runId: string): void {
+  const entry = subagentRuns.get(runId);
+  if (entry) {
+    delete (entry as Record<string, unknown>)["steerRestart"];
+  }
+}
+
+export function markSubagentRunTerminated(runId: string): void {
+  const entry = subagentRuns.get(runId);
+  if (entry && !entry.endedAt) {
+    entry.endedAt = Date.now();
+    entry.outcome = "terminated";
+  }
+}
+
+export function markSubagentRunForSteerRestart(runId: string): void {
+  const entry = subagentRuns.get(runId);
+  if (entry) {
+    (entry as Record<string, unknown>)["steerRestart"] = true;
+  }
+}
+
+export function replaceSubagentRunAfterSteer(params: {
+  oldRunId: string;
+  newRunId: string;
+  childSessionKey: string;
+}): void {
+  const old = subagentRuns.get(params.oldRunId);
+  if (!old) return;
+  const replacement: SubagentRunRecord = {
+    ...old,
+    runId: params.newRunId,
+    childSessionKey: params.childSessionKey,
+    startedAt: Date.now(),
+    endedAt: undefined,
+    outcome: undefined,
+  };
+  subagentRuns.delete(params.oldRunId);
+  subagentRuns.set(params.newRunId, replacement);
+}

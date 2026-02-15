@@ -111,14 +111,15 @@ export function buildAgentPeerSessionKey(params: {
   agentId: string;
   mainKey?: string | undefined;
   channel: string;
-  peerKind?: "dm" | "group" | "channel" | null;
+  accountId?: string | null;
+  peerKind?: "dm" | "direct" | "group" | "channel" | null;
   peerId?: string | null;
   identityLinks?: Record<string, string[]>;
   /** DM session scope. */
-  dmScope?: "main" | "per-peer" | "per-channel-peer";
+  dmScope?: "main" | "per-peer" | "per-channel-peer" | "per-account-channel-peer";
 }): string {
   const peerKind = params.peerKind ?? "dm";
-  if (peerKind === "dm") {
+  if (peerKind === "dm" || peerKind === "direct") {
     const dmScope = params.dmScope ?? "main";
     let peerId = (params.peerId ?? "").trim();
     const linkedPeerId =
@@ -208,4 +209,14 @@ export function resolveThreadSessionKeys(params: {
     ? `${params.baseSessionKey}:thread:${normalizedThreadId}`
     : params.baseSessionKey;
   return { sessionKey, parentSessionKey: params.parentSessionKey };
+}
+
+export type SessionKeyShape = "legacy" | "agent" | "peer" | "unknown";
+
+export function classifySessionKeyShape(sessionKey: string | undefined | null): SessionKeyShape {
+  if (!sessionKey) return "unknown";
+  if (sessionKey.startsWith("agent:")) return "agent";
+  if (sessionKey.startsWith("peer:")) return "peer";
+  if (sessionKey.includes(":")) return "legacy";
+  return "unknown";
 }

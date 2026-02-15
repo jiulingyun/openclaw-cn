@@ -1,5 +1,5 @@
 import type { SessionStatus } from "./status.types.js";
-import { formatDurationPrecise } from "../infra/format-time/format-duration.ts";
+import { formatDurationPrecise } from "../infra/format-time/format-duration.js";
 
 export const formatKTokens = (value: number) =>
   `${(value / 1000).toFixed(value >= 10_000 ? 0 : 1)}k`;
@@ -60,3 +60,14 @@ export const formatDaemonRuntimeShort = (runtime?: {
   }
   return details.length > 0 ? `${status} (${details.join(", ")})` : status;
 };
+
+export function formatAge(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) return seconds + "s";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return minutes + "m";
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return hours + "h";
+  const days = Math.floor(hours / 24);
+  return days + "d";
+}

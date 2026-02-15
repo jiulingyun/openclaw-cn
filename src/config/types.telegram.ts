@@ -17,6 +17,11 @@ export type TelegramActionConfig = {
   deleteMessage?: boolean;
 };
 
+export type TelegramNetworkConfig = {
+  /** Override Node's autoSelectFamily behavior (true = enable, false = disable). */
+  autoSelectFamily?: boolean;
+};
+
 export type TelegramInlineButtonsScope = "off" | "dm" | "group" | "all" | "allowlist";
 
 export type TelegramCapabilitiesConfig =
@@ -98,6 +103,8 @@ export type TelegramAccountConfig = {
   proxy?: string;
   webhookUrl?: string;
   webhookSecret?: string;
+  /** Network tuning for Telegram API calls. */
+  network?: TelegramNetworkConfig;
   webhookPath?: string;
   /** Per-action tool gating (default: true for all). */
   actions?: TelegramActionConfig;

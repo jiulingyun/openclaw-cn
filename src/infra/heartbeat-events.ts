@@ -14,6 +14,8 @@ export type HeartbeatEventPayload = {
   silent?: boolean;
   /** Indicator type for UI status display. */
   indicatorType?: HeartbeatIndicatorType;
+  /** Account identifier for multi-account heartbeats. */
+  accountId?: string;
 };
 
 export function resolveIndicatorType(

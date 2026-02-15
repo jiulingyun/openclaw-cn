@@ -352,7 +352,11 @@ function canonicalizeSpawnedByForAgent(agentId: string, spawnedBy?: string): str
   return `agent:${normalizeAgentId(agentId)}:${raw}`;
 }
 
-export function resolveGatewaySessionStoreTarget(params: { cfg: ClawdbotConfig; key: string }): {
+export function resolveGatewaySessionStoreTarget(params: {
+  cfg: ClawdbotConfig;
+  key: string;
+  store?: Record<string, unknown>;
+}): {
   agentId: string;
   storePath: string;
   canonicalKey: string;
@@ -644,4 +648,38 @@ export function listSessionsFromStore(params: {
     defaults: getSessionDefaults(cfg),
     sessions: finalSessions,
   };
+}
+
+function findStoreKeysIgnoreCase(store: Record<string, unknown>, needle: string): string[] {
+  const lower = needle.toLowerCase();
+  return Object.keys(store).filter((k) => k.toLowerCase() === lower);
+}
+
+/**
+ * Remove legacy key variants for one canonical session key.
+ * Candidates can include aliases (for example, "agent:ops:main" when canonical is "agent:ops:work").
+ */
+export function pruneLegacyStoreKeys(params: {
+  store: Record<string, unknown>;
+  canonicalKey: string;
+  candidates: Iterable<string>;
+}) {
+  const keysToDelete = new Set<string>();
+  for (const candidate of params.candidates) {
+    const trimmed = String(candidate ?? "").trim();
+    if (!trimmed) {
+      continue;
+    }
+    if (trimmed !== params.canonicalKey) {
+      keysToDelete.add(trimmed);
+    }
+    for (const match of findStoreKeysIgnoreCase(params.store, trimmed)) {
+      if (match !== params.canonicalKey) {
+        keysToDelete.add(match);
+      }
+    }
+  }
+  for (const key of keysToDelete) {
+    delete params.store[key];
+  }
 }

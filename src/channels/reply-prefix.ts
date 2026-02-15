@@ -51,7 +51,7 @@ export function createReplyPrefixContext(params: {
 }
 
 export function createReplyPrefixOptions(params: {
-  cfg: OpenClawConfig;
+  cfg: ClawdbotConfig;
   agentId: string;
   channel?: string;
   accountId?: string;

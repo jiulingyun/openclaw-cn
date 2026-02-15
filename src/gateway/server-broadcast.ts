@@ -27,13 +27,14 @@ function hasEventScope(client: GatewayWsClient, event: string): boolean {
 
 export function createGatewayBroadcaster(params: { clients: Set<GatewayWsClient> }) {
   let seq = 0;
-  const broadcast = (
+  const broadcastInternal = (
     event: string,
     payload: unknown,
     opts?: {
       dropIfSlow?: boolean;
       stateVersion?: { presence?: number; health?: number };
     },
+    connIds?: ReadonlySet<string>,
   ) => {
     const eventSeq = ++seq;
     const frame = JSON.stringify({
@@ -56,6 +57,7 @@ export function createGatewayBroadcaster(params: { clients: Set<GatewayWsClient>
     }
     logWs("out", "event", logMeta);
     for (const c of params.clients) {
+      if (connIds && !connIds.has(c.id)) continue;
       if (!hasEventScope(c, event)) continue;
       const slow = c.socket.bufferedAmount > MAX_BUFFERED_BYTES;
       if (slow && opts?.dropIfSlow) continue;
@@ -74,5 +76,30 @@ export function createGatewayBroadcaster(params: { clients: Set<GatewayWsClient>
       }
     }
   };
-  return { broadcast };
+
+  const broadcast = (
+    event: string,
+    payload: unknown,
+    opts?: {
+      dropIfSlow?: boolean;
+      stateVersion?: { presence?: number; health?: number };
+    },
+  ) => broadcastInternal(event, payload, opts);
+
+  const broadcastToConnIds = (
+    event: string,
+    payload: unknown,
+    connIds: ReadonlySet<string>,
+    opts?: {
+      dropIfSlow?: boolean;
+      stateVersion?: { presence?: number; health?: number };
+    },
+  ) => {
+    if (connIds.size === 0) {
+      return;
+    }
+    broadcastInternal(event, payload, opts, connIds);
+  };
+
+  return { broadcast, broadcastToConnIds };
 }

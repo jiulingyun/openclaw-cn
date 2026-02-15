@@ -241,3 +241,10 @@ export const handleModelsCommand: CommandHandler = async (params, allowTextComma
   if (!reply) return null;
   return { reply, shouldContinue: false };
 };
+
+export function buildModelsProviderData(_config: unknown): {
+  providers: string[];
+  models: string[];
+} {
+  return { providers: [], models: [] };
+}

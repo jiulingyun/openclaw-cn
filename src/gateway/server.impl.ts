@@ -7,7 +7,7 @@ import { type ChannelId, listChannelPlugins } from "../channels/plugins/index.js
 import { createDefaultDeps } from "../cli/deps.js";
 import { formatCliCommand } from "../cli/command-format.js";
 import {
-  CONFIG_PATH_OPENCLAW,
+  CONFIG_PATH,
   isNixMode,
   loadConfig,
   migrateLegacyConfig,
@@ -563,7 +563,7 @@ export async function startGatewayServer(
       warn: (msg) => logReload.warn(msg),
       error: (msg) => logReload.error(msg),
     },
-    watchPath: CONFIG_PATH_OPENCLAW,
+    watchPath: CONFIG_PATH,
   });
 
   const close = createGatewayCloseHandler({

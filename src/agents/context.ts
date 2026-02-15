@@ -3,7 +3,7 @@
 
 import { loadConfig } from "../config/config.js";
 import { resolveClawdbotAgentDir } from "./agent-paths.js";
-import { ensureClawdbotModelsJson } from "./models-config.js";
+import { ensureOpenClawModelsJson } from "./models-config.js";
 
 type ModelEntry = { id: string; contextWindow?: number };
 
@@ -12,7 +12,7 @@ const loadPromise = (async () => {
   try {
     const { discoverAuthStorage, discoverModels } = await import("@mariozechner/pi-coding-agent");
     const cfg = loadConfig();
-    await ensureClawdbotModelsJson(cfg);
+    await ensureOpenClawModelsJson(cfg);
     const agentDir = resolveClawdbotAgentDir();
     const authStorage = discoverAuthStorage(agentDir);
     const modelRegistry = discoverModels(authStorage, agentDir);

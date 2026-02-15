@@ -361,3 +361,36 @@ export {
   sendDiscordMedia,
   sendDiscordText,
 };
+
+export const SUPPRESS_NOTIFICATIONS_FLAG = 1 << 12;
+
+export function buildDiscordTextChunks(
+  text: string,
+  _opts: { maxLinesPerMessage?: number; chunkMode?: string; maxChars?: number } = {},
+): string[] {
+  if (!text) return [];
+  const maxChars = _opts.maxChars ?? 2000;
+  const chunks: string[] = [];
+  let remaining = text;
+  while (remaining.length > 0) {
+    if (remaining.length <= maxChars) {
+      chunks.push(remaining);
+      break;
+    }
+    const cut = remaining.lastIndexOf("\n", maxChars);
+    const splitAt = cut > 0 ? cut : maxChars;
+    chunks.push(remaining.slice(0, splitAt));
+    remaining = remaining.slice(splitAt).replace(/^\n/, "");
+  }
+  return chunks;
+}
+
+export async function parseAndResolveRecipient(
+  raw: string,
+  _accountId?: string,
+): Promise<{ kind: string; id: string }> {
+  const trimmed = raw.trim();
+  if (trimmed.startsWith("user:")) return { kind: "dm", id: trimmed.slice(5) };
+  if (trimmed.startsWith("channel:")) return { kind: "channel", id: trimmed.slice(8) };
+  return { kind: "channel", id: trimmed };
+}

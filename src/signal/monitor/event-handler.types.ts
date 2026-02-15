@@ -16,6 +16,13 @@ export type SignalEnvelope = {
   reactionMessage?: SignalReactionMessage | null;
 };
 
+export type SignalMention = {
+  uuid?: string | null;
+  number?: string | null;
+  start?: number;
+  length?: number;
+};
+
 export type SignalDataMessage = {
   timestamp?: number;
   message?: string | null;
@@ -26,6 +33,7 @@ export type SignalDataMessage = {
   } | null;
   quote?: { text?: string | null } | null;
   reaction?: SignalReactionMessage | null;
+  mentions?: SignalMention[] | null;
 };
 
 export type SignalReactionMessage = {

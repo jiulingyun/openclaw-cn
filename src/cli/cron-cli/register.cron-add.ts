@@ -8,7 +8,7 @@ import { addGatewayClientOptions, callGatewayFromCli } from "../gateway-rpc.js";
 import { parsePositiveIntOrUndefined } from "../program/helpers.js";
 import {
   getCronChannelOptions,
-  parseAtMs,
+  parseAt,
   parseDurationMs,
   printCronList,
   warnIfCronSchedulerDisabled,
@@ -112,7 +112,7 @@ export function registerCronAddCommand(cron: Command) {
               throw new Error("Choose exactly one schedule: --at, --every, or --cron");
             }
             if (at) {
-              const atMs = parseAtMs(at);
+              const atMs = parseAt(at);
               if (!atMs) {
                 throw new Error("Invalid --at; use ISO time or duration like 20m");
               }

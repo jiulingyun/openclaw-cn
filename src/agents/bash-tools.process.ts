@@ -1,6 +1,6 @@
 import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
 import { Type } from "@sinclair/typebox";
-import { formatDurationCompact } from "../infra/format-time/format-duration.ts";
+import { formatDurationCompact } from "../infra/format-time/format-duration.js";
 import {
   deleteSession,
   drainSession,

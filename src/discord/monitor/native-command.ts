@@ -18,7 +18,7 @@ import type {
   NativeCommandSpec,
 } from "../../auto-reply/commands-registry.js";
 import type { ReplyPayload } from "../../auto-reply/types.js";
-import type { OpenClawConfig, loadConfig } from "../../config/config.js";
+import type { ClawdbotConfig, loadConfig } from "../../config/config.js";
 import { resolveEffectiveMessagesConfig, resolveHumanDelayConfig } from "../../agents/identity.js";
 import { resolveChunkMode, resolveTextChunkLimit } from "../../auto-reply/chunk.js";
 import {
@@ -54,7 +54,7 @@ import { resolveDiscordSenderIdentity } from "./sender-identity.js";
 import { resolveDiscordChannelInfo } from "./message-utils.js";
 import { resolveDiscordThreadParentInfo } from "./threading.js";
 
-type DiscordConfig = NonNullable<OpenClawConfig["channels"]>["discord"];
+type DiscordConfig = NonNullable<ClawdbotConfig["channels"]>["discord"];
 
 function buildDiscordCommandOptions(params: {
   command: ChatCommandDefinition;

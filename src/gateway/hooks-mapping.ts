@@ -1,11 +1,7 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import {
-  CONFIG_PATH_OPENCLAW,
-  type HookMappingConfig,
-  type HooksConfig,
-} from "../config/config.js";
+import { CONFIG_PATH, type HookMappingConfig, type HooksConfig } from "../config/config.js";
 import type { HookMessageChannel } from "./hooks.js";
 
 export type HookMappingResolved = {
@@ -128,7 +124,7 @@ export function resolveHookMappings(
   }
   if (mappings.length === 0) return [];
 
-  const configDir = path.resolve(opts?.configDir ?? path.dirname(CONFIG_PATH_OPENCLAW));
+  const configDir = path.resolve(opts?.configDir ?? path.dirname(CONFIG_PATH));
   const transformsRootDir = path.join(configDir, "hooks", "transforms");
   const transformsDir = resolveOptionalContainedPath(
     transformsRootDir,

@@ -1493,3 +1493,6 @@ export async function requestExecApprovalViaSocket(params: {
     });
   });
 }
+
+export * from "./exec-approvals-analysis.js";
+export * from "./exec-approvals-allowlist.js";

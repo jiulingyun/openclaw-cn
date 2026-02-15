@@ -74,3 +74,10 @@ export {
   MOONSHOT_DEFAULT_MODEL_ID,
   MOONSHOT_DEFAULT_MODEL_REF,
 } from "./onboard-auth.models.js";
+
+export async function setHuggingfaceApiKey(
+  apiKey: string,
+  store: Record<string, unknown>,
+): Promise<void> {
+  store["huggingface.apiKey"] = apiKey;
+}

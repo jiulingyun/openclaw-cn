@@ -48,6 +48,8 @@ export type HookEntry = {
   hook: Hook;
   frontmatter: ParsedHookFrontmatter;
   openclaw?: OpenclawHookMetadata;
+  /** Upstream alias for openclaw metadata. */
+  metadata?: OpenclawHookMetadata;
   invocation?: HookInvocationPolicy;
 };
 

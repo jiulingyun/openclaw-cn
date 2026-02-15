@@ -7,7 +7,7 @@ import type {
   Tool,
   Usage,
 } from "@mariozechner/pi-ai";
-import { createAssistantMessageEventStream } from "@mariozechner/pi-ai";
+import { AssistantMessageEventStream } from "@mariozechner/pi-ai";
 import { randomUUID } from "node:crypto";
 
 export const OLLAMA_NATIVE_BASE_URL = "http://127.0.0.1:11434";
@@ -286,7 +286,7 @@ export function createOllamaStreamFn(baseUrl: string): StreamFn {
   const chatUrl = resolveOllamaChatUrl(baseUrl);
 
   return (model, context, options) => {
-    const stream = createAssistantMessageEventStream();
+    const stream = new AssistantMessageEventStream();
 
     const run = async () => {
       try {

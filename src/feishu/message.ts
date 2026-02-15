@@ -1,5 +1,5 @@
 import type { Client } from "@larksuiteoapi/node-sdk";
-import type { OpenClawConfig } from "../config/config.js";
+import type { ClawdbotConfig } from "../config/config.js";
 import { resolveSessionAgentId } from "../agents/agent-scope.js";
 import { dispatchReplyWithBufferedBlockDispatcher } from "../auto-reply/reply/provider-dispatcher.js";
 import { createReplyPrefixOptions } from "../channels/reply-prefix.js";
@@ -57,7 +57,7 @@ type FeishuEventPayload = {
 const SUPPORTED_MSG_TYPES = new Set(["text", "image", "file", "audio", "media", "sticker"]);
 
 export type ProcessFeishuMessageOptions = {
-  cfg?: OpenClawConfig;
+  cfg?: ClawdbotConfig;
   accountId?: string;
   resolvedConfig?: ResolvedFeishuConfig;
   /** Feishu app credentials for streaming card API */

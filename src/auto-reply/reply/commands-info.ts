@@ -116,3 +116,11 @@ export const handleWhoamiCommand: CommandHandler = async (params, allowTextComma
   }
   return { shouldContinue: false, reply: { text: lines.join("\n") } };
 };
+
+export function buildCommandsPaginationKeyboard(
+  _page: number,
+  _totalPages: number,
+  _prefix?: string,
+): { text: string; callbackData: string }[][] {
+  return [];
+}

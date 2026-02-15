@@ -1,4 +1,4 @@
-import type { OpenClawConfig } from "../config/config.js";
+import type { ClawdbotConfig } from "../config/config.js";
 import type { GatewayMessageChannel } from "../utils/message-channel.js";
 import type { AnyAgentTool } from "./tools/common.js";
 import { resolvePluginTools } from "../plugins/tools.js";
@@ -39,7 +39,7 @@ export function createOpenClawTools(options?: {
   sandboxRoot?: string;
   workspaceDir?: string;
   sandboxed?: boolean;
-  config?: OpenClawConfig;
+  config?: ClawdbotConfig;
   pluginToolAllowlist?: string[];
   /** Current channel ID for auto-threading (Slack). */
   currentChannelId?: string;
@@ -168,3 +168,6 @@ export function createOpenClawTools(options?: {
 
   return [...tools, ...pluginTools];
 }
+
+/** @deprecated Use createOpenClawTools instead */
+export const createClawdbotTools = createOpenClawTools;

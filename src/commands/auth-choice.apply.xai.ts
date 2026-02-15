@@ -8,10 +8,10 @@ import {
 import { applyDefaultModelChoice } from "./auth-choice.default-model.js";
 import {
   applyAuthProfileConfig,
-  applyXaiConfig,
-  applyXaiProviderConfig,
-  setXaiApiKey,
-  XAI_DEFAULT_MODEL_REF,
+  applyZaiConfig,
+  applyXiaomiProviderConfig,
+  setZaiApiKey,
+  ZAI_DEFAULT_MODEL_REF,
 } from "./onboard-auth.js";
 
 export async function applyAuthChoiceXAI(
@@ -36,7 +36,7 @@ export async function applyAuthChoiceXAI(
   let hasCredential = false;
   const optsKey = params.opts?.xaiApiKey?.trim();
   if (optsKey) {
-    await setXaiApiKey(normalizeApiKeyInput(optsKey), params.agentDir);
+    await setZaiApiKey(normalizeApiKeyInput(optsKey), params.agentDir);
     hasCredential = true;
   }
 
@@ -48,7 +48,7 @@ export async function applyAuthChoiceXAI(
         initialValue: true,
       });
       if (useExisting) {
-        await setXaiApiKey(envKey.apiKey, params.agentDir);
+        await setZaiApiKey(envKey.apiKey, params.agentDir);
         hasCredential = true;
       }
     }
@@ -59,7 +59,7 @@ export async function applyAuthChoiceXAI(
       message: "Enter xAI API key",
       validate: validateApiKeyInput,
     });
-    await setXaiApiKey(normalizeApiKeyInput(String(key)), params.agentDir);
+    await setZaiApiKey(normalizeApiKeyInput(String(key)), params.agentDir);
   }
 
   nextConfig = applyAuthProfileConfig(nextConfig, {
@@ -71,10 +71,10 @@ export async function applyAuthChoiceXAI(
     const applied = await applyDefaultModelChoice({
       config: nextConfig,
       setDefaultModel: params.setDefaultModel,
-      defaultModel: XAI_DEFAULT_MODEL_REF,
-      applyDefaultConfig: applyXaiConfig,
-      applyProviderConfig: applyXaiProviderConfig,
-      noteDefault: XAI_DEFAULT_MODEL_REF,
+      defaultModel: ZAI_DEFAULT_MODEL_REF,
+      applyDefaultConfig: applyZaiConfig,
+      applyProviderConfig: applyXiaomiProviderConfig,
+      noteDefault: ZAI_DEFAULT_MODEL_REF,
       noteAgentModel,
       prompter: params.prompter,
     });

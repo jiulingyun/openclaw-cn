@@ -10,7 +10,7 @@ import {
   type SessionEntry,
 } from "../config/sessions.js";
 import { info } from "../globals.js";
-import { formatTimeAgo } from "../infra/format-time/format-relative.ts";
+import { formatTimeAgo } from "../infra/format-time/format-relative.js";
 import { isRich, theme } from "../terminal/theme.js";
 
 type SessionRow = {

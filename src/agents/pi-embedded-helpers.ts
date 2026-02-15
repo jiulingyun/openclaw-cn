@@ -1,10 +1,8 @@
 export {
   buildBootstrapContextFiles,
   DEFAULT_BOOTSTRAP_MAX_CHARS,
-  DEFAULT_BOOTSTRAP_TOTAL_MAX_CHARS,
   ensureSessionHeader,
   resolveBootstrapMaxChars,
-  resolveBootstrapTotalMaxChars,
   stripThoughtSignatures,
 } from "./pi-embedded-helpers/bootstrap.js";
 export {
@@ -17,6 +15,8 @@ export {
   isBillingAssistantError,
   parseApiErrorInfo,
   sanitizeUserFacingText,
+  formatBillingErrorMessage,
+  BILLING_ERROR_USER_MESSAGE,
   isBillingErrorMessage,
   isCloudCodeAssistFormatError,
   isCompactionFailureError,
@@ -31,6 +31,7 @@ export {
   isRateLimitErrorMessage,
   isTimeoutErrorMessage,
   parseImageDimensionError,
+  parseImageSizeError,
 } from "./pi-embedded-helpers/errors.js";
 export {
   isGoogleModelApi,
