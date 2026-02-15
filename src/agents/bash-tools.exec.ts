@@ -18,6 +18,7 @@ import {
   recordAllowlistUse,
   resolveExecApprovals,
   resolveExecApprovalsFromFile,
+  buildSafeShellCommand,
 } from "../infra/exec-approvals.js";
 import { requestHeartbeatNow } from "../infra/heartbeat-wake.js";
 import { buildNodeShellCommand } from "../infra/node-shell.js";
@@ -758,6 +759,7 @@ export function createExecTool(
       const maxOutput = DEFAULT_MAX_OUTPUT;
       const pendingMaxOutput = DEFAULT_PENDING_MAX_OUTPUT;
       const warnings: string[] = [];
+      let execCommandOverride: string | undefined;
       const backgroundRequested = params.background === true;
       const yieldRequested = typeof params.yieldMs === "number";
       if (!allowBackground && (backgroundRequested || yieldRequested)) {
@@ -1365,6 +1367,25 @@ export function createExecTool(
           throw new Error("exec denied: allowlist miss");
         }
 
+        // If allowlist is satisfied only via safeBins (no explicit allowlist match),
+        // run a sanitized `shell -c` command that disables glob/var expansion by
+        // forcing every argv token to be literal via single-quoting.
+        if (
+          hostSecurity === "allowlist" &&
+          analysisOk &&
+          allowlistSatisfied &&
+          allowlistMatches.length === 0
+        ) {
+          const safe = buildSafeShellCommand({
+            command: params.command,
+            platform: process.platform,
+          });
+          if (!safe.ok || !safe.command) {
+            throw new Error(`exec denied: safeBins sanitize failed (${safe.reason ?? "unknown"})`);
+          }
+          execCommandOverride = safe.command;
+        }
+
         if (allowlistMatches.length > 0) {
           const seen = new Set<string>();
           for (const match of allowlistMatches) {
@@ -1387,6 +1408,7 @@ export function createExecTool(
       const usePty = params.pty === true && !sandbox;
       const run = await runExecProcess({
         command: params.command,
+        execCommand: execCommandOverride,
         workdir,
         env,
         sandbox,
