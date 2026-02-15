@@ -1,6 +1,6 @@
 import AppKit
-import ClawdbotDiscovery
-import ClawdbotIPC
+import OpenClawDiscovery
+import OpenClawIPC
 import Foundation
 import SwiftUI
 
@@ -35,7 +35,9 @@ extension OnboardingView {
                 user: user,
                 host: host,
                 port: gateway.sshPort)
-            ClawdbotConfigFile.setRemoteGatewayUrl(host: host, port: gateway.gatewayPort)
+            OpenClawConfigFile.setRemoteGatewayUrl(
+                host: gateway.serviceHost ?? host,
+                port: gateway.servicePort ?? gateway.gatewayPort)
         }
         self.state.remoteCliPath = gateway.cliPath ?? ""
 
@@ -47,7 +49,7 @@ extension OnboardingView {
         SettingsTabRouter.request(tab)
         self.openSettings()
         DispatchQueue.main.async {
-            NotificationCenter.default.post(name: .clawdbotSelectSettingsTab, object: tab)
+            NotificationCenter.default.post(name: .openclawSelectSettingsTab, object: tab)
         }
     }
 
@@ -67,7 +69,7 @@ extension OnboardingView {
     }
 
     func finish() {
-        UserDefaults.standard.set(true, forKey: "clawdbot.onboardingSeen")
+        UserDefaults.standard.set(true, forKey: "openclaw.onboardingSeen")
         UserDefaults.standard.set(currentOnboardingVersion, forKey: onboardingVersionKey)
         OnboardingController.shared.close()
     }
@@ -113,9 +115,9 @@ extension OnboardingView {
                 code: parsed.code,
                 state: parsed.state,
                 verifier: pkce.verifier)
-            try ClawdbotOAuthStore.saveAnthropicOAuth(creds)
+            try OpenClawOAuthStore.saveAnthropicOAuth(creds)
             self.refreshAnthropicOAuthStatus()
-            self.anthropicAuthStatus = "Connected. Clawdbot can now use Claude."
+            self.anthropicAuthStatus = "Connected. OpenClaw can now use Claude."
         } catch {
             self.anthropicAuthStatus = "OAuth failed: \(error.localizedDescription)"
         }
