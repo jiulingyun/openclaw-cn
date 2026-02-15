@@ -1,14 +1,13 @@
 import path from "node:path";
-
 import type { ClawdbotConfig } from "../config/config.js";
+import type { HookEligibilityContext, HookEntry, HookInstallSpec } from "./types.js";
+import { evaluateRequirementsFromMetadata } from "../shared/requirements.js";
 import { CONFIG_DIR } from "../utils.js";
 import { hasBinary, isConfigPathTruthy, resolveConfigPath, resolveHookConfig } from "./config.js";
-import type { HookEligibilityContext, HookEntry, HookInstallSpec } from "./types.js";
 import { loadWorkspaceHookEntries } from "./workspace.js";
 
 export type HookStatusConfigCheck = {
   path: string;
-  value: unknown;
   satisfied: boolean;
 };
 
@@ -60,12 +59,14 @@ export type HookStatusReport = {
 };
 
 function resolveHookKey(entry: HookEntry): string {
-  return entry.openclaw?.hookKey ?? entry.hook.name;
+  return entry.metadata?.hookKey ?? entry.hook.name;
 }
 
 function normalizeInstallOptions(entry: HookEntry): HookInstallOption[] {
-  const install = entry.openclaw?.install ?? [];
-  if (install.length === 0) return [];
+  const install = entry.metadata?.install ?? [];
+  if (install.length === 0) {
+    return [];
+  }
 
   // For hooks, we just list all install options
   return install.map((spec, index) => {
@@ -75,7 +76,7 @@ function normalizeInstallOptions(entry: HookEntry): HookInstallOption[] {
 
     if (!label) {
       if (spec.kind === "bundled") {
-        label = "Bundled with Clawdbot";
+        label = "Bundled with OpenClaw";
       } else if (spec.kind === "npm" && spec.package) {
         label = `Install ${spec.package} (npm)`;
       } else if (spec.kind === "git" && spec.repository) {
@@ -98,77 +99,34 @@ function buildHookStatus(
   const hookConfig = resolveHookConfig(config, hookKey);
   const managedByPlugin = entry.hook.source === "openclaw-plugin";
   const disabled = managedByPlugin ? false : hookConfig?.enabled === false;
-  const always = entry.openclaw?.always === true;
-  const emoji = entry.openclaw?.emoji ?? entry.frontmatter.emoji;
+  const always = entry.metadata?.always === true;
+  const emoji = entry.metadata?.emoji ?? entry.frontmatter.emoji;
   const homepageRaw =
-    entry.openclaw?.homepage ??
+    entry.metadata?.homepage ??
     entry.frontmatter.homepage ??
     entry.frontmatter.website ??
     entry.frontmatter.url;
   const homepage = homepageRaw?.trim() ? homepageRaw.trim() : undefined;
-  const events = entry.openclaw?.events ?? [];
+  const events = entry.metadata?.events ?? [];
 
-  const requiredBins = entry.openclaw?.requires?.bins ?? [];
-  const requiredAnyBins = entry.openclaw?.requires?.anyBins ?? [];
-  const requiredEnv = entry.openclaw?.requires?.env ?? [];
-  const requiredConfig = entry.openclaw?.requires?.config ?? [];
-  const requiredOs = entry.openclaw?.os ?? [];
-
-  const missingBins = requiredBins.filter((bin) => {
-    if (hasBinary(bin)) return false;
-    if (eligibility?.remote?.hasBin?.(bin)) return false;
-    return true;
+  const {
+    required,
+    missing,
+    eligible: requirementsSatisfied,
+    configChecks,
+  } = evaluateRequirementsFromMetadata({
+    always,
+    metadata: entry.metadata,
+    hasLocalBin: hasBinary,
+    hasRemoteBin: eligibility?.remote?.hasBin,
+    hasRemoteAnyBin: eligibility?.remote?.hasAnyBin,
+    localPlatform: process.platform,
+    remotePlatforms: eligibility?.remote?.platforms,
+    isEnvSatisfied: (envName) => Boolean(process.env[envName] || hookConfig?.env?.[envName]),
+    isConfigSatisfied: (pathStr) => isConfigPathTruthy(config, pathStr),
   });
 
-  const missingAnyBins =
-    requiredAnyBins.length > 0 &&
-    !(
-      requiredAnyBins.some((bin) => hasBinary(bin)) ||
-      eligibility?.remote?.hasAnyBin?.(requiredAnyBins)
-    )
-      ? requiredAnyBins
-      : [];
-
-  const missingOs =
-    requiredOs.length > 0 &&
-    !requiredOs.includes(process.platform) &&
-    !eligibility?.remote?.platforms?.some((platform) => requiredOs.includes(platform))
-      ? requiredOs
-      : [];
-
-  const missingEnv: string[] = [];
-  for (const envName of requiredEnv) {
-    if (process.env[envName]) continue;
-    if (hookConfig?.env?.[envName]) continue;
-    missingEnv.push(envName);
-  }
-
-  const configChecks: HookStatusConfigCheck[] = requiredConfig.map((pathStr) => {
-    const value = resolveConfigPath(config, pathStr);
-    const satisfied = isConfigPathTruthy(config, pathStr);
-    return { path: pathStr, value, satisfied };
-  });
-
-  const missingConfig = configChecks.filter((check) => !check.satisfied).map((check) => check.path);
-
-  const missing = always
-    ? { bins: [], anyBins: [], env: [], config: [], os: [] }
-    : {
-        bins: missingBins,
-        anyBins: missingAnyBins,
-        env: missingEnv,
-        config: missingConfig,
-        os: missingOs,
-      };
-
-  const eligible =
-    !disabled &&
-    (always ||
-      (missing.bins.length === 0 &&
-        missing.anyBins.length === 0 &&
-        missing.env.length === 0 &&
-        missing.config.length === 0 &&
-        missing.os.length === 0));
+  const eligible = !disabled && requirementsSatisfied;
 
   return {
     name: entry.hook.name,
@@ -186,13 +144,7 @@ function buildHookStatus(
     disabled,
     eligible,
     managedByPlugin,
-    requirements: {
-      bins: requiredBins,
-      anyBins: requiredAnyBins,
-      env: requiredEnv,
-      config: requiredConfig,
-      os: requiredOs,
-    },
+    requirements: required,
     missing,
     configChecks,
     install: normalizeInstallOptions(entry),
