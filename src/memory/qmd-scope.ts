@@ -11,6 +11,11 @@ export function isQmdScopeAllowed(scope: ResolvedQmdConfig["scope"], sessionKey?
   if (!scope) {
     return true;
   }
+  // CLI searches (no sessionKey) always bypass scope rules.
+  // Scope is designed for channel/messaging contexts, not direct CLI usage.
+  if (sessionKey === undefined || sessionKey === null) {
+    return true;
+  }
   const parsed = parseQmdSessionScope(sessionKey);
   const channel = parsed.channel;
   const chatType = parsed.chatType;

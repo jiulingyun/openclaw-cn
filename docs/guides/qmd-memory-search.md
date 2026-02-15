@@ -66,7 +66,7 @@ QMD 首次运行 `query` 命令时会自动从 HuggingFace 下载模型，但这
 
 ```bash
 # 进入工作区目录
-cd ~/openclaw
+cd ~/.openclaw/workspace
 
 # 初始化索引
 qmd update
@@ -197,22 +197,22 @@ openclaw-cn gateway restart
 
 ## 准备记忆文件
 
-QMD 默认索引工作区（`~/openclaw`）中的以下文件：
+QMD 默认索引工作区（`~/.openclaw/workspace`）中的以下文件：
 
 | Collection | 路径 | 匹配模式 |
 |---|---|---|
-| `memory-root` | `~/openclaw/` | `MEMORY.md` |
-| `memory-alt` | `~/openclaw/` | `memory.md` |
-| `memory-dir` | `~/openclaw/memory/` | `**/*.md` |
+| `memory-root` | `~/.openclaw/workspace/` | `MEMORY.md` |
+| `memory-alt` | `~/.openclaw/workspace/` | `memory.md` |
+| `memory-dir` | `~/.openclaw/workspace/memory/` | `**/*.md` |
 
 确保工作区目录和记忆文件存在：
 
 ```bash
 # 创建工作区（如果不存在）
-mkdir -p ~/openclaw/memory
+mkdir -p ~/.openclaw/workspace/memory
 
 # 创建一个测试记忆文件
-cat > ~/openclaw/MEMORY.md << 'EOF'
+cat > ~/.openclaw/workspace/MEMORY.md << 'EOF'
 # 个人记忆
 
 ## 偏好
@@ -238,7 +238,7 @@ which qmd && qmd --version
 
 ```bash
 # 手动更新索引
-cd ~/openclaw && qmd update
+cd ~/.openclaw/workspace && qmd update
 
 # 查看状态
 qmd status
@@ -249,7 +249,7 @@ qmd status
 ### 3. 直接测试 QMD 搜索
 
 ```bash
-cd ~/openclaw && qmd query "偏好" -c memory-root --json
+cd ~/.openclaw/workspace && qmd query "偏好" -c memory-root --json
 ```
 
 预期输出为包含匹配结果的 JSON 数组，score 大于 0。
@@ -315,7 +315,7 @@ QMD 使用以下 GGUF 模型（首次使用时自动下载）：
 
 ### 搜索返回空结果
 
-- **检查索引**：运行 `cd ~/openclaw && qmd status` 确认文件已索引
+- **检查索引**：运行 `cd ~/.openclaw/workspace && qmd status` 确认文件已索引
 - **检查作用域**：确认 `memory.qmd.scope.default` 设置为 `allow`
 - **检查超时**：如果日志显示 `timed out`，增大 `memory.qmd.limits.timeoutMs`
 

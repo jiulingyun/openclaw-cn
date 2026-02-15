@@ -51,4 +51,11 @@ describe("qmd scope", () => {
     expect(isQmdScopeAllowed(scope, "agent:main:discord:channel:c123")).toBe(false);
     expect(isQmdScopeAllowed(scope, "agent:main:slack:channel:c123")).toBe(true);
   });
+
+  it("bypasses scope when sessionKey is undefined (CLI mode)", () => {
+    expect(isQmdScopeAllowed(allowDirect, undefined)).toBe(true);
+    expect(isQmdScopeAllowed(allowDirect)).toBe(true);
+    const denyAll: ResolvedQmdConfig["scope"] = { default: "deny", rules: [] };
+    expect(isQmdScopeAllowed(denyAll, undefined)).toBe(true);
+  });
 });

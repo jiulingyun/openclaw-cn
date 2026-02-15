@@ -207,7 +207,17 @@ export class QmdMemoryManager implements MemorySearchManager {
 
     for (const collection of this.qmd.collections) {
       if (existing.has(collection.name)) {
-        continue;
+        // Collection exists — verify the path is still correct by attempting
+        // to remove and re-add it. This handles workspace migrations where the
+        // stored collection root points to a stale directory (e.g. upstream
+        // default ~/openclaw vs Chinese fork ~/.openclaw/workspace).
+        try {
+          await this.runQmd(["collection", "remove", collection.name], {
+            timeoutMs: this.qmd.update.commandTimeoutMs,
+          });
+        } catch {
+          // ignore removal failures — fall through to add
+        }
       }
       try {
         await this.runQmd(
