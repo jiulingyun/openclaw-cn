@@ -16,7 +16,7 @@ read_when:
 
 ## 简要说明
 - 定时任务在 **网关内部** 运行（不在模型内部）。
-- 任务持久化存储在 `~/.openclaw-cn/cron/` 下，因此重启不会丢失计划。
+- 任务持久化存储在 `~/.openclaw/cron/` 下，因此重启不会丢失计划。
 - 两种执行方式：
   - **主会话**：排队系统事件，然后在下次心跳时运行。
   - **独立**：在 `cron:<jobId>` 中运行专用代理回合，可选择发送输出。
@@ -147,8 +147,8 @@ Telegram 通过 `message_thread_id` 支持论坛主题。对于定时任务发�
 - `telegram:group:-1001234567890:topic:123`
 
 ## 存储和历史
-- 任务存储：`~/.openclaw-cn/cron/jobs.json`（网关管理的 JSON）。
-- 运行历史：`~/.openclaw-cn/cron/runs/<jobId>.jsonl`（JSONL，自动修剪）。
+- 任务存储：`~/.openclaw/cron/jobs.json`（网关管理的 JSON）。
+- 运行历史：`~/.openclaw/cron/runs/<jobId>.jsonl`（JSONL，自动修剪）。
 - 覆盖存储路径：配置中的 `cron.store`。
 
 ## 配置
@@ -157,7 +157,7 @@ Telegram 通过 `message_thread_id` 支持论坛主题。对于定时任务发�
 {
   cron: {
     enabled: true, // default true
-    store: "~/.openclaw-cn/cron/jobs.json",
+    store: "~/.openclaw/cron/jobs.json",
     maxConcurrentRuns: 1 // default 1
   }
 }
