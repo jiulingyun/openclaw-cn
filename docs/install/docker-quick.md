@@ -321,17 +321,24 @@ sudo netstat -ltnp | grep 18789
 
 ### 问题 2：权限拒绝（Permission Denied）
 
-**症状：** `Error: EACCES: permission denied, mkdir ...`
+**症状：** `Error: EACCES: permission denied, mkdir '/home/node/.openclaw/...'`
+
+**原因：** 容器以 `node:node`（UID 1000）用户运行，但宿主机上的数据目录可能由 root 创建，导致容器内的 node 用户没有写权限。
 
 **解决：**
 ```bash
-# 确保数据目录存在且权限正确
+# 创建数据目录并设置正确的所有者（UID 1000 = 容器内 node 用户）
 mkdir -p ./data/.openclaw ./data/clawd
-chmod 755 ./data/.openclaw ./data/clawd
-
-# 如果使用了宿主机路径，确保目录可写
-chmod 777 ./data
+chown -R 1000:1000 ./data
 ```
+
+如果数据目录已存在但权限不对：
+```bash
+# 修复已有目录的权限
+chown -R 1000:1000 ./data
+```
+
+> **说明：** `1000` 是官方 Node.js Docker 镜像中 `node` 用户的 UID/GID。`docker-compose.yml` 中 `user: node:node` 指定容器以该用户运行，因此宿主机挂载的目录必须对 UID 1000 可写。
 
 ### 问题 3：无法访问 Web UI
 

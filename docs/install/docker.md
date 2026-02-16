@@ -867,4 +867,5 @@ cat ~/.openclaw/openclaw.json | grep -A 2 controlUi
 - 镜像缺失：使用 [`scripts/sandbox-setup.sh`](https://github.com/jiulingyun/openclaw-cn/blob/main/scripts/sandbox-setup.sh) 构建或设置 `agents.defaults.sandbox.docker.image`。
 - 容器未运行：它会按需自动创建每个会话。
 - 沙箱中的权限错误：将 `docker.user` 设置为与挂载的工作空间所有权匹配的 UID:GID（或 chown 工作空间文件夹）。
+- 网关/CLI 容器权限错误（`EACCES: permission denied, mkdir '/home/node/.openclaw/...'`）：容器以 `node:node`（UID 1000）运行，宿主机挂载目录必须对 UID 1000 可写。运行 `mkdir -p ./data/.openclaw ./data/clawd && chown -R 1000:1000 ./data` 修复。
 - 找不到自定义工具：Clawdbot 使用 `sh -lc`（登录 shell）运行命令，这会 source `/etc/profile` 并可能重置 PATH。设置 `docker.env.PATH` 以在前面添加您的自定义工具路径（例如，`/custom/bin:/usr/local/share/npm-global/bin`），或在 Dockerfile 中的 `/etc/profile.d/` 下添加脚本。
