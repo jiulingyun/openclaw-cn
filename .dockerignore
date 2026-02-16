@@ -54,7 +54,9 @@ Thumbs.db
 
 # Build artifacts (will be regenerated)
 dist
-**/dist
+# extensions/*/dist 需要保留（插件预编译产物）
+!extensions/*/dist
+!extensions/*/dist/**
 apps/macos/.build
 apps/ios/build
 **/*.trace
