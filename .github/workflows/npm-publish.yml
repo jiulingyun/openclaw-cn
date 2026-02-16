@@ -44,7 +44,9 @@ jobs:
         id: npm-tag
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          if [[ "$VERSION" == *"-beta"* ]]; then
+          if [[ "$VERSION" == *"-test"* ]]; then
+            echo "tag=test" >> $GITHUB_OUTPUT
+          elif [[ "$VERSION" == *"-beta"* ]]; then
             echo "tag=beta" >> $GITHUB_OUTPUT
           else
             echo "tag=latest" >> $GITHUB_OUTPUT

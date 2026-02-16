@@ -35,6 +35,16 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Check if prerelease
+        id: prerelease
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          if [[ "$TAG" == *"-test"* || "$TAG" == *"-beta"* || "$TAG" == *"-rc"* || "$TAG" == *"-alpha"* ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -43,8 +53,8 @@ jobs:
           tags: |
             type=ref,event=tag,pattern=v(?<version>.*)
             type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ steps.prerelease.outputs.is_prerelease == 'false' }}
+            type=raw,value=latest,enable=${{ steps.prerelease.outputs.is_prerelease == 'false' && github.ref_type == 'tag' }}
 
       - name: Build and push multi-architecture image
         uses: docker/build-push-action@v5
@@ -66,7 +76,13 @@ jobs:
     if: github.event_name != 'pull_request'
 
     steps:
+      - name: Determine verify tag
+        id: verify-tag
+        run: |
+          TAG=${GITHUB_REF#refs/tags/v}
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+
       - name: Verify image on Docker Hub
         run: |
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          docker inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.verify-tag.outputs.tag }}
+          docker inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.verify-tag.outputs.tag }}
