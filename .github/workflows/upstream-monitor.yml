@@ -7,6 +7,15 @@ on:
     # 每天 UTC 08:00（北京时间 16:00）
     - cron: '0 8 * * *'
   workflow_dispatch:
+    inputs:
+      baseline_override:
+        description: '覆盖基准版本 (留空则读 last-upstream-tag)'
+        type: string
+        default: ''
+      dry_run:
+        description: '测试模式: 只创建 Issue，不提交/不触发 cherry-pick'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -35,10 +44,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # 读取基准版本
-          PREV_TAG="v2026.1.29"
-          if [ -f "$LAST_TAG_FILE" ]; then
+          # 读取基准版本（支持手动覆盖）
+          OVERRIDE="${{ inputs.baseline_override }}"
+          if [ -n "$OVERRIDE" ]; then
+            PREV_TAG="$OVERRIDE"
+            echo "Using manual override baseline: $PREV_TAG"
+          elif [ -f "$LAST_TAG_FILE" ]; then
             PREV_TAG=$(cat "$LAST_TAG_FILE" | tr -d '[:space:]')
+          else
+            PREV_TAG="v2026.1.29"
           fi
           echo "prev_tag=$PREV_TAG" >> "$GITHUB_OUTPUT"
           echo "Baseline: $PREV_TAG"
@@ -239,6 +253,7 @@ jobs:
           echo "Created issue #$NUMBER"
 
       - name: Update baseline tag
+        if: ${{ !inputs.dry_run }}
         run: |
           git config user.name "upstream-monitor[bot]"
           git config user.email "bot@openclaw-cn.dev"
@@ -263,7 +278,7 @@ jobs:
   # ================================================================
   auto-cherry-pick:
     needs: [check-upstream, extract-and-notify]
-    if: ${{ fromJSON(needs.extract-and-notify.outputs.merge_count) > 0 }}
+    if: ${{ !inputs.dry_run && fromJSON(needs.extract-and-notify.outputs.merge_count) > 0 }}
     uses: ./.github/workflows/upstream-cherry-pick.yml
     with:
       from_tag: ${{ needs.check-upstream.outputs.prev_tag }}
