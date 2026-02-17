@@ -111,7 +111,7 @@ jobs:
 
       - name: Download AI-refined commits (from upstream-monitor)
         id: artifact
-        if: steps.tags.outputs.skip != 'true'
+        if: steps.tags.outputs.skip != 'true' && github.event_name != 'workflow_dispatch'
         uses: actions/download-artifact@v4
         with:
           name: refined-commits
