@@ -186,10 +186,10 @@ while IFS='|' read -r SHA MSG; do
   INDEX=$((INDEX + 1))
 
   # 获取该 commit 修改的文件列表
-  FILES=$(git diff-tree --no-commit-id --name-only -r "$SHA" 2>/dev/null | tr '\n' ' ')
+  FILES=$(git diff-tree --no-commit-id --name-only -r "$SHA" 2>/dev/null | tr '\n' ' ' || true)
 
   # 提取 PR 号
-  PR=$(echo "$MSG" | grep -oE '#[0-9]+' | head -1 || echo "")
+  PR=$(echo "$MSG" | grep -oE '#[0-9]+' | head -1 || true)
 
   # 分类
   RESULT=$(categorize_commit "$MSG" "$FILES")
@@ -230,7 +230,7 @@ while IFS='|' read -r SHA MSG; do
   # 关联 commit 检测：同一 PR 的其他 commit
   RELATED=""
   if [ -n "$PR" ]; then
-    RELATED=$(echo "$COMMITS" | grep "$PR" | grep -v "$SHA" | cut -d'|' -f1 | tr '\n' ',' | sed 's/,$//')
+    RELATED=$(echo "$COMMITS" | grep "$PR" | grep -v "$SHA" | cut -d'|' -f1 | tr '\n' ',' | sed 's/,$//' || true)
   fi
 
   # 构建 JSON 记录
