@@ -221,7 +221,15 @@ export const sessionsHandlers: GatewayRequestHandlers = {
       return;
     }
     const p = params;
-    const key = String(p.key ?? "").trim();
+    const keyRaw =
+      typeof p.key === "string"
+        ? p.key
+        : typeof p.key === "number"
+          ? String(p.key)
+          : typeof p.key === "bigint"
+            ? String(p.key)
+            : "";
+    const key = keyRaw.trim();
     if (!key) {
       respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, "key required"));
       return;
@@ -276,7 +284,15 @@ export const sessionsHandlers: GatewayRequestHandlers = {
       return;
     }
     const p = params;
-    const key = String(p.key ?? "").trim();
+    const keyRaw =
+      typeof p.key === "string"
+        ? p.key
+        : typeof p.key === "number"
+          ? String(p.key)
+          : typeof p.key === "bigint"
+            ? String(p.key)
+            : "";
+    const key = keyRaw.trim();
     if (!key) {
       respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, "key required"));
       return;
@@ -342,7 +358,15 @@ export const sessionsHandlers: GatewayRequestHandlers = {
       return;
     }
     const p = params;
-    const key = String(p.key ?? "").trim();
+    const keyRaw =
+      typeof p.key === "string"
+        ? p.key
+        : typeof p.key === "number"
+          ? String(p.key)
+          : typeof p.key === "bigint"
+            ? String(p.key)
+            : "";
+    const key = keyRaw.trim();
     if (!key) {
       respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, "key required"));
       return;
@@ -420,7 +444,15 @@ export const sessionsHandlers: GatewayRequestHandlers = {
       return;
     }
     const p = params;
-    const key = String(p.key ?? "").trim();
+    const keyRaw =
+      typeof p.key === "string"
+        ? p.key
+        : typeof p.key === "number"
+          ? String(p.key)
+          : typeof p.key === "bigint"
+            ? String(p.key)
+            : "";
+    const key = keyRaw.trim();
     if (!key) {
       respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, "key required"));
       return;
