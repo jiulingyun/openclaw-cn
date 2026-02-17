@@ -200,7 +200,7 @@ class SkillBinsCache {
   }
 }
 
-function sanitizeEnv(
+export function sanitizeEnv(
   overrides?: Record<string, string> | null,
 ): Record<string, string> | undefined {
   if (!overrides) return undefined;
