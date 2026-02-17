@@ -1,11 +1,11 @@
 ---
-summary: "常见 Clawdbot 故障的快速故障排除指南"
+summary: "常见 OpenClaw 故障的快速故障排除指南"
 read_when:
   - 调查运行时问题或故障时
 ---
 # 故障排除 🔧
 
-当 Clawdbot 表现异常时，这里是如何修复它的方法。
+当 OpenClaw 表现异常时，这里是如何修复它的方法。
 
 如果您只是想要一个快速分类方案，请从 FAQ 的 [前 60 秒](/help/faq#first-60-seconds-if-somethings-broken) 开始。本页面深入探讨运行时故障和诊断。
 
@@ -73,7 +73,7 @@ openclaw-cn models status
 
 **如果您希望保持 OAuth 重用：**
 在网关主机上使用 Claude Code CLI 登录，然后运行 `openclaw-cn models status`
-将刷新的令牌同步到 Clawdbot 的身份验证存储中。
+将刷新的令牌同步到 OpenClaw 的身份验证存储中。
 
 更多详细信息：[Anthropic](/providers/anthropic) 和 [OAuth](/concepts/oauth)。
 
@@ -135,7 +135,7 @@ WebSocket 错误码 1006 表示“异常关闭”，连接在没有收到正常�
 
 #### 场景 1：更新后首次连接失败
 
-如果您刚更新了 Clawdbot 版本，最可能的原因是浏览器缓存了旧的设备认证数据。
+如果您刚更新了 OpenClaw 版本，最可能的原因是浏览器缓存了旧的设备认证数据。
 
 **解决方案：**
 
@@ -149,8 +149,8 @@ WebSocket 错误码 1006 表示“异常关闭”，连接在没有收到正常�
 3. 左侧展开 **Local Storage**
 4. 找到 `http://127.0.0.1:18789` 或您的网关地址
 5. 右键删除以下条目：
-   - `clawdbot-device-identity-v1`
-   - `clawdbot.device.auth.v1`
+   - `OpenClaw-device-identity-v1`
+   - `OpenClaw.device.auth.v1`
 6. 刷新页面
 
 </details>
@@ -161,7 +161,7 @@ WebSocket 错误码 1006 表示“异常关闭”，连接在没有收到正常�
 1. 按 `F12` 打开开发者工具
 2. 点击 **存储**（Storage）选项卡
 3. 左侧展开 **本地存储**（Local Storage）
-4. 找到并删除 `clawdbot` 相关条目
+4. 找到并删除 `OpenClaw` 相关条目
 5. 刷新页面
 
 </details>
@@ -172,7 +172,7 @@ WebSocket 错误码 1006 表示“异常关闭”，连接在没有收到正常�
 1. 菜单栏 → 开发 → 显示 Web 检查器
 2. 点击 **存储**（Storage）选项卡
 3. 左侧展开 **本地存储**
-4. 找到并删除 `clawdbot` 相关条目
+4. 找到并删除 `OpenClaw` 相关条目
 5. 刷新页面
 
 </details>
@@ -183,7 +183,7 @@ WebSocket 错误码 1006 表示“异常关闭”，连接在没有收到正常�
 1. 按 `F12` 打开开发者工具
 2. 点击 **应用程序**（Application）选项卡
 3. 左侧展开 **本地存储**（Local Storage）
-4. 找到并删除 `clawdbot` 相关条目
+4. 找到并删除 `OpenClaw` 相关条目
 5. 刷新页面
 
 </details>
@@ -359,8 +359,8 @@ Doctor/服务将显示运行时状态（PID/上次退出）和日志提示。
 - 优先使用：`openclaw-cn logs --follow`
 - 文件日志（始终）：`/tmp/openclaw/openclaw-YYYY-MM-DD.log`（或您配置的 `logging.file`）
 - macOS LaunchAgent（如果已安装）：`$OPENCLAW_STATE_DIR/logs/gateway.log` 和 `gateway.err.log`
-- Linux systemd（如果已安装）：`journalctl --user -u clawdbot-gateway[-<profile>].service -n 200 --no-pager`
-- Windows：`schtasks /Query /TN "Clawdbot Gateway (<profile>)" /V /FO LIST`
+- Linux systemd（如果已安装）：`journalctl --user -u OpenClaw-gateway[-<profile>].service -n 200 --no-pager`
+- Windows：`schtasks /Query /TN "OpenClaw Gateway (<profile>)" /V /FO LIST`
 
 **启用更多日志记录：**
 - 提高文件日志详细程度（持久化 JSONL）：
@@ -661,7 +661,7 @@ grep "media|fetch|download" "$(ls -t /tmp/openclaw/openclaw-*.log | head -1)" | 
 
 ### 高内存使用
 
-Clawdbot 将对话历史保存在内存中。
+OpenClaw 将对话历史保存在内存中。
 
 **修复：** 定期重启或设置会话限制：
 ```json
@@ -676,7 +676,7 @@ Clawdbot 将对话历史保存在内存中。
 
 ### "网关无法启动 — 配置无效"
 
-当配置包含未知键、格式错误的值或无效类型时，Clawdbot 现在拒绝启动。
+当配置包含未知键、格式错误的值或无效类型时，OpenClaw 现在拒绝启动。
 这是为了安全而有意为之的。
 
 使用 Doctor 修复它：
@@ -805,12 +805,12 @@ See [Streaming](/concepts/streaming).
 ### Cloud Code Assist API 错误：无效的工具模式 (400)。现在怎么办？
 
 这几乎总是 **工具模式兼容性** 问题。Cloud Code Assist
-端点接受严格的 JSON 模式子集。Clawdbot 在当前 `main` 分支中清理/规范化工具
+端点接受严格的 JSON 模式子集。OpenClaw 在当前 `main` 分支中清理/规范化工具
 模式，但该修复尚未包含在最新版本中（截至
 2026年1月13日）。
 
 修复清单：
-1) **更新 Clawdbot**：
+1) **更新 OpenClaw**：
    - 如果您可以从源代码运行，请拉取 `main` 并重启网关。
    - 否则，请等待包含模式清理器的下一个版本。
 2) 避免不受支持的关键字，如 `anyOf/oneOf/allOf`、`patternProperties`、
@@ -832,7 +832,7 @@ tccutil reset All com.openclaw.mac.debug
 ```
 
 **修复 2：强制新包 ID**
-如果重置不起作用，请在 [`scripts/package-mac-app.sh`](https://github.com/clawdbot/clawdbot/blob/main/scripts/package-mac-app.sh) 中更改 `BUNDLE_ID`（例如，添加 `.test` 后缀）并重建。这会强制 macOS 将其视为新应用。
+如果重置不起作用，请在 [`scripts/package-mac-app.sh`](https://github.com/OpenClaw/OpenClaw/blob/main/scripts/package-mac-app.sh) 中更改 `BUNDLE_ID`（例如，添加 `.test` 后缀）并重建。这会强制 macOS 将其视为新应用。
 
 ### 网关卡在 "Starting..."
 
@@ -883,7 +883,7 @@ openclaw-cn channels login --verbose
 | 日志 | 位置 |
 |-----|----------|
 | 网关文件日志（结构化） | `/tmp/openclaw/openclaw-YYYY-MM-DD.log` （或 `logging.file`） |
-| 网关服务日志（监督程序） | macOS: `$OPENCLAW_STATE_DIR/logs/gateway.log` + `gateway.err.log` （默认：`~/.openclaw/logs/...`; 配置文件使用 `~/.openclaw-<profile>/logs/...`）<br />Linux: `journalctl --user -u openclaw-cn-gateway[-<profile>].service -n 200 --no-pager`<br />Windows: `schtasks /Query /TN "Clawdbot Gateway (<profile>)" /V /FO LIST` |
+| 网关服务日志（监督程序） | macOS: `$OPENCLAW_STATE_DIR/logs/gateway.log` + `gateway.err.log` （默认：`~/.openclaw/logs/...`; 配置文件使用 `~/.openclaw-<profile>/logs/...`）<br />Linux: `journalctl --user -u openclaw-cn-gateway[-<profile>].service -n 200 --no-pager`<br />Windows: `schtasks /Query /TN "OpenClaw Gateway (<profile>)" /V /FO LIST` |
 | 会话文件 | `$OPENCLAW_STATE_DIR/agents/<agentId>/sessions/` |
 | 媒体缓存 | `$OPENCLAW_STATE_DIR/media/` |
 | 凭据 | `$OPENCLAW_STATE_DIR/credentials/` |
