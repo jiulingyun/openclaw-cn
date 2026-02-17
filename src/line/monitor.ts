@@ -140,6 +140,11 @@ export async function monitorLineProvider(
   } = opts;
   const resolvedAccountId = accountId ?? "default";
 
+  // Security: fail closed if webhook authentication is missing
+  if (!channelSecret?.trim()) {
+    throw new Error("需要 LINE 频道密钥来进行 webhook 认证");
+  }
+
   // Record starting state
   recordChannelRuntimeState({
     channel: "line",

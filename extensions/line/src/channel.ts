@@ -622,6 +622,11 @@ export const linePlugin: ChannelPlugin<ResolvedLineAccount> = {
       const token = account.channelAccessToken.trim();
       const secret = account.channelSecret.trim();
 
+      // Security: fail closed if webhook authentication is missing
+      if (!secret) {
+        throw new Error("需要 LINE 频道密钥来进行 webhook 认证");
+      }
+
       let lineBotLabel = "";
       try {
         const probe = await getLineRuntime().channel.line.probeLineBot(token, 2500);
