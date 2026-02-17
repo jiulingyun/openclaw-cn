@@ -24,6 +24,7 @@ export default defineConfig({
       "src/**/*.test.ts",
       "extensions/**/*.test.ts",
       "test/format-error.test.ts",
+      "test/git-hooks-pre-commit.test.ts",
     ],
     setupFiles: ["test/setup.ts"],
     exclude: [

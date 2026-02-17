@@ -1,4 +1,38 @@
-#!/bin/sh
-ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
-[ -z "$ROOT" ] && exit 0
-node "$ROOT/scripts/format-staged.js"
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+ROOT_DIR="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+RUN_NODE_TOOL="$ROOT_DIR/scripts/pre-commit/run-node-tool.sh"
+FILTER_FILES="$ROOT_DIR/scripts/pre-commit/filter-staged-files.mjs"
+
+if [[ ! -x "$RUN_NODE_TOOL" ]]; then
+  echo "缺少辅助脚本: $RUN_NODE_TOOL" >&2
+  exit 1
+fi
+
+if [[ ! -f "$FILTER_FILES" ]]; then
+  echo "缺少辅助脚本: $FILTER_FILES" >&2
+  exit 1
+fi
+
+# 安全性：避免恶意文件名（例如 "--all"、"--force"）导致的选项注入。
+# 健壮性：NUL 分隔的文件列表可安全处理包含空格/换行的文件名。
+mapfile -d '' -t files < <(git diff --cached --name-only --diff-filter=ACMR -z)
+
+if [ "${#files[@]}" -eq 0 ]; then
+  exit 0
+fi
+
+mapfile -d '' -t lint_files < <(node "$FILTER_FILES" lint -- "${files[@]}")
+mapfile -d '' -t format_files < <(node "$FILTER_FILES" format -- "${files[@]}")
+
+if [ "${#lint_files[@]}" -gt 0 ]; then
+  "$RUN_NODE_TOOL" oxlint --type-aware --fix -- "${lint_files[@]}"
+fi
+
+if [ "${#format_files[@]}" -gt 0 ]; then
+  "$RUN_NODE_TOOL" oxfmt --write -- "${format_files[@]}"
+fi
+
+git add -- "${files[@]}"
