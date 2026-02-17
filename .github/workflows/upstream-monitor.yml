@@ -249,49 +249,77 @@ jobs:
 
           echo "AI response received (${#RESPONSE} chars)"
 
-          # ---- 解析 AI 输出并应用到 commits.json ----
-          # 提取 JSON 数组（兼容 AI 在 JSON 外加了 markdown code fence 的情况）
-          AI_DECISIONS=$(echo "$RESPONSE" | sed -n '/^\[/,/^\]/p' | jq -c '.' 2>/dev/null)
+          # ---- 解析 AI 输出 ----
+          # 保存原始响应用于调试
+          printf '%s\n' "$RESPONSE" > /tmp/ai-raw-response.txt
+
+          # 提取 JSON 数组（多种策略，兼容 AI 各种输出格式）
+          # 策略1: 直接整体解析（AI 只输出了 JSON）
+          # 策略2: 提取 ```json ... ``` 代码块
+          # 策略3: 提取第一个 [ 到最后一个 ] 之间的内容
+          AI_DECISIONS=""
+          # 策略1: 整体解析
+          AI_DECISIONS=$(printf '%s\n' "$RESPONSE" | jq -c 'if type == "array" then . else empty end' 2>/dev/null) || true
           if [ -z "$AI_DECISIONS" ]; then
-            # 尝试从 code fence 中提取
-            AI_DECISIONS=$(echo "$RESPONSE" | sed -n '/```json/,/```/p' | grep -v '```' | jq -c '.' 2>/dev/null)
+            # 策略2: 从 code fence 提取
+            FENCED=$(printf '%s\n' "$RESPONSE" | sed -n '/^```/,/^```/{/^```/d;p}')
+            if [ -n "$FENCED" ]; then
+              AI_DECISIONS=$(printf '%s\n' "$FENCED" | jq -c 'if type == "array" then . else empty end' 2>/dev/null) || true
+            fi
+          fi
+          if [ -z "$AI_DECISIONS" ]; then
+            # 策略3: 用 grep+awk 提取 [ ... ] 块
+            BRACKET=$(awk '/\[/{found=1} found{buf=buf $0 "\n"} /\]/{if(found){print buf; exit}}' /tmp/ai-raw-response.txt)
+            if [ -n "$BRACKET" ]; then
+              AI_DECISIONS=$(printf '%s\n' "$BRACKET" | jq -c '.' 2>/dev/null) || true
+            fi
           fi
 
           if [ -z "$AI_DECISIONS" ] || [ "$AI_DECISIONS" = "null" ]; then
             echo "::warning::AI 输出解析失败，使用脚本规则分类"
-            echo "$RESPONSE" | head -20 >&2
+            head -30 /tmp/ai-raw-response.txt >&2
             echo "ai_used=false" >> "$GITHUB_OUTPUT"
             echo "ai_overrides=0" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          OVERRIDE_COUNT=0
+          AI_COUNT=$(printf '%s\n' "$AI_DECISIONS" | jq 'length')
+          echo "AI returned $AI_COUNT decisions"
 
-          # 将 AI 决策保存为文件，用 jq 一次性合并（避免 eval + shell 循环）
-          echo "$AI_DECISIONS" > /tmp/ai-overrides.json
+          # 将 AI 决策保存为文件，用 jq 一次性合并
+          printf '%s\n' "$AI_DECISIONS" > /tmp/ai-overrides.json
 
           # 用 jq 合并 AI 决策到 commits.json
+          # 注意: AI 只审查了非 SKIP 的 commit，SKIP 的保持不变
           jq --slurpfile overrides /tmp/ai-overrides.json '
-            # 建立 sha→override 索引
-            ($overrides[0] | map({key: .s, value: .}) | from_entries) as $idx |
+            ($overrides[0] | map(select(.s != null) | {key: .s, value: .}) | from_entries) as $idx |
             [.[] |
               (.sha[:10]) as $prefix |
               if $idx[$prefix] then
-                .action = $idx[$prefix].a |
-                .priority = $idx[$prefix].p |
-                (if $idx[$prefix].c then .category = $idx[$prefix].c else . end) |
-                (if $idx[$prefix].r then .ai_note = $idx[$prefix].r else . end)
+                .action = ($idx[$prefix].a // .action) |
+                .priority = ($idx[$prefix].p // .priority) |
+                .category = ($idx[$prefix].c // .category) |
+                if $idx[$prefix].r then .ai_note = $idx[$prefix].r else . end
               else . end
-            ]' /tmp/commits.json > /tmp/commits-merged.json
+            ]' /tmp/commits.json > /tmp/commits-merged.json || {
+              echo "::warning::jq 合并失败，使用脚本规则分类"
+              jq '.' /tmp/ai-overrides.json | head -5 >&2 || true
+              echo "ai_used=false" >> "$GITHUB_OUTPUT"
+              echo "ai_overrides=0" >> "$GITHUB_OUTPUT"
+              exit 0
+            }
 
           mv /tmp/commits-merged.json /tmp/commits.json
 
           # 打印被修改的条目
-          jq -r '.[] | select(.ai_note) | "  🔄 \(.sha[:10]): \(.action)/\(.priority) — \(.ai_note)"' /tmp/commits.json
+          jq -r '.[] | select(.ai_note) | "  🔄 \(.sha[:10]): \(.action)/\(.priority) — \(.ai_note)"' /tmp/commits.json || true
 
-          # 统计被 AI 修改的条目数
-          OVERRIDE_COUNT=$(diff <(jq -c '[.[] | {s: .sha[:10], a: .action}]' /tmp/commits-raw.json) \
-            <(jq -c '[.[] | {s: .sha[:10], a: .action}]' /tmp/commits.json) | grep -c '^[<>]' || true)
+          # 统计被 AI 修改的条目数（比较 action 字段变化）
+          OVERRIDE_COUNT=0
+          OVERRIDE_COUNT=$(diff \
+            <(jq -c '[.[] | {s: .sha[:10], a: .action}]' /tmp/commits-raw.json) \
+            <(jq -c '[.[] | {s: .sha[:10], a: .action}]' /tmp/commits.json) \
+            | grep -c '^[<>]' || true)
           OVERRIDE_COUNT=$((OVERRIDE_COUNT / 2))
 
           echo "ai_used=true" >> "$GITHUB_OUTPUT"
