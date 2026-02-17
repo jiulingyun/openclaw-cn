@@ -139,6 +139,15 @@ export async function monitorLineProvider(
     webhookPath,
   } = opts;
   const resolvedAccountId = accountId ?? "default";
+  const token = channelAccessToken.trim();
+  const secret = channelSecret.trim();
+
+  if (!token) {
+    throw new Error("LINE webhook 模式需要配置非空的 channel access token。");
+  }
+  if (!secret) {
+    throw new Error("LINE webhook 模式需要配置非空的 channel secret。");
+  }
 
   // Record starting state
   recordChannelRuntimeState({
@@ -152,8 +161,8 @@ export async function monitorLineProvider(
 
   // Create the bot
   const bot = createLineBot({
-    channelAccessToken,
-    channelSecret,
+    channelAccessToken: token,
+    channelSecret: secret,
     accountId,
     runtime,
     config,
