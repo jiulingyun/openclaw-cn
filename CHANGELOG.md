@@ -144,8 +144,9 @@ Docs: https://docs.clawd.bot
 
 ### 🐛 关键 Bug 修复（Critical Bugs）
 
-#### P1-A：会话与网关稳定性（24 项）
+#### P1-A：会话与网关稳定性（25 项）
 
+- **会话存储锁保护**：防止 `withSessionStoreLock` 在 `storePath` 未定义时调用 `path.dirname` 导致崩溃（upstream #14717）
 - **压缩后失忆**：修复会话压缩后上下文丢失问题（upstream `0cf93b8fa`）
 - **上下文溢出截断**：修复上下文溢出时工具结果被截断问题（upstream `0deb8b0da`）
 - **会话重置中止**：在 sessions.reset 前中止活跃运行（upstream `3efb75212`）
