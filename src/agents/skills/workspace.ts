@@ -12,6 +12,7 @@ import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { CONFIG_DIR, resolveUserPath } from "../../utils.js";
 import { resolveBundledSkillsDir } from "./bundled-dir.js";
 import { shouldIncludeSkill } from "./config.js";
+import { normalizeSkillFilter } from "./filter.js";
 import {
   parseFrontmatter,
   resolveOpenclawMetadata,
@@ -51,14 +52,16 @@ function filterSkillEntries(
   let filtered = entries.filter((entry) => shouldIncludeSkill({ entry, config, eligibility }));
   // If skillFilter is provided, only include skills in the filter list.
   if (skillFilter !== undefined) {
-    const normalized = skillFilter.map((entry) => String(entry).trim()).filter(Boolean);
+    const normalized = normalizeSkillFilter(skillFilter) ?? [];
     const label = normalized.length > 0 ? normalized.join(", ") : "(none)";
-    console.log(`[skills] Applying skill filter: ${label}`);
+    skillsLogger.debug(`Applying skill filter: ${label}`);
     filtered =
       normalized.length > 0
         ? filtered.filter((entry) => normalized.includes(entry.skill.name))
         : [];
-    console.log(`[skills] After filter: ${filtered.map((entry) => entry.skill.name).join(", ")}`);
+    skillsLogger.debug(
+      `After skill filter: ${filtered.map((entry) => entry.skill.name).join(", ") || "(none)"}`,
+    );
   }
   return filtered;
 }
@@ -201,12 +204,14 @@ export function buildWorkspaceSkillSnapshot(
   const resolvedSkills = promptEntries.map((entry) => entry.skill);
   const remoteNote = opts?.eligibility?.remote?.note?.trim();
   const prompt = [remoteNote, formatSkillsForPrompt(resolvedSkills)].filter(Boolean).join("\n");
+  const skillFilter = normalizeSkillFilter(opts?.skillFilter);
   return {
     prompt,
     skills: eligible.map((entry) => ({
       name: entry.skill.name,
       primaryEnv: entry.openclaw?.primaryEnv,
     })),
+    ...(skillFilter === undefined ? {} : { skillFilter }),
     resolvedSkills,
     version: opts?.snapshotVersion,
   };

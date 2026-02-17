@@ -29,8 +29,6 @@ import {
   resolveThinkingDefault,
 } from "../../agents/model-selection.js";
 import { runEmbeddedPiAgent } from "../../agents/pi-embedded.js";
-import { buildWorkspaceSkillSnapshot } from "../../agents/skills.js";
-import { getSkillsSnapshotVersion } from "../../agents/skills/refresh.js";
 import { resolveAgentTimeoutMs } from "../../agents/timeout.js";
 import { hasNonzeroUsage } from "../../agents/usage.js";
 import { ensureAgentWorkspace } from "../../agents/workspace.js";
@@ -44,7 +42,6 @@ import { createOutboundSendDeps, type CliDeps } from "../../cli/outbound-send-de
 import { resolveSessionTranscriptPath, updateSessionStore } from "../../config/sessions.js";
 import { registerAgentRunContext } from "../../infra/agent-events.js";
 import { deliverOutboundPayloads } from "../../infra/outbound/deliver.js";
-import { getRemoteSkillEligibility } from "../../infra/skills-remote.js";
 import { logWarn } from "../../logger.js";
 import { buildAgentMainSessionKey, normalizeAgentId } from "../../routing/session-key.js";
 import {
@@ -63,6 +60,7 @@ import {
   resolveHeartbeatAckMaxChars,
 } from "./helpers.js";
 import { resolveCronSession } from "./session.js";
+import { resolveCronSkillsSnapshot } from "./skills-snapshot.js";
 
 function matchesMessagingToolDeliveryTarget(
   target: MessagingToolSend,
@@ -109,6 +107,7 @@ export async function runCronIsolatedAgentTurn(params: {
   agentId?: string;
   lane?: string;
 }): Promise<RunCronAgentTurnResult> {
+  const isFastTestEnv = process.env.CLAWDBOT_TEST_FAST === "1";
   const defaultAgentId = resolveDefaultAgentId(params.cfg);
   const requestedAgentId =
     typeof params.agentId === "string" && params.agentId.trim()
@@ -147,7 +146,7 @@ export async function runCronIsolatedAgentTurn(params: {
   const agentDir = resolveAgentDir(params.cfg, agentId);
   const workspace = await ensureAgentWorkspace({
     dir: workspaceDirRaw,
-    ensureBootstrapFiles: !agentCfg?.skipBootstrap,
+    ensureBootstrapFiles: !agentCfg?.skipBootstrap && !isFastTestEnv,
   });
   const workspaceDir = workspace.dir;
 
@@ -298,35 +297,48 @@ export async function runCronIsolatedAgentTurn(params: {
       `${commandBody}\n\nReturn your summary as plain text; it will be delivered automatically. If the task explicitly calls for messaging a specific external recipient, note who/where it should go instead of sending it yourself.`.trim();
   }
 
-  const existingSnapshot = cronSession.sessionEntry.skillsSnapshot;
-  const skillsSnapshotVersion = getSkillsSnapshotVersion(workspaceDir);
-  const needsSkillsSnapshot =
-    !existingSnapshot || existingSnapshot.version !== skillsSnapshotVersion;
-  const skillsSnapshot = needsSkillsSnapshot
-    ? buildWorkspaceSkillSnapshot(workspaceDir, {
-        config: cfgWithAgentDefaults,
-        eligibility: { remote: getRemoteSkillEligibility() },
-        snapshotVersion: skillsSnapshotVersion,
-      })
-    : cronSession.sessionEntry.skillsSnapshot;
-  if (needsSkillsSnapshot && skillsSnapshot) {
+  const runSessionId = cronSession.sessionEntry.sessionId;
+  const runSessionKey = baseSessionKey.startsWith("cron:")
+    ? `${agentSessionKey}:run:${runSessionId}`
+    : agentSessionKey;
+  const persistSessionEntry = async () => {
+    if (isFastTestEnv) {
+      return;
+    }
+    cronSession.store[agentSessionKey] = cronSession.sessionEntry;
+    if (runSessionKey !== agentSessionKey) {
+      cronSession.store[runSessionKey] = cronSession.sessionEntry;
+    }
+    await updateSessionStore(cronSession.storePath, (store) => {
+      store[agentSessionKey] = cronSession.sessionEntry;
+      if (runSessionKey !== agentSessionKey) {
+        store[runSessionKey] = cronSession.sessionEntry;
+      }
+    });
+  };
+
+  // Persist systemSent before the run, mirroring the inbound auto-reply behavior.
+  if (!cronSession.systemSent) {
+    cronSession.sessionEntry.systemSent = true;
+    await persistSessionEntry();
+  }
+
+  const existingSkillsSnapshot = cronSession.sessionEntry.skillsSnapshot;
+  const skillsSnapshot = resolveCronSkillsSnapshot({
+    workspaceDir,
+    config: cfgWithAgentDefaults,
+    agentId,
+    existingSnapshot: existingSkillsSnapshot,
+    isFastTestEnv,
+  });
+  if (!isFastTestEnv && skillsSnapshot !== existingSkillsSnapshot) {
     cronSession.sessionEntry = {
       ...cronSession.sessionEntry,
       updatedAt: Date.now(),
       skillsSnapshot,
     };
-    cronSession.store[agentSessionKey] = cronSession.sessionEntry;
-    await updateSessionStore(cronSession.storePath, (store) => {
-      store[agentSessionKey] = cronSession.sessionEntry;
-    });
+    await persistSessionEntry();
   }
-
-  // Persist systemSent before the run, mirroring the inbound auto-reply behavior.
-  cronSession.sessionEntry.systemSent = true;
-  cronSession.store[agentSessionKey] = cronSession.sessionEntry;
-  await updateSessionStore(cronSession.storePath, (store) => {
-    store[agentSessionKey] = cronSession.sessionEntry;
-  });
 
   let runResult: Awaited<ReturnType<typeof runEmbeddedPiAgent>>;
   let fallbackProvider = provider;
@@ -427,10 +439,7 @@ export async function runCronIsolatedAgentTurn(params: {
       cronSession.sessionEntry.totalTokens =
         promptTokens > 0 ? promptTokens : (usage.total ?? input);
     }
-    cronSession.store[agentSessionKey] = cronSession.sessionEntry;
-    await updateSessionStore(cronSession.storePath, (store) => {
-      store[agentSessionKey] = cronSession.sessionEntry;
-    });
+    await persistSessionEntry();
   }
   const firstText = payloads[0]?.text ?? "";
   const summary = pickSummaryFromPayloads(payloads) ?? pickSummaryFromOutput(firstText);

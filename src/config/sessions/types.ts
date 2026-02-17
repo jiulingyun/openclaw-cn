@@ -141,6 +141,8 @@ export type GroupKeyResolution = {
 export type SessionSkillSnapshot = {
   prompt: string;
   skills: Array<{ name: string; primaryEnv?: string }>;
+  /** Normalized agent-level filter used to build this snapshot; undefined means unrestricted. */
+  skillFilter?: string[];
   resolvedSkills?: Skill[];
   version?: number;
 };
