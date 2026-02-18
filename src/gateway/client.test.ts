@@ -1,8 +1,29 @@
 import { createServer } from "node:net";
 import { createServer as createHttpsServer } from "node:https";
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { WebSocketServer } from "ws";
 import { rawDataToString } from "../infra/ws.js";
+import type { DeviceIdentity } from "../infra/device-identity.js";
+
+const clearDeviceAuthTokenMock = vi.hoisted(() => vi.fn());
+const logDebugMock = vi.hoisted(() => vi.fn());
+
+vi.mock("../infra/device-auth-store.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../infra/device-auth-store.js")>();
+  return {
+    ...actual,
+    clearDeviceAuthToken: (...args: unknown[]) => clearDeviceAuthTokenMock(...args),
+  };
+});
+
+vi.mock("../logger.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../logger.js")>();
+  return {
+    ...actual,
+    logDebug: (...args: unknown[]) => logDebugMock(...args),
+  };
+});
+
 import { GatewayClient } from "./client.js";
 
 // Find a free localhost port for ad-hoc WS servers.
@@ -19,6 +40,11 @@ async function getFreePort(): Promise<number> {
 describe("GatewayClient", () => {
   let wss: WebSocketServer | null = null;
   let httpsServer: ReturnType<typeof createHttpsServer> | null = null;
+
+  beforeEach(() => {
+    clearDeviceAuthTokenMock.mockReset();
+    logDebugMock.mockReset();
+  });
 
   afterEach(async () => {
     if (wss) {
@@ -172,5 +198,94 @@ r1USnb+wUdA7Zoj/mQ==
     });
 
     expect(String(error)).toContain("tls fingerprint mismatch");
+  });
+});
+
+describe("GatewayClient close handling", () => {
+  beforeEach(() => {
+    clearDeviceAuthTokenMock.mockReset();
+    logDebugMock.mockReset();
+  });
+
+  test("clears stale token on device token mismatch close", async () => {
+    const port = await getFreePort();
+    const wss = new WebSocketServer({ port, host: "127.0.0.1" });
+
+    wss.on("connection", (socket) => {
+      // Immediately close with device token mismatch error
+      socket.close(1008, "unauthorized: DEVICE token mismatch (rotate/reissue device token)");
+    });
+
+    const onClose = vi.fn();
+    const identity: DeviceIdentity = {
+      deviceId: "dev-1",
+      privateKeyPem: "private-key",
+      publicKeyPem: "public-key",
+    };
+    const client = new GatewayClient({
+      url: `ws://127.0.0.1:${port}`,
+      deviceIdentity: identity,
+      onClose,
+    });
+
+    const closed = new Promise<void>((resolve) => {
+      client["opts"].onClose = (code, reason) => {
+        onClose(code, reason);
+        resolve();
+      };
+    });
+
+    client.start();
+    await closed;
+
+    expect(clearDeviceAuthTokenMock).toHaveBeenCalledWith({ deviceId: "dev-1", role: "operator" });
+    expect(onClose).toHaveBeenCalledWith(
+      1008,
+      "unauthorized: DEVICE token mismatch (rotate/reissue device token)",
+    );
+    client.stop();
+    await new Promise<void>((resolve) => wss.close(() => resolve()));
+  });
+
+  test("does not break close flow when token clear throws", async () => {
+    clearDeviceAuthTokenMock.mockImplementation(() => {
+      throw new Error("disk unavailable");
+    });
+
+    const port = await getFreePort();
+    const wss = new WebSocketServer({ port, host: "127.0.0.1" });
+
+    wss.on("connection", (socket) => {
+      socket.close(1008, "unauthorized: device token mismatch");
+    });
+
+    const onClose = vi.fn();
+    const identity: DeviceIdentity = {
+      deviceId: "dev-2",
+      privateKeyPem: "private-key",
+      publicKeyPem: "public-key",
+    };
+    const client = new GatewayClient({
+      url: `ws://127.0.0.1:${port}`,
+      deviceIdentity: identity,
+      onClose,
+    });
+
+    const closed = new Promise<void>((resolve) => {
+      client["opts"].onClose = (code, reason) => {
+        onClose(code, reason);
+        resolve();
+      };
+    });
+
+    client.start();
+    await closed;
+
+    expect(logDebugMock).toHaveBeenCalledWith(
+      expect.stringContaining("failed clearing stale device-auth token"),
+    );
+    expect(onClose).toHaveBeenCalledWith(1008, "unauthorized: device token mismatch");
+    client.stop();
+    await new Promise<void>((resolve) => wss.close(() => resolve()));
   });
 });

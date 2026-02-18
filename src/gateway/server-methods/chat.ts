@@ -46,6 +46,87 @@ type TranscriptAppendResult = {
   error?: string;
 };
 
+type AbortedPartialSnapshot = {
+  text: string;
+  stopReason: string;
+  runId: string;
+  truncatedAt: number;
+};
+
+const CHAT_HISTORY_TEXT_MAX_CHARS = 12_000;
+const CHAT_HISTORY_MAX_SINGLE_MESSAGE_BYTES = 128 * 1024;
+const CHAT_HISTORY_OVERSIZED_PLACEHOLDER = "[chat.history omitted: message too large]";
+let chatHistoryPlaceholderEmitCount = 0;
+
+function stripDisallowedChatControlChars(message: string): string {
+  let output = "";
+  for (const char of message) {
+    const code = char.charCodeAt(0);
+    if (code < 0x20 && code !== 0x09 && code !== 0x0a) {
+      continue;
+    }
+    output += char;
+  }
+  return output;
+}
+
+function jsonUtf8Bytes(value: unknown): number {
+  try {
+    return Buffer.byteLength(JSON.stringify(value), "utf8");
+  } catch {
+    return Buffer.byteLength(String(value), "utf8");
+  }
+}
+
+function buildOversizedHistoryPlaceholder(message?: unknown): Record<string, unknown> {
+  const placeholderText = CHAT_HISTORY_OVERSIZED_PLACEHOLDER;
+  if (!message || typeof message !== "object" || Array.isArray(message)) {
+    return { role: "assistant", text: placeholderText };
+  }
+  const obj = message as Record<string, unknown>;
+  const role = typeof obj.role === "string" ? obj.role : "assistant";
+  return { role, text: placeholderText };
+}
+
+function replaceOversizedChatHistoryMessages(params: {
+  messages: unknown[];
+  maxSingleMessageBytes: number;
+}): { messages: unknown[]; replacedCount: number } {
+  const { messages, maxSingleMessageBytes } = params;
+  if (messages.length === 0) {
+    return { messages, replacedCount: 0 };
+  }
+  let replacedCount = 0;
+  const next = messages.map((message) => {
+    if (jsonUtf8Bytes(message) <= maxSingleMessageBytes) {
+      return message;
+    }
+    replacedCount += 1;
+    return buildOversizedHistoryPlaceholder(message);
+  });
+  return { messages: replacedCount > 0 ? next : messages, replacedCount };
+}
+
+function enforceChatHistoryFinalBudget(params: { messages: unknown[]; maxBytes: number }): {
+  messages: unknown[];
+  placeholderCount: number;
+} {
+  const { messages, maxBytes } = params;
+  if (messages.length === 0) {
+    return { messages, placeholderCount: 0 };
+  }
+  if (jsonUtf8Bytes(messages) <= maxBytes) {
+    return { messages, placeholderCount: 0 };
+  }
+  const last = messages.at(-1);
+  if (last && jsonUtf8Bytes([last]) <= maxBytes) {
+    chatHistoryPlaceholderEmitCount += messages.length - 1;
+    return { messages: [buildOversizedHistoryPlaceholder(last)], placeholderCount: messages.length - 1 };
+  }
+  chatHistoryPlaceholderEmitCount += messages.length;
+  return { messages: [buildOversizedHistoryPlaceholder()], placeholderCount: messages.length };
+}
+
 function resolveTranscriptPath(params: {
   sessionId: string;
   storePath: string | undefined;
@@ -209,7 +290,28 @@ export const chatHandlers: GatewayRequestHandlers = {
     const max = Math.min(hardMax, requested);
     const sliced = rawMessages.length > max ? rawMessages.slice(-max) : rawMessages;
     const sanitized = stripEnvelopeFromMessages(sliced);
-    const capped = capArrayByJsonBytes(sanitized, getMaxChatHistoryMessagesBytes()).items;
+    
+    // Replace oversized individual messages with placeholders
+    const { messages: replaced, replacedCount } = replaceOversizedChatHistoryMessages({
+      messages: sanitized,
+      maxSingleMessageBytes: CHAT_HISTORY_MAX_SINGLE_MESSAGE_BYTES,
+    });
+    
+    // Soft-cap by removing old messages until under budget
+    const softCapped = capArrayByJsonBytes(replaced, getMaxChatHistoryMessagesBytes()).items;
+    
+    // Hard-cap: if still over budget, keep only last message or placeholder
+    const { messages: capped, placeholderCount } = enforceChatHistoryFinalBudget({
+      messages: softCapped,
+      maxBytes: getMaxChatHistoryMessagesBytes(),
+    });
+    
+    if (replacedCount > 0 || placeholderCount > 0) {
+      context.logGateway.warn(
+        `chat.history oversized sessionKey=${sessionKey} replaced=${replacedCount} placeholders=${placeholderCount}`,
+      );
+    }
+    
     let thinkingLevel = entry?.thinkingLevel;
     if (!thinkingLevel) {
       const configured = cfg.agents?.defaults?.thinkingDefault;

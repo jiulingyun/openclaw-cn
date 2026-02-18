@@ -6,6 +6,7 @@ Docs: https://docs.clawd.bot
 
 ### 🐛 Bug 修复
 
+- **Gateway/WebChat**: 对 `chat.history` 超大载荷实施硬顶（hard-cap），通过截断高成本字段、替换超预算条目为占位符，确保历史记录获取保持在配置的字节限制内，避免 Chat UI 冻结。(#18505)
 - **Control UI 网关 Token 修复**：修复首次安装后打开带 Token 的仪表盘 URL 时，Token 未被持久化导致网关连接报 `unauthorized: gateway token missing (1008)` 的问题
 - **MiniMax API Key 认证修复**：修复手动配置 MiniMax API Key 后认证失败的问题——向导错误地将 API Key 用户路由到仅接受 OAuth Token 的 Anthropic 兼容端点 (`api.minimax.io/anthropic`)，现已切换到正确的 OpenAI 兼容端点 (`api.minimax.chat/v1`)
 
