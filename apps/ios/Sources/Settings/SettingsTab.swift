@@ -40,6 +40,7 @@ struct SettingsTab: View {
     @State private var lastLocationModeRaw: String = ClawdbotLocationMode.off.rawValue
     @State private var gatewayToken: String = ""
     @State private var gatewayPassword: String = ""
+    @State private var talkElevenLabsApiKey: String = ""
 
     var body: some View {
         NavigationStack {
@@ -176,6 +177,12 @@ struct SettingsTab: View {
                         .onChange(of: self.talkEnabled) { _, newValue in
                             self.appModel.setTalkEnabled(newValue)
                         }
+                    SecureField("Talk ElevenLabs API Key (可选)", text: self.$talkElevenLabsApiKey)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    Text("当网关配置为移动客户端隐藏 talk.apiKey 时，使用此本地覆盖。")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                     // Keep this separate so users can hide the side bubble without disabling Talk Mode.
                     Toggle("Show Talk Button", isOn: self.$talkButtonEnabled)
 
@@ -237,6 +244,7 @@ struct SettingsTab: View {
                     self.gatewayToken = GatewaySettingsStore.loadGatewayToken(instanceId: trimmedInstanceId) ?? ""
                     self.gatewayPassword = GatewaySettingsStore.loadGatewayPassword(instanceId: trimmedInstanceId) ?? ""
                 }
+                self.talkElevenLabsApiKey = GatewaySettingsStore.loadTalkElevenLabsApiKey() ?? ""
             }
             .onChange(of: self.preferredGatewayStableID) { _, newValue in
                 let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -254,6 +262,9 @@ struct SettingsTab: View {
                 let instanceId = self.instanceId.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !instanceId.isEmpty else { return }
                 GatewaySettingsStore.saveGatewayPassword(trimmed, instanceId: instanceId)
+            }
+            .onChange(of: self.talkElevenLabsApiKey) { _, newValue in
+                GatewaySettingsStore.saveTalkElevenLabsApiKey(newValue)
             }
             .onChange(of: self.appModel.gatewayServerName) { _, _ in
                 self.connectStatus.text = nil
