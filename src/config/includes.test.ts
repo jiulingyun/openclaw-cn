@@ -69,13 +69,12 @@ describe("resolveConfigIncludes", () => {
     });
   });
 
-  it("resolves absolute path $include", () => {
+  it("rejects absolute path outside config directory (CWE-22)", () => {
     const absolute = etcClawdbotPath("agents.json");
     const files = { [absolute]: { list: [{ id: "main" }] } };
     const obj = { agents: { $include: absolute } };
-    expect(resolve(obj, files)).toEqual({
-      agents: { list: [{ id: "main" }] },
-    });
+    expect(() => resolve(obj, files)).toThrow(ConfigIncludeError);
+    expect(() => resolve(obj, files)).toThrow(/escapes config directory/);
   });
 
   it("resolves array $include with deep merge", () => {
@@ -280,12 +279,15 @@ describe("resolveConfigIncludes", () => {
     });
   });
 
-  it("resolves parent directory references", () => {
+  it("rejects parent directory traversal escaping config directory (CWE-22)", () => {
     const files = { [sharedPath("common.json")]: { shared: true } };
     const obj = { $include: "../../shared/common.json" };
-    expect(resolve(obj, files, configPath("sub", "openclaw.json"))).toEqual({
-      shared: true,
-    });
+    expect(() => resolve(obj, files, configPath("sub", "openclaw.json"))).toThrow(
+      ConfigIncludeError,
+    );
+    expect(() => resolve(obj, files, configPath("sub", "openclaw.json"))).toThrow(
+      /escapes config directory/,
+    );
   });
 });
 
@@ -358,6 +360,131 @@ describe("real-world config patterns", () => {
       gateway: { port: 18789, bind: "loopback" },
       channels: { whatsapp: { dmPolicy: "pairing", allowFrom: ["+49123"] } },
       agents: { defaults: { sandbox: { mode: "all" } } },
+    });
+  });
+});
+
+describe("security: path traversal protection (CWE-22)", () => {
+  describe("absolute path attacks", () => {
+    it("rejects /etc/passwd", () => {
+      const obj = { $include: "/etc/passwd" };
+      expect(() => resolve(obj, {})).toThrow(ConfigIncludeError);
+      expect(() => resolve(obj, {})).toThrow(/escapes config directory/);
+    });
+
+    it("rejects /etc/shadow", () => {
+      const obj = { $include: "/etc/shadow" };
+      expect(() => resolve(obj, {})).toThrow(ConfigIncludeError);
+      expect(() => resolve(obj, {})).toThrow(/escapes config directory/);
+    });
+
+    it("rejects home directory SSH key", () => {
+      const obj = { $include: `${process.env.HOME}/.ssh/id_rsa` };
+      expect(() => resolve(obj, {})).toThrow(ConfigIncludeError);
+    });
+
+    it("rejects /tmp paths", () => {
+      const obj = { $include: "/tmp/malicious.json" };
+      expect(() => resolve(obj, {})).toThrow(ConfigIncludeError);
+    });
+
+    it("rejects root directory", () => {
+      const obj = { $include: "/" };
+      expect(() => resolve(obj, {})).toThrow(ConfigIncludeError);
+    });
+  });
+
+  describe("relative traversal attacks", () => {
+    it("rejects ../../etc/passwd", () => {
+      const obj = { $include: "../../etc/passwd" };
+      expect(() => resolve(obj, {})).toThrow(ConfigIncludeError);
+      expect(() => resolve(obj, {})).toThrow(/escapes config directory/);
+    });
+
+    it("rejects ../../../etc/shadow", () => {
+      const obj = { $include: "../../../etc/shadow" };
+      expect(() => resolve(obj, {})).toThrow(ConfigIncludeError);
+    });
+
+    it("rejects deeply nested traversal", () => {
+      const obj = { $include: "../../../../../../../../etc/passwd" };
+      expect(() => resolve(obj, {})).toThrow(ConfigIncludeError);
+    });
+
+    it("rejects traversal to parent of config directory", () => {
+      const obj = { $include: "../sibling-dir/secret.json" };
+      expect(() => resolve(obj, {})).toThrow(ConfigIncludeError);
+    });
+
+    it("rejects mixed absolute and traversal", () => {
+      const obj = { $include: "/config/../../../etc/passwd" };
+      expect(() => resolve(obj, {})).toThrow(ConfigIncludeError);
+    });
+  });
+
+  describe("legitimate includes (should work)", () => {
+    it("allows relative include in same directory", () => {
+      const files = { [configPath("sub.json")]: { key: "value" } };
+      const obj = { $include: "./sub.json" };
+      expect(resolve(obj, files)).toEqual({ key: "value" });
+    });
+
+    it("allows include without ./ prefix", () => {
+      const files = { [configPath("sub.json")]: { key: "value" } };
+      const obj = { $include: "sub.json" };
+      expect(resolve(obj, files)).toEqual({ key: "value" });
+    });
+
+    it("allows include in subdirectory", () => {
+      const files = { [configPath("sub", "nested.json")]: { nested: true } };
+      const obj = { $include: "./sub/nested.json" };
+      expect(resolve(obj, files)).toEqual({ nested: true });
+    });
+
+    it("allows deeply nested subdirectory", () => {
+      const files = { [configPath("a", "b", "c", "deep.json")]: { deep: true } };
+      const obj = { $include: "./a/b/c/deep.json" };
+      expect(resolve(obj, files)).toEqual({ deep: true });
+    });
+
+    // Note: Upward traversal from nested configs is restricted for security.
+    // Each config file can only include files from its own directory and subdirectories.
+    // This prevents potential path traversal attacks even in complex nested scenarios.
+  });
+
+  describe("error properties", () => {
+    it("throws ConfigIncludeError with correct type", () => {
+      const obj = { $include: "/etc/passwd" };
+      try {
+        resolve(obj, {});
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect(err).toBeInstanceOf(ConfigIncludeError);
+        expect(err).toHaveProperty("name", "ConfigIncludeError");
+      }
+    });
+
+    it("includes offending path in error", () => {
+      const maliciousPath = "/etc/shadow";
+      const obj = { $include: maliciousPath };
+      try {
+        resolve(obj, {});
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect(err).toBeInstanceOf(ConfigIncludeError);
+        expect((err as ConfigIncludeError).includePath).toBe(maliciousPath);
+      }
+    });
+
+    it("includes descriptive message", () => {
+      const obj = { $include: "../../etc/passwd" };
+      try {
+        resolve(obj, {});
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect(err).toBeInstanceOf(ConfigIncludeError);
+        expect((err as ConfigIncludeError).message).toMatch(/escapes config directory/);
+      }
     });
   });
 });
