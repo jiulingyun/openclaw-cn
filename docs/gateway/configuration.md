@@ -1676,6 +1676,7 @@ Controls the embedded agent runtime (model/thinking/verbose/timeouts).
 `agents.defaults.models` defines the configured model catalog (and acts as the allowlist for `/model`).
 `agents.defaults.model.primary` sets the default model; `agents.defaults.model.fallbacks` are global failovers.
 `agents.defaults.imageModel` is optional and is **only used if the primary model lacks image input**.
+`agents.defaults.imageMaxDimensionPx` controls transcript/tool image downscaling (default `1200`).
 Each `agents.defaults.models` entry can include:
 
 - `alias` (optional model shortcut, e.g. `/opus`).

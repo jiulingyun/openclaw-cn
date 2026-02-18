@@ -3,19 +3,16 @@ import type { ImageContent } from "@mariozechner/pi-ai";
 
 import { createSubsystemLogger } from "../logging/subsystem.js";
 import { getImageMetadata, resizeToJpeg } from "../media/image-ops.js";
+import {
+  DEFAULT_IMAGE_MAX_BYTES,
+  DEFAULT_IMAGE_MAX_DIMENSION_PX,
+  type ImageSanitizationLimits,
+} from "./image-sanitization.js";
 
 type ToolContentBlock = AgentToolResult<unknown>["content"][number];
 type ImageContentBlock = Extract<ToolContentBlock, { type: "image" }>;
 type TextContentBlock = Extract<ToolContentBlock, { type: "text" }>;
 
-// Anthropic Messages API limitations (observed in Clawdbot sessions):
-// - Images over ~2000px per side can fail in multi-image requests.
-// - Images over 5MB are rejected by the API.
-//
-// To keep sessions resilient (and avoid "silent" WhatsApp non-replies), we auto-downscale
-// and recompress base64 image blocks when they exceed these limits.
-const MAX_IMAGE_DIMENSION_PX = 2000;
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const log = createSubsystemLogger("agents/tool-images");
 
 function isImageBlock(block: unknown): block is ImageContentBlock {
@@ -132,8 +129,8 @@ export async function sanitizeContentBlocksImages(
   label: string,
   opts: { maxDimensionPx?: number; maxBytes?: number } = {},
 ): Promise<ToolContentBlock[]> {
-  const maxDimensionPx = Math.max(opts.maxDimensionPx ?? MAX_IMAGE_DIMENSION_PX, 1);
-  const maxBytes = Math.max(opts.maxBytes ?? MAX_IMAGE_BYTES, 1);
+  const maxDimensionPx = Math.max(opts.maxDimensionPx ?? DEFAULT_IMAGE_MAX_DIMENSION_PX, 1);
+  const maxBytes = Math.max(opts.maxBytes ?? DEFAULT_IMAGE_MAX_BYTES, 1);
   const out: ToolContentBlock[] = [];
 
   for (const block of blocks) {

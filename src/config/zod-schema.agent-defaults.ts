@@ -41,6 +41,7 @@ export const AgentDefaultsSchema = z
           .strict(),
       )
       .optional(),
+    imageMaxDimensionPx: z.number().positive().optional(),
     workspace: z.string().optional(),
     repoRoot: z.string().optional(),
     skipBootstrap: z.boolean().optional(),

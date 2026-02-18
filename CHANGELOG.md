@@ -8,6 +8,10 @@ Docs: https://docs.clawd.bot
 
 - **图像 resize 日志优化**：将图像缩放日志改为单行格式，包含尺寸信息（upstream 414b996b0cbf）
 
+### ✨ 功能改进
+
+- **图像清理尺寸可配置**：新增 `agents.defaults.imageMaxDimensionPx` 配置项，允许自定义 transcript/tool 图像下采样的最大边长（默认 1200px）（upstream b05e89e5e605）
+
 ## 0.1.5-fix.2
 
 ### 🐛 Bug 修复
