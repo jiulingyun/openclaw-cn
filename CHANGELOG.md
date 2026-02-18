@@ -159,6 +159,7 @@ Docs: https://docs.clawd.bot
 - **跨会话来源安全修复**：修复跨会话来源追踪的安全漏洞（upstream `e3445f59c986`）
 - **Control UI XSS 防护**：通过移除内联脚本注入、将启动配置改为 JSON 服务、强制 `script-src 'self'` 策略，防止通过助手名称/头像进行存储型 XSS 攻击（upstream `01b1e350b20f`，感谢 @Adam55A-code）
 - **Gateway 非管理员状态脱敏**：对非管理员客户端的 `status` 响应中脱敏敏感会话/路径细节；完整信息仅对 `operator.admin` 开放（upstream `0954618cfb7f` #8590，感谢 @fr33d3m0n）
+- **Gateway 命令鉴权修复**：保持 webchat 命令授权在内部 `webchat` 上下文中，而不是从频道白名单推断其他 provider，修复配置频道白名单时 Control UI 中 `/new` 和 `/status` 命令被丢弃的问题（upstream `c953cfdee7e9` #7189，感谢 @karlisbergmanis-lv）
 
 ### 🐛 关键 Bug 修复（Critical Bugs）
 
