@@ -45,12 +45,7 @@ import { searchKeyword, searchVector } from "./manager-search.js";
 import { ensureMemoryIndexSchema } from "./memory-schema.js";
 import { requireNodeSqlite } from "./sqlite.js";
 import { loadSqliteVecExtension } from "./sqlite-vec.js";
-import type {
-  MemoryEmbeddingProbeResult,
-  MemoryProviderStatus,
-  MemorySearchManager,
-  MemorySyncProgressUpdate as MemorySyncProgressUpdateType,
-} from "./types.js";
+import type { MemoryProviderStatus, MemorySearchManager } from "./types.js";
 
 type MemorySource = "memory" | "sessions";
 
@@ -1756,7 +1751,7 @@ export class MemoryIndexManager implements MemorySearchManager {
       fallback: async () => await this.embedChunksInBatches(chunks),
     });
     if (Array.isArray(batchResult)) return batchResult;
-    const byCustomId = batchResult;
+    const byCustomId = batchResult as Map<string, number[]>;
 
     const toCache: Array<{ hash: string; embedding: number[] }> = [];
     for (const [customId, embedding] of byCustomId.entries()) {
@@ -1826,7 +1821,7 @@ export class MemoryIndexManager implements MemorySearchManager {
       fallback: async () => await this.embedChunksInBatches(chunks),
     });
     if (Array.isArray(batchResult)) return batchResult;
-    const byCustomId = batchResult;
+    const byCustomId = batchResult as Map<string, number[]>;
 
     const toCache: Array<{ hash: string; embedding: number[] }> = [];
     for (const [customId, embedding] of byCustomId.entries()) {
