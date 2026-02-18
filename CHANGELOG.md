@@ -7,6 +7,7 @@ Docs: https://docs.clawd.bot
 ### 🐛 Bug 修复
 
 - **图像 resize 日志优化**：将图像缩放日志改为单行格式，包含尺寸信息（upstream 414b996b0cbf）
+- **图像工具 schema 兼容性修复**：将 image tool schema 从 Anthropic 不兼容的 union 类型改为显式的 `image`（单图）和 `images`（多图）参数，保持 schema 不使用 `anyOf`/`oneOf`/`allOf` 的同时支持多图分析（upstream 391796a3fb21）
 
 ### ✨ 功能改进
 
