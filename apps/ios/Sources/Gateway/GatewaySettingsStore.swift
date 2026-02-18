@@ -4,6 +4,7 @@ enum GatewaySettingsStore {
     private static let gatewayService = "com.clawdbot.gateway"
     private static let legacyBridgeService = "com.clawdbot.bridge"
     private static let nodeService = "com.clawdbot.node"
+    private static let talkService = "com.clawdbot.talk"
 
     private static let instanceIdDefaultsKey = "node.instanceId"
     private static let preferredGatewayStableIDDefaultsKey = "gateway.preferredStableID"
@@ -24,6 +25,7 @@ enum GatewaySettingsStore {
     private static let instanceIdAccount = "instanceId"
     private static let preferredGatewayStableIDAccount = "preferredStableID"
     private static let lastDiscoveredGatewayStableIDAccount = "lastDiscoveredStableID"
+    private static let talkElevenLabsApiKeyAccount = "elevenlabs.apiKey"
 
     static func bootstrapPersistence() {
         self.ensureStableInstanceID()
@@ -112,6 +114,27 @@ enum GatewaySettingsStore {
 
     private static func gatewayPasswordAccount(instanceId: String) -> String {
         "gateway-password.\(instanceId)"
+    }
+
+    static func loadTalkElevenLabsApiKey() -> String? {
+        let value = KeychainStore.loadString(
+            service: self.talkService,
+            account: self.talkElevenLabsApiKeyAccount)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if value?.isEmpty == false { return value }
+        return nil
+    }
+
+    static func saveTalkElevenLabsApiKey(_ apiKey: String?) {
+        let trimmed = apiKey?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if trimmed.isEmpty {
+            _ = KeychainStore.delete(service: self.talkService, account: self.talkElevenLabsApiKeyAccount)
+            return
+        }
+        _ = KeychainStore.saveString(
+            trimmed,
+            service: self.talkService,
+            account: self.talkElevenLabsApiKeyAccount)
     }
 
     private static func ensureStableInstanceID() {

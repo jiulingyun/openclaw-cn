@@ -12,6 +12,7 @@ Docs: https://docs.clawd.bot
 ### ✨ 功能改进
 
 - **MiniMax 全模型支持**：隐式 Provider 和模型目录补全所有 MiniMax 模型（M2.5、M2.5-highspeed、M2.1-highspeed、M2）
+- **iOS Talk 配置安全加固**：移植上游 iOS Talk 模式改进，支持在网关配置隐藏 API Key 时通过本地 Keychain 覆盖配置，提升隐私和安全性；增强 Talk 配置处理逻辑，忽略已隐藏的 API Key 和环境变量占位符；改进辅助功能支持（减少动画、高对比度、无障碍标签优化）；收紧 ATS 策略从 `NSAllowsArbitraryLoadsInWebContent` 改为 `NSAllowsLocalNetworking`，仅允许本地网络访问 (upstream #18163)
 
 ## 0.1.5
 
