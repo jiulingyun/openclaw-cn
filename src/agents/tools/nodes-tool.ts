@@ -13,6 +13,7 @@ import { parseEnvPairs, parseTimeoutMs } from "../../cli/nodes-run.js";
 import { parseScreenRecordPayload } from "../../cli/nodes-screen.js";
 import { parseDurationMs } from "../../cli/parse-duration.js";
 import type { ClawdbotConfig } from "../../config/config.js";
+import { resolveImageSanitizationLimits } from "../image-sanitization.js";
 import { imageMimeFromFormat } from "../../media/mime.js";
 import { saveMediaBuffer } from "../../media/store.js";
 import { resolveSessionAgentId } from "../agent-scope.js";
@@ -93,6 +94,7 @@ export function createNodesTool(options?: {
     sessionKey: options?.agentSessionKey,
     config: options?.config,
   });
+  const imageSanitization = resolveImageSanitizationLimits(options?.config);
   return {
     label: "Nodes",
     name: "nodes",
@@ -246,7 +248,7 @@ export function createNodesTool(options?: {
             }
 
             const result: AgentToolResult<unknown> = { content, details };
-            return await sanitizeToolResultImages(result, "nodes:camera_snap");
+            return await sanitizeToolResultImages(result, "nodes:camera_snap", imageSanitization);
           }
           case "camera_list": {
             const node = readStringParam(params, "node", { required: true });

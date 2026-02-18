@@ -331,19 +331,62 @@ export function createImageTool(options?: {
     description,
     parameters: Type.Object({
       prompt: Type.Optional(Type.String()),
-      image: Type.String(),
+      image: Type.Optional(Type.String({ description: "Single image path or URL." })),
+      images: Type.Optional(
+        Type.Array(Type.String(), {
+          description: "Multiple image paths or URLs (up to maxImages, default 20).",
+        }),
+      ),
       model: Type.Optional(Type.String()),
       maxBytesMb: Type.Optional(Type.Number()),
+      maxImages: Type.Optional(Type.Number()),
     }),
     execute: async (_toolCallId, args) => {
       const record = args && typeof args === "object" ? (args as Record<string, unknown>) : {};
-      const imageRawInput = typeof record.image === "string" ? record.image.trim() : "";
+      
+      // Collect images from both `image` and `images` parameters
+      const singleImage = typeof record.image === "string" ? record.image.trim() : "";
+      const multiImages = Array.isArray(record.images)
+        ? record.images.filter((i): i is string => typeof i === "string").map((i) => i.trim())
+        : [];
+      
+      const allImages = [singleImage, ...multiImages].filter((i) => i.length > 0);
+      
+      // Deduplicate
+      const uniqueImages = Array.from(new Set(allImages));
+      
+      if (uniqueImages.length === 0) {
+        throw new Error("image or images required");
+      }
+      
+      // Enforce maxImages limit
+      const maxImages =
+        typeof record.maxImages === "number" && record.maxImages > 0
+          ? Math.floor(record.maxImages)
+          : 20;
+      
+      if (uniqueImages.length > maxImages) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Too many images (${uniqueImages.length}). Maximum allowed: ${maxImages}.`,
+            },
+          ],
+          details: {
+            error: "too_many_images",
+            count: uniqueImages.length,
+            max: maxImages,
+          },
+        };
+      }
+      
+      // For now, support only single image (multi-image requires different handling)
+      // TODO: Add multi-image support when upstream implements it fully
+      const imageRawInput = uniqueImages[0];
       const imageRaw = imageRawInput.startsWith("@")
         ? imageRawInput.slice(1).trim()
         : imageRawInput;
-      if (!imageRaw) {
-        throw new Error("image required");
-      }
 
       // The tool accepts file paths, file/data URLs, or http(s) URLs. In some
       // agent/model contexts, images can be referenced as pseudo-URIs like
