@@ -629,6 +629,7 @@ export async function ensureChromeExtensionRelayServer(opts: {
   const port = addr?.port ?? info.port;
   const host = info.host;
   const baseUrl = `${new URL(info.baseUrl).protocol}//${host}:${port}`;
+  const originalPort = info.port;
 
   const relay: ChromeExtensionRelayServer = {
     host,
@@ -637,7 +638,7 @@ export async function ensureChromeExtensionRelayServer(opts: {
     cdpWsUrl: `ws://${host}:${port}/cdp`,
     extensionConnected: () => Boolean(extensionWs),
     stop: async () => {
-      serversByPort.delete(port);
+      serversByPort.delete(originalPort);
       try {
         extensionWs?.close(1001, "server stopping");
       } catch {
@@ -658,7 +659,7 @@ export async function ensureChromeExtensionRelayServer(opts: {
     },
   };
 
-  serversByPort.set(port, relay);
+  serversByPort.set(originalPort, relay);
   return relay;
 }
 
