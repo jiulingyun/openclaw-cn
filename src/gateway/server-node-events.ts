@@ -131,9 +131,9 @@ export const handleNodeEvent = async (ctx: NodeEventContext, nodeId: string, evt
       }
 
       const channelRaw = typeof link?.channel === "string" ? link.channel.trim() : "";
-      const channel = normalizeChannelId(channelRaw) ?? undefined;
-      const to = typeof link?.to === "string" && link.to.trim() ? link.to.trim() : undefined;
-      const deliver = Boolean(link?.deliver) && Boolean(channel);
+      let channel = normalizeChannelId(channelRaw) ?? undefined;
+      let to = typeof link?.to === "string" && link.to.trim() ? link.to.trim() : undefined;
+      const deliverRequested = Boolean(link?.deliver);
 
       const sessionKeyRaw = (link?.sessionKey ?? "").trim();
       const sessionKey = sessionKeyRaw.length > 0 ? sessionKeyRaw : `node-${nodeId}`;
@@ -161,6 +161,25 @@ export const handleNodeEvent = async (ctx: NodeEventContext, nodeId: string, evt
             lastTo: entry?.lastTo,
           };
         });
+      }
+
+      if (deliverRequested && (!channel || !to)) {
+        const entryChannel =
+          typeof entry?.lastChannel === "string"
+            ? normalizeChannelId(entry.lastChannel)
+            : undefined;
+        const entryTo = typeof entry?.lastTo === "string" ? entry.lastTo.trim() : undefined;
+        if (entryChannel && entryTo) {
+          channel = entryChannel;
+          to = entryTo;
+        }
+      }
+
+      const deliver = deliverRequested && Boolean(channel) && Boolean(to);
+      if (deliverRequested && !deliver) {
+        ctx.logGateway.warn(
+          `agent delivery disabled node=${nodeId} sessionKey=${canonicalKey} (route unresolved)`,
+        );
       }
 
       void agentCommand(
