@@ -556,4 +556,71 @@ describe("resolveHeartbeatIntervalMs", () => {
       await fs.rm(tmpDir, { recursive: true, force: true });
     }
   });
+
+  it("strips responsePrefix before ack detection", async () => {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-hb-"));
+    const storePath = path.join(tmpDir, "sessions.json");
+    const replySpy = vi.spyOn(replyModule, "getReplyFromConfig");
+    try {
+      const cfg: ClawdbotConfig = {
+        agents: {
+          defaults: {
+            workspace: tmpDir,
+            heartbeat: {
+              every: "5m",
+              target: "whatsapp",
+              ackMaxChars: 0,
+            },
+            messages: {
+              responsePrefix: "[Bot]",
+            },
+          },
+        },
+        channels: { whatsapp: { allowFrom: ["*"] } },
+        session: { store: storePath },
+      };
+      const sessionKey = resolveMainSessionKey(cfg);
+
+      await fs.writeFile(
+        storePath,
+        JSON.stringify(
+          {
+            [sessionKey]: {
+              sessionId: "sid",
+              updatedAt: Date.now(),
+              lastChannel: "whatsapp",
+              lastProvider: "whatsapp",
+              lastTo: "+1555",
+            },
+          },
+          null,
+          2,
+        ),
+      );
+
+      // Model includes responsePrefix in its reply
+      replySpy.mockResolvedValue({ text: "[Bot] HEARTBEAT_OK" });
+      const sendWhatsApp = vi.fn().mockResolvedValue({
+        messageId: "m1",
+        toJid: "jid",
+      });
+
+      await runHeartbeatOnce({
+        cfg,
+        deps: {
+          sendWhatsApp,
+          getQueueSize: () => 0,
+          nowMs: () => 0,
+          webAuthExists: async () => true,
+          hasActiveWebListener: () => true,
+        },
+      });
+
+      // Should be skipped because after stripping both prefix and token, nothing remains
+      expect(sendWhatsApp).not.toHaveBeenCalled();
+    } finally {
+      replySpy.mockRestore();
+      await fs.rm(tmpDir, { recursive: true, force: true });
+    }
+  });
 });

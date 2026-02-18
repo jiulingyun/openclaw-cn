@@ -430,7 +430,19 @@ function normalizeHeartbeatReply(
   responsePrefix: string | undefined,
   ackMaxChars: number,
 ) {
-  const stripped = stripHeartbeatToken(payload.text, {
+  // Strip responsePrefix before ack detection so the model can include it in its reply
+  // without breaking ack-maxChars detection.
+  let textToStrip = payload.text;
+  if (responsePrefix && textToStrip) {
+    const prefixWithSpace = `${responsePrefix} `;
+    if (textToStrip.startsWith(prefixWithSpace)) {
+      textToStrip = textToStrip.slice(prefixWithSpace.length);
+    } else if (textToStrip.startsWith(responsePrefix)) {
+      textToStrip = textToStrip.slice(responsePrefix.length).trimStart();
+    }
+  }
+
+  const stripped = stripHeartbeatToken(textToStrip, {
     mode: "heartbeat",
     maxAckChars: ackMaxChars,
   });
