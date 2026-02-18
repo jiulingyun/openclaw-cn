@@ -148,6 +148,24 @@ export class GatewayClient {
     this.ws.on("message", (data) => this.handleMessage(rawDataToString(data)));
     this.ws.on("close", (code, reason) => {
       const reasonText = rawDataToString(reason);
+      // If closed due to device token mismatch, clear the stored token so next attempt can get a fresh one
+      if (
+        code === 1008 &&
+        reasonText.toLowerCase().includes("device token mismatch") &&
+        this.opts.deviceIdentity
+      ) {
+        const role = this.opts.role ?? "operator";
+        try {
+          clearDeviceAuthToken({ deviceId: this.opts.deviceIdentity.deviceId, role });
+          logDebug(
+            `cleared stale device-auth token for device ${this.opts.deviceIdentity.deviceId}`,
+          );
+        } catch (err) {
+          logDebug(
+            `failed clearing stale device-auth token for device ${this.opts.deviceIdentity.deviceId}: ${String(err)}`,
+          );
+        }
+      }
       this.ws = null;
       this.flushPendingErrors(new Error(`gateway closed (${code}): ${reasonText}`));
       this.scheduleReconnect();
