@@ -15,8 +15,8 @@ Docs: https://docs.clawd.bot
 
 ## 0.1.5
 
-> 🔒 **安全加固**：同步上游 73 项安全修复（P0-A + P0-B + P0-C），覆盖 v2026.2.1 ~ v2026.2.14 全部安全补丁。
-> 🐛 **关键 Bug 修复**：同步上游 48 项关键 Bug 修复（P1-A ~ P1-D），涵盖会话/网关/定时任务/心跳/内存/CJK 等核心稳定性问题。
+> 🔒 **安全加固**：同步上游 77 项安全修复（P0-A + P0-B + P0-C + P0-D），覆盖 v2026.2.1 ~ v2026.2.15 全部安全补丁。
+> 🐛 **关键 Bug 修复**：同步上游 50 项关键 Bug 修复（P1-A ~ P1-E），涵盖会话/网关/定时任务/心跳/内存/CJK/记忆搜索等核心稳定性问题。
 > ✨ **核心功能同步**：同步上游 37 项核心功能改进（P2-A ~ P2-E），覆盖 Agent/会话管理、Cron 增强、Config 改进等。
 > 🤖 **模型/Provider 支持**：同步上游 17 项模型与 Provider 支持（P3-A + P3-B），覆盖中国 Provider、新模型、国际 Provider 等。
 > 📡 **频道 Bug 修复**：同步上游 47 项频道 Bug 修复（P4-A ~ P4-H），覆盖 Telegram/WhatsApp/Discord/Slack/Signal/飞书/Web UI/TUI 等全部通道。
@@ -153,11 +153,19 @@ Docs: https://docs.clawd.bot
 - **Twilio webhook**：在 ngrok 回环模式下强制 Twilio 签名验证（upstream `ff11d8793`）
 - **Archive 提取加固**：加固 archive 提取 + 浏览器下载 + Signal 安装（upstream `3aa94afcf`）
 
+#### P0-D（v2026.2.15 安全批次）
+
+- **提示路径注入加固**：强化系统提示中的路径注入防护机制（upstream `93b9f1ec5fdf`）
+- **跨会话来源安全修复**：修复跨会话来源追踪的安全漏洞（upstream `e3445f59c986`）
+- **Control UI XSS 防护**：通过移除内联脚本注入、将启动配置改为 JSON 服务、强制 `script-src 'self'` 策略，防止通过助手名称/头像进行存储型 XSS 攻击（upstream `01b1e350b20f`，感谢 @Adam55A-code）
+- **Gateway 非管理员状态脱敏**：对非管理员客户端的 `status` 响应中脱敏敏感会话/路径细节；完整信息仅对 `operator.admin` 开放（upstream `0954618cfb7f` #8590，感谢 @fr33d3m0n）
+
 ### 🐛 关键 Bug 修复（Critical Bugs）
 
-#### P1-A：会话与网关稳定性（25 项）
+#### P1-A：会话与网关稳定性（26 项）
 
 - **会话存储锁保护**：防止 `withSessionStoreLock` 在 `storePath` 未定义时调用 `path.dirname` 导致崩溃（upstream #14717）
+- **Transcript tool-call 清理**：会话 transcript 修复期间丢弃必填字段空白（`id`/`name` 或缺失 `input`/`arguments`）的畸形 tool-call 块，防止后续回合持续的 tool-call 损坏（upstream `7a23ac290e95` #15485，感谢 @mike-zachariades）
 - **压缩后失忆**：修复会话压缩后上下文丢失问题（upstream `0cf93b8fa`）
 - **上下文溢出截断**：修复上下文溢出时工具结果被截断问题（upstream `0deb8b0da`）
 - **会话重置中止**：在 sessions.reset 前中止活跃运行（upstream `3efb75212`）
@@ -215,6 +223,10 @@ Docs: https://docs.clawd.bot
 #### P1-D：CJK 兼容（1 项）
 
 - **Voice Wake CJK 崩溃**：防止 CJK 触发词导致 Voice Wake 崩溃（upstream `c32b92b7a`）
+
+#### P1-E：记忆搜索（1 项）
+
+- **Memory/FTS Unicode 查询**：使 `buildFtsQuery` 具备 Unicode 感知能力，使非 ASCII 查询（包括 CJK）生成关键词 token 而非回退到纯向量搜索（upstream `7089885ac49e` #17672，感谢 @KinGP5471）
 
 ### 📡 频道 Bug 修复（Channel Fixes）
 
