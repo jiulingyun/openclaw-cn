@@ -475,3 +475,64 @@ describe("initSessionState channel reset overrides", () => {
     expect(result.sessionEntry.sessionId).toBe(sessionId);
   });
 });
+
+describe("initSessionState stale threadId fallback", () => {
+  it("does not inherit lastThreadId from a previous thread interaction in non-thread sessions", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-stale-thread-"));
+    const storePath = path.join(root, "sessions.json");
+    const cfg = { session: { store: storePath } } as ClawdbotConfig;
+
+    // First interaction: inside a DM topic (thread session)
+    const threadResult = await initSessionState({
+      ctx: {
+        Body: "hello from topic",
+        SessionKey: "agent:main:main:thread:42",
+        MessageThreadId: 42,
+      },
+      cfg,
+      commandAuthorized: true,
+    });
+    expect(threadResult.sessionEntry.lastThreadId).toBe(42);
+
+    // Second interaction: plain DM (non-thread session), same store
+    // The main session should NOT inherit threadId=42
+    const mainResult = await initSessionState({
+      ctx: {
+        Body: "hello from DM",
+        SessionKey: "agent:main:main",
+      },
+      cfg,
+      commandAuthorized: true,
+    });
+    expect(mainResult.sessionEntry.lastThreadId).toBeUndefined();
+  });
+
+  it("preserves lastThreadId within the same thread session", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-preserve-thread-"));
+    const storePath = path.join(root, "sessions.json");
+    const cfg = { session: { store: storePath } } as ClawdbotConfig;
+
+    // First message in thread
+    await initSessionState({
+      ctx: {
+        Body: "first",
+        SessionKey: "agent:main:main:thread:99",
+        MessageThreadId: 99,
+      },
+      cfg,
+      commandAuthorized: true,
+    });
+
+    // Second message in same thread (MessageThreadId still present)
+    const result = await initSessionState({
+      ctx: {
+        Body: "second",
+        SessionKey: "agent:main:main:thread:99",
+        MessageThreadId: 99,
+      },
+      cfg,
+      commandAuthorized: true,
+    });
+    expect(result.sessionEntry.lastThreadId).toBe(99);
+  });
+});
