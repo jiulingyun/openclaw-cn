@@ -20,6 +20,38 @@ import {
 
 const STUCK_RUN_MS = 2 * 60 * 60 * 1000;
 
+/** Maximum consecutive schedule errors before auto-disabling a job. */
+const MAX_SCHEDULE_ERRORS = 3;
+
+function recordScheduleComputeError(params: {
+  state: CronServiceState;
+  job: CronJob;
+  err: unknown;
+}): boolean {
+  const { state, job, err } = params;
+  const errorCount = (job.state.scheduleErrorCount ?? 0) + 1;
+  const errText = String(err);
+
+  job.state.scheduleErrorCount = errorCount;
+  job.state.nextRunAtMs = undefined;
+  job.state.lastError = `schedule error: ${errText}`;
+
+  if (errorCount >= MAX_SCHEDULE_ERRORS) {
+    job.enabled = false;
+    state.deps.log.error(
+      { jobId: job.id, name: job.name, errorCount, err: errText },
+      "cron: 重复调度错误后自动禁用任务",
+    );
+  } else {
+    state.deps.log.warn(
+      { jobId: job.id, name: job.name, errorCount, err: errText },
+      "cron: 无法计算任务的下次运行时间（跳过）",
+    );
+  }
+
+  return true;
+}
+
 export function assertSupportedJobSpec(job: Pick<CronJob, "sessionTarget" | "payload">) {
   if (job.sessionTarget === "main" && job.payload.kind !== "systemEvent") {
     throw new Error('main cron jobs require payload.kind="systemEvent"');
@@ -91,7 +123,15 @@ export function recomputeNextRuns(state: CronServiceState) {
       );
       job.state.runningAtMs = undefined;
     }
-    job.state.nextRunAtMs = computeJobNextRunAtMs(job, now);
+    try {
+      job.state.nextRunAtMs = computeJobNextRunAtMs(job, now);
+      // Clear schedule error count on successful computation.
+      if (job.state.scheduleErrorCount) {
+        job.state.scheduleErrorCount = undefined;
+      }
+    } catch (err) {
+      recordScheduleComputeError({ state, job, err });
+    }
   }
 }
 
@@ -294,7 +334,46 @@ export function resolveJobPayloadTextForMain(job: CronJob): string | undefined {
   return text.trim() ? text : undefined;
 }
 
-export function recomputeNextRunsForMaintenance(_state: unknown, _now?: Date): boolean {
-  // Stub: maintenance recompute is handled by the scheduler
-  return false;
+export function recomputeNextRunsForMaintenance(state: CronServiceState): boolean {
+  // Maintenance-only recompute: only fills in missing nextRunAtMs values.
+  // Does NOT overwrite existing (including past-due) nextRunAtMs.
+  // This prevents silently skipping jobs that became due between
+  // findDueJobs and the post-execution locked block (#17852).
+  if (!state.store) {
+    return false;
+  }
+  const now = state.deps.nowMs();
+  let changed = false;
+
+  for (const job of state.store.jobs) {
+    if (!job.state) {
+      job.state = {};
+    }
+    if (!job.enabled) {
+      continue;
+    }
+    // Only fill in missing nextRunAtMs. Do not touch existing values.
+    // If a job was past-due but not found by findDueJobs, recomputing would
+    // cause it to be silently skipped.
+    if (job.state.nextRunAtMs === undefined) {
+      try {
+        const newNext = computeJobNextRunAtMs(job, now);
+        if (job.state.nextRunAtMs !== newNext) {
+          job.state.nextRunAtMs = newNext;
+          changed = true;
+        }
+        // Clear schedule error count on successful computation.
+        if (job.state.scheduleErrorCount) {
+          job.state.scheduleErrorCount = undefined;
+          changed = true;
+        }
+      } catch (err) {
+        if (recordScheduleComputeError({ state, job, err })) {
+          changed = true;
+        }
+      }
+    }
+  }
+
+  return changed;
 }
