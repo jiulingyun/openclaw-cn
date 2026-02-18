@@ -106,17 +106,10 @@ async function resizeImageBase64IfNeeded(params: {
         smallest = { buffer: out, size: out.byteLength };
       }
       if (out.byteLength <= params.maxBytes) {
-        log.info("Image resized", {
-          label: params.label,
-          width,
-          height,
-          maxDimensionPx: params.maxDimensionPx,
-          maxBytes: params.maxBytes,
-          originalBytes: buf.byteLength,
-          resizedBytes: out.byteLength,
-          quality,
-          side,
-        });
+        log.info(
+          `Image resized: ${width}x${height} → ${side}x* (${(buf.byteLength / 1024).toFixed(0)}KB → ${(out.byteLength / 1024).toFixed(0)}KB)`,
+          { label: params.label },
+        );
         return {
           base64: out.toString("base64"),
           mimeType: "image/jpeg",

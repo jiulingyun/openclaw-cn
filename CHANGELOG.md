@@ -2,6 +2,12 @@
 
 Docs: https://docs.clawd.bot
 
+## 0.1.5-fix.3
+
+### 🐛 Bug 修复
+
+- **图像 resize 日志优化**：将图像缩放日志改为单行格式，包含尺寸信息（upstream 414b996b0cbf）
+
 ## 0.1.5-fix.2
 
 ### 🐛 Bug 修复
