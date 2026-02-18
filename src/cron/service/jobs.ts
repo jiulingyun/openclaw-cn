@@ -55,7 +55,18 @@ export function computeJobNextRunAtMs(job: CronJob, nowMs: number): number | und
     const atMs = parseAbsoluteTimeMs(job.schedule.at);
     return atMs !== null ? atMs : undefined;
   }
-  return computeNextRunAtMs(job.schedule, nowMs);
+  const next = computeNextRunAtMs(job.schedule, nowMs);
+  // Guard against the scheduler returning a time within the same second as
+  // nowMs.  When a cron job completes within the same wall-clock second it
+  // was scheduled for, some croner versions/timezone combinations may return
+  // the current second (or computeNextRunAtMs may return undefined, which
+  // triggers recomputation).  Advancing to the next second and retrying
+  // ensures we always land on the *next* occurrence.  (See #17821)
+  if (next === undefined && job.schedule.kind === "cron") {
+    const nextSecondMs = (Math.floor(nowMs / 1000) + 1) * 1000;
+    return computeNextRunAtMs(job.schedule, nextSecondMs);
+  }
+  return next;
 }
 
 export function recomputeNextRuns(state: CronServiceState) {
