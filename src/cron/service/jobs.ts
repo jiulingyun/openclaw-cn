@@ -55,7 +55,13 @@ export function computeJobNextRunAtMs(job: CronJob, nowMs: number): number | und
     const atMs = parseAbsoluteTimeMs(job.schedule.at);
     return atMs !== null ? atMs : undefined;
   }
-  return computeNextRunAtMs(job.schedule, nowMs);
+  const next = computeNextRunAtMs(job.schedule, nowMs);
+  if (next === undefined && job.schedule.kind === "cron") {
+    // Retry from the next whole second if the first attempt returned undefined
+    const nextSecondMs = Math.floor(nowMs / 1000) * 1000 + 1000;
+    return computeNextRunAtMs(job.schedule, nextSecondMs);
+  }
+  return next;
 }
 
 export function recomputeNextRuns(state: CronServiceState) {

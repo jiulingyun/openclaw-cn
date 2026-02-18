@@ -31,5 +31,24 @@ export function computeNextRunAtMs(schedule: CronSchedule, nowMs: number): numbe
     catch: false,
   });
   const next = cron.nextRun(new Date(nowMs));
-  return next ? next.getTime() : undefined;
+  if (!next) {
+    return undefined;
+  }
+  const nextMs = next.getTime();
+  if (!Number.isFinite(nextMs)) {
+    return undefined;
+  }
+  if (nextMs > nowMs) {
+    return nextMs;
+  }
+
+  // 防止同秒重新调度循环：如果 croner 返回"now"（或更早的时刻），
+  // 从下一个整秒重试。
+  const nextSecondMs = Math.floor(nowMs / 1000) * 1000 + 1000;
+  const retry = cron.nextRun(new Date(nextSecondMs));
+  if (!retry) {
+    return undefined;
+  }
+  const retryMs = retry.getTime();
+  return Number.isFinite(retryMs) && retryMs > nowMs ? retryMs : undefined;
 }

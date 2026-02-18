@@ -12,6 +12,8 @@ import {
   resolveOutboundTarget,
   resolveSessionDeliveryTarget,
 } from "../../infra/outbound/targets.js";
+import { buildChannelAccountBindings } from "../../routing/bindings.js";
+import { normalizeAgentId } from "../../routing/session-key.js";
 
 export async function resolveDeliveryTarget(
   cfg: ClawdbotConfig,
@@ -68,21 +70,34 @@ export async function resolveDeliveryTarget(
   const mode = resolved.mode as "explicit" | "implicit";
   const toCandidate = resolved.to;
 
+  // 当会话没有 lastAccountId（例如首次运行的隔离 cron 会话）时，
+  // 回退到从 bindings 配置中获取 agent 绑定的账户。
+  // 这确保隔离会话中的 message 工具为多账户设置解析正确的机器人令牌。
+  let accountId = resolved.accountId;
+  if (!accountId && channel) {
+    const bindings = buildChannelAccountBindings(cfg);
+    const byAgent = bindings.get(channel);
+    const boundAccounts = byAgent?.get(normalizeAgentId(agentId));
+    if (boundAccounts && boundAccounts.length > 0) {
+      accountId = boundAccounts[0];
+    }
+  }
+
   if (!toCandidate) {
-    return { channel, to: undefined, accountId: resolved.accountId, mode };
+    return { channel, to: undefined, accountId, mode };
   }
 
   const docked = resolveOutboundTarget({
     channel,
     to: toCandidate,
     cfg,
-    accountId: resolved.accountId,
+    accountId,
     mode,
   });
   return {
     channel,
     to: docked.ok ? docked.to : undefined,
-    accountId: resolved.accountId,
+    accountId,
     mode,
     error: docked.ok ? undefined : docked.error,
   };
