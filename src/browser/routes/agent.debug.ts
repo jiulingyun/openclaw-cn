@@ -14,7 +14,13 @@ export function registerBrowserAgentDebugRoutes(
   app: BrowserRouteRegistrar,
   ctx: BrowserRouteContext,
 ) {
-  app.get("/console", async (req, res) => {
+  // Adapter to allow Express-typed handlers when underlying might be browser dispatcher
+  const registrar = {
+    get: (path: string, handler: (req: express.Request, res: express.Response) => any) => app.get(path, handler as any),
+    post: (path: string, handler: (req: express.Request, res: express.Response) => any) => app.post(path, handler as any),
+    delete: (path: string, handler: (req: express.Request, res: express.Response) => any) => app.delete(path, handler as any),
+  };
+  registrar.get("/console", async (req, res) => {
     // @ts-ignore -- cherry-pick upstream type mismatch
     // @ts-ignore -- cherry-pick upstream type mismatch
     const profileCtx = resolveProfileContext(req, res, ctx);
@@ -42,7 +48,7 @@ export function registerBrowserAgentDebugRoutes(
     // @ts-ignore -- cherry-pick upstream type mismatch
   });
 
-  app.get("/errors", async (req, res) => {
+  registrar.get("/errors", async (req, res) => {
     // @ts-ignore -- cherry-pick upstream type mismatch
     const profileCtx = resolveProfileContext(req, res, ctx);
     if (!profileCtx) return;
@@ -69,7 +75,7 @@ export function registerBrowserAgentDebugRoutes(
     }
   });
 
-  app.get("/requests", async (req, res) => {
+  registrar.get("/requests", async (req, res) => {
     // @ts-ignore -- cherry-pick upstream type mismatch
     const profileCtx = resolveProfileContext(req, res, ctx);
     // @ts-ignore -- cherry-pick upstream type mismatch
@@ -99,7 +105,7 @@ export function registerBrowserAgentDebugRoutes(
     }
   });
 
-  app.post("/trace/start", async (req, res) => {
+  registrar.post("/trace/start", async (req, res) => {
     // @ts-ignore -- cherry-pick upstream type mismatch
     // @ts-ignore -- cherry-pick upstream type mismatch
     const profileCtx = resolveProfileContext(req, res, ctx);
@@ -133,7 +139,7 @@ export function registerBrowserAgentDebugRoutes(
     }
   });
 
-  app.post("/trace/stop", async (req, res) => {
+  registrar.post("/trace/stop", async (req, res) => {
     // @ts-ignore -- cherry-pick upstream type mismatch
     const profileCtx = resolveProfileContext(req, res, ctx);
     if (!profileCtx) return;

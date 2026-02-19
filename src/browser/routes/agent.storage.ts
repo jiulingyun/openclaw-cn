@@ -1,11 +1,18 @@
 import type express from "express";
 
 import type { BrowserRouteContext } from "../server-context.js";
+import type { BrowserRouteRegistrar } from "./types.js";
 import { handleRouteError, readBody, requirePwAi, resolveProfileContext } from "./agent.shared.js";
 import { jsonError, toBoolean, toNumber, toStringOrEmpty } from "./utils.js";
 
-export function registerBrowserAgentStorageRoutes(app: express.Express, ctx: BrowserRouteContext) {
-  app.get("/cookies", async (req, res) => {
+export function registerBrowserAgentStorageRoutes(app: BrowserRouteRegistrar, ctx: BrowserRouteContext) {
+  // Adapter to allow Express-typed handlers when underlying might be browser dispatcher
+  const registrar = {
+    get: (path: string, handler: (req: express.Request, res: express.Response) => any) => app.get(path, handler as any),
+    post: (path: string, handler: (req: express.Request, res: express.Response) => any) => app.post(path, handler as any),
+    delete: (path: string, handler: (req: express.Request, res: express.Response) => any) => app.delete(path, handler as any),
+  };
+  registrar.get("/cookies", async (req, res) => {
     const profileCtx = resolveProfileContext(req, res, ctx);
     if (!profileCtx) return;
     const targetId = typeof req.query.targetId === "string" ? req.query.targetId.trim() : "";
@@ -23,7 +30,7 @@ export function registerBrowserAgentStorageRoutes(app: express.Express, ctx: Bro
     }
   });
 
-  app.post("/cookies/set", async (req, res) => {
+  registrar.post("/cookies/set", async (req, res) => {
     const profileCtx = resolveProfileContext(req, res, ctx);
     if (!profileCtx) return;
     const body = readBody(req);
@@ -61,7 +68,7 @@ export function registerBrowserAgentStorageRoutes(app: express.Express, ctx: Bro
     }
   });
 
-  app.post("/cookies/clear", async (req, res) => {
+  registrar.post("/cookies/clear", async (req, res) => {
     const profileCtx = resolveProfileContext(req, res, ctx);
     if (!profileCtx) return;
     const body = readBody(req);
@@ -80,7 +87,7 @@ export function registerBrowserAgentStorageRoutes(app: express.Express, ctx: Bro
     }
   });
 
-  app.get("/storage/:kind", async (req, res) => {
+  registrar.get("/storage/:kind", async (req, res) => {
     const profileCtx = resolveProfileContext(req, res, ctx);
     if (!profileCtx) return;
     const kind = toStringOrEmpty(req.params.kind);
@@ -104,7 +111,7 @@ export function registerBrowserAgentStorageRoutes(app: express.Express, ctx: Bro
     }
   });
 
-  app.post("/storage/:kind/set", async (req, res) => {
+  registrar.post("/storage/:kind/set", async (req, res) => {
     const profileCtx = resolveProfileContext(req, res, ctx);
     if (!profileCtx) return;
     const kind = toStringOrEmpty(req.params.kind);
@@ -132,7 +139,7 @@ export function registerBrowserAgentStorageRoutes(app: express.Express, ctx: Bro
     }
   });
 
-  app.post("/storage/:kind/clear", async (req, res) => {
+  registrar.post("/storage/:kind/clear", async (req, res) => {
     const profileCtx = resolveProfileContext(req, res, ctx);
     if (!profileCtx) return;
     const kind = toStringOrEmpty(req.params.kind);
@@ -155,7 +162,7 @@ export function registerBrowserAgentStorageRoutes(app: express.Express, ctx: Bro
     }
   });
 
-  app.post("/set/offline", async (req, res) => {
+  registrar.post("/set/offline", async (req, res) => {
     const profileCtx = resolveProfileContext(req, res, ctx);
     if (!profileCtx) return;
     const body = readBody(req);
@@ -177,7 +184,7 @@ export function registerBrowserAgentStorageRoutes(app: express.Express, ctx: Bro
     }
   });
 
-  app.post("/set/headers", async (req, res) => {
+  registrar.post("/set/headers", async (req, res) => {
     const profileCtx = resolveProfileContext(req, res, ctx);
     if (!profileCtx) return;
     const body = readBody(req);
@@ -206,7 +213,7 @@ export function registerBrowserAgentStorageRoutes(app: express.Express, ctx: Bro
     }
   });
 
-  app.post("/set/credentials", async (req, res) => {
+  registrar.post("/set/credentials", async (req, res) => {
     const profileCtx = resolveProfileContext(req, res, ctx);
     if (!profileCtx) return;
     const body = readBody(req);
@@ -231,7 +238,7 @@ export function registerBrowserAgentStorageRoutes(app: express.Express, ctx: Bro
     }
   });
 
-  app.post("/set/geolocation", async (req, res) => {
+  registrar.post("/set/geolocation", async (req, res) => {
     const profileCtx = resolveProfileContext(req, res, ctx);
     if (!profileCtx) return;
     const body = readBody(req);
@@ -260,7 +267,7 @@ export function registerBrowserAgentStorageRoutes(app: express.Express, ctx: Bro
     }
   });
 
-  app.post("/set/media", async (req, res) => {
+  registrar.post("/set/media", async (req, res) => {
     const profileCtx = resolveProfileContext(req, res, ctx);
     if (!profileCtx) return;
     const body = readBody(req);
@@ -289,7 +296,7 @@ export function registerBrowserAgentStorageRoutes(app: express.Express, ctx: Bro
     }
   });
 
-  app.post("/set/timezone", async (req, res) => {
+  registrar.post("/set/timezone", async (req, res) => {
     const profileCtx = resolveProfileContext(req, res, ctx);
     if (!profileCtx) return;
     const body = readBody(req);
@@ -311,7 +318,7 @@ export function registerBrowserAgentStorageRoutes(app: express.Express, ctx: Bro
     }
   });
 
-  app.post("/set/locale", async (req, res) => {
+  registrar.post("/set/locale", async (req, res) => {
     const profileCtx = resolveProfileContext(req, res, ctx);
     if (!profileCtx) return;
     const body = readBody(req);
@@ -333,7 +340,7 @@ export function registerBrowserAgentStorageRoutes(app: express.Express, ctx: Bro
     }
   });
 
-  app.post("/set/device", async (req, res) => {
+  registrar.post("/set/device", async (req, res) => {
     const profileCtx = resolveProfileContext(req, res, ctx);
     if (!profileCtx) return;
     const body = readBody(req);

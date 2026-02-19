@@ -12,6 +12,7 @@ import type { ResolvedBrowserProfile } from "./config.js";
 import { resolveProfile } from "./config.js";
 import type {
   BrowserRouteContext,
+  BrowserServerState,
   BrowserTab,
   ContextOptions,
   ProfileContext,
@@ -35,6 +36,14 @@ export type {
   ProfileRuntimeState,
   ProfileStatus,
 } from "./server-context.types.js";
+
+export function listKnownProfileNames(state: BrowserServerState): string[] {
+  const names = new Set(Object.keys(state.resolved.profiles));
+  for (const name of state.profiles.keys()) {
+    names.add(name);
+  }
+  return [...names];
+}
 
 /**
  * Normalize a CDP WebSocket URL to use the correct base URL.

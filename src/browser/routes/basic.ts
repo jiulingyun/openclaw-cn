@@ -3,11 +3,18 @@ import type express from "express";
 import { resolveBrowserExecutableForPlatform } from "../chrome.executables.js";
 import { createBrowserProfilesService } from "../profiles-service.js";
 import type { BrowserRouteContext } from "../server-context.js";
+import type { BrowserRouteRegistrar } from "./types.js";
 import { getProfileContext, jsonError, toStringOrEmpty } from "./utils.js";
 
-export function registerBrowserBasicRoutes(app: express.Express, ctx: BrowserRouteContext) {
+export function registerBrowserBasicRoutes(app: BrowserRouteRegistrar, ctx: BrowserRouteContext) {
+  // Adapter to allow Express-typed handlers when underlying might be browser dispatcher
+  const registrar = {
+    get: (path: string, handler: (req: express.Request, res: express.Response) => any) => app.get(path, handler as any),
+    post: (path: string, handler: (req: express.Request, res: express.Response) => any) => app.post(path, handler as any),
+    delete: (path: string, handler: (req: express.Request, res: express.Response) => any) => app.delete(path, handler as any),
+  };
   // List all profiles with their status
-  app.get("/profiles", async (_req, res) => {
+  registrar.get("/profiles", async (_req, res) => {
     try {
       const service = createBrowserProfilesService(ctx);
       const profiles = await service.listProfiles();
@@ -18,7 +25,7 @@ export function registerBrowserBasicRoutes(app: express.Express, ctx: BrowserRou
   });
 
   // Get status (profile-aware)
-  app.get("/", async (req, res) => {
+  registrar.get("/", async (req, res) => {
     let current: ReturnType<typeof ctx.state>;
     try {
       current = ctx.state();
@@ -75,7 +82,7 @@ export function registerBrowserBasicRoutes(app: express.Express, ctx: BrowserRou
   });
 
   // Start browser (profile-aware)
-  app.post("/start", async (req, res) => {
+  registrar.post("/start", async (req, res) => {
     const profileCtx = getProfileContext(req, ctx);
     if ("error" in profileCtx) {
       return jsonError(res, profileCtx.status, profileCtx.error);
@@ -90,7 +97,7 @@ export function registerBrowserBasicRoutes(app: express.Express, ctx: BrowserRou
   });
 
   // Stop browser (profile-aware)
-  app.post("/stop", async (req, res) => {
+  registrar.post("/stop", async (req, res) => {
     const profileCtx = getProfileContext(req, ctx);
     if ("error" in profileCtx) {
       return jsonError(res, profileCtx.status, profileCtx.error);
@@ -109,7 +116,7 @@ export function registerBrowserBasicRoutes(app: express.Express, ctx: BrowserRou
   });
 
   // Reset profile (profile-aware)
-  app.post("/reset-profile", async (req, res) => {
+  registrar.post("/reset-profile", async (req, res) => {
     const profileCtx = getProfileContext(req, ctx);
     if ("error" in profileCtx) {
       return jsonError(res, profileCtx.status, profileCtx.error);
@@ -124,7 +131,7 @@ export function registerBrowserBasicRoutes(app: express.Express, ctx: BrowserRou
   });
 
   // Create a new profile
-  app.post("/profiles/create", async (req, res) => {
+  registrar.post("/profiles/create", async (req, res) => {
     const name = toStringOrEmpty((req.body as { name?: unknown })?.name);
     const color = toStringOrEmpty((req.body as { color?: unknown })?.color);
     const cdpUrl = toStringOrEmpty((req.body as { cdpUrl?: unknown })?.cdpUrl);
@@ -163,7 +170,7 @@ export function registerBrowserBasicRoutes(app: express.Express, ctx: BrowserRou
   });
 
   // Delete a profile
-  app.delete("/profiles/:name", async (req, res) => {
+  registrar.delete("/profiles/:name", async (req, res) => {
     const name = toStringOrEmpty(req.params.name);
     if (!name) return jsonError(res, 400, "profile name is required");
 

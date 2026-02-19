@@ -2,6 +2,7 @@ import type express from "express";
 
 import type { BrowserFormField } from "../client-actions-core.js";
 import type { BrowserRouteContext } from "../server-context.js";
+import type { BrowserRouteRegistrar } from "./types.js";
 import {
   type ActKind,
   isActKind,
@@ -23,8 +24,14 @@ import {
 } from "./path-output.js";
 import { jsonError, toBoolean, toNumber, toStringArray, toStringOrEmpty } from "./utils.js";
 
-export function registerBrowserAgentActRoutes(app: express.Express, ctx: BrowserRouteContext) {
-  app.post("/act", async (req, res) => {
+export function registerBrowserAgentActRoutes(app: BrowserRouteRegistrar, ctx: BrowserRouteContext) {
+  // Adapter to allow Express-typed handlers when underlying might be browser dispatcher
+  const registrar = {
+    get: (path: string, handler: (req: express.Request, res: express.Response) => any) => app.get(path, handler as any),
+    post: (path: string, handler: (req: express.Request, res: express.Response) => any) => app.post(path, handler as any),
+    delete: (path: string, handler: (req: express.Request, res: express.Response) => any) => app.delete(path, handler as any),
+  };
+  registrar.post("/act", async (req, res) => {
     const profileCtx = resolveProfileContext(req, res, ctx);
     if (!profileCtx) return;
     const body = readBody(req);
@@ -273,7 +280,7 @@ export function registerBrowserAgentActRoutes(app: express.Express, ctx: Browser
     }
   });
 
-  app.post("/hooks/file-chooser", async (req, res) => {
+  registrar.post("/hooks/file-chooser", async (req, res) => {
     const profileCtx = resolveProfileContext(req, res, ctx);
     if (!profileCtx) return;
     const body = readBody(req);
@@ -331,7 +338,7 @@ export function registerBrowserAgentActRoutes(app: express.Express, ctx: Browser
     }
   });
 
-  app.post("/hooks/dialog", async (req, res) => {
+  registrar.post("/hooks/dialog", async (req, res) => {
     const profileCtx = resolveProfileContext(req, res, ctx);
     if (!profileCtx) return;
     const body = readBody(req);
@@ -357,7 +364,7 @@ export function registerBrowserAgentActRoutes(app: express.Express, ctx: Browser
     }
   });
 
-  app.post("/wait/download", async (req, res) => {
+  registrar.post("/wait/download", async (req, res) => {
     const profileCtx = resolveProfileContext(req, res, ctx);
     if (!profileCtx) return;
     const body = readBody(req);
@@ -395,7 +402,7 @@ export function registerBrowserAgentActRoutes(app: express.Express, ctx: Browser
     }
   });
 
-  app.post("/download", async (req, res) => {
+  registrar.post("/download", async (req, res) => {
     const profileCtx = resolveProfileContext(req, res, ctx);
     if (!profileCtx) return;
     const body = readBody(req);
@@ -431,7 +438,7 @@ export function registerBrowserAgentActRoutes(app: express.Express, ctx: Browser
     }
   });
 
-  app.post("/response/body", async (req, res) => {
+  registrar.post("/response/body", async (req, res) => {
     const profileCtx = resolveProfileContext(req, res, ctx);
     if (!profileCtx) return;
     const body = readBody(req);
@@ -457,7 +464,7 @@ export function registerBrowserAgentActRoutes(app: express.Express, ctx: Browser
     }
   });
 
-  app.post("/highlight", async (req, res) => {
+  registrar.post("/highlight", async (req, res) => {
     const profileCtx = resolveProfileContext(req, res, ctx);
     if (!profileCtx) return;
     const body = readBody(req);

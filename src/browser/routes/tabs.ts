@@ -1,10 +1,17 @@
 import type express from "express";
 
 import type { BrowserRouteContext } from "../server-context.js";
-import { getProfileContext, jsonError, toNumber, toStringOrEmpty } from "./utils.js";
+import type { BrowserRouteRegistrar } from "./types.js";
+import { getProfileContext, jsonError, toBoolean, toNumber, toStringOrEmpty } from "./utils.js";
 
-export function registerBrowserTabRoutes(app: express.Express, ctx: BrowserRouteContext) {
-  app.get("/tabs", async (req, res) => {
+export function registerBrowserTabRoutes(app: BrowserRouteRegistrar, ctx: BrowserRouteContext) {
+  // Adapter to allow Express-typed handlers when underlying might be browser dispatcher
+  const registrar = {
+    get: (path: string, handler: (req: express.Request, res: express.Response) => any) => app.get(path, handler as any),
+    post: (path: string, handler: (req: express.Request, res: express.Response) => any) => app.post(path, handler as any),
+    delete: (path: string, handler: (req: express.Request, res: express.Response) => any) => app.delete(path, handler as any),
+  };
+  registrar.get("/tabs", async (req, res) => {
     const profileCtx = getProfileContext(req, ctx);
     if ("error" in profileCtx) return jsonError(res, profileCtx.status, profileCtx.error);
     try {
@@ -17,7 +24,7 @@ export function registerBrowserTabRoutes(app: express.Express, ctx: BrowserRoute
     }
   });
 
-  app.post("/tabs/open", async (req, res) => {
+  registrar.post("/tabs/open", async (req, res) => {
     const profileCtx = getProfileContext(req, ctx);
     if ("error" in profileCtx) return jsonError(res, profileCtx.status, profileCtx.error);
     const url = toStringOrEmpty((req.body as { url?: unknown })?.url);
@@ -31,7 +38,7 @@ export function registerBrowserTabRoutes(app: express.Express, ctx: BrowserRoute
     }
   });
 
-  app.post("/tabs/focus", async (req, res) => {
+  registrar.post("/tabs/focus", async (req, res) => {
     const profileCtx = getProfileContext(req, ctx);
     if ("error" in profileCtx) return jsonError(res, profileCtx.status, profileCtx.error);
     const targetId = toStringOrEmpty((req.body as { targetId?: unknown })?.targetId);
@@ -47,7 +54,7 @@ export function registerBrowserTabRoutes(app: express.Express, ctx: BrowserRoute
     }
   });
 
-  app.delete("/tabs/:targetId", async (req, res) => {
+  registrar.delete("/tabs/:targetId", async (req, res) => {
     const profileCtx = getProfileContext(req, ctx);
     if ("error" in profileCtx) return jsonError(res, profileCtx.status, profileCtx.error);
     const targetId = toStringOrEmpty(req.params.targetId);
@@ -63,7 +70,7 @@ export function registerBrowserTabRoutes(app: express.Express, ctx: BrowserRoute
     }
   });
 
-  app.post("/tabs/action", async (req, res) => {
+  registrar.post("/tabs/action", async (req, res) => {
     const profileCtx = getProfileContext(req, ctx);
     if ("error" in profileCtx) return jsonError(res, profileCtx.status, profileCtx.error);
     const action = toStringOrEmpty((req.body as { action?: unknown })?.action);

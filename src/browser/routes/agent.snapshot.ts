@@ -15,6 +15,7 @@ import {
   normalizeBrowserScreenshot,
 } from "../screenshot.js";
 import type { BrowserRouteContext } from "../server-context.js";
+import type { BrowserRouteRegistrar } from "./types.js";
 import {
   getPwAiModule,
   handleRouteError,
@@ -24,8 +25,14 @@ import {
 } from "./agent.shared.js";
 import { jsonError, toBoolean, toNumber, toStringOrEmpty } from "./utils.js";
 
-export function registerBrowserAgentSnapshotRoutes(app: express.Express, ctx: BrowserRouteContext) {
-  app.post("/navigate", async (req, res) => {
+export function registerBrowserAgentSnapshotRoutes(app: BrowserRouteRegistrar, ctx: BrowserRouteContext) {
+  // Adapter to allow Express-typed handlers when underlying might be browser dispatcher
+  const registrar = {
+    get: (path: string, handler: (req: express.Request, res: express.Response) => any) => app.get(path, handler as any),
+    post: (path: string, handler: (req: express.Request, res: express.Response) => any) => app.post(path, handler as any),
+    delete: (path: string, handler: (req: express.Request, res: express.Response) => any) => app.delete(path, handler as any),
+  };
+  registrar.post("/navigate", async (req, res) => {
     const profileCtx = resolveProfileContext(req, res, ctx);
     if (!profileCtx) return;
     const body = readBody(req);
@@ -47,7 +54,7 @@ export function registerBrowserAgentSnapshotRoutes(app: express.Express, ctx: Br
     }
   });
 
-  app.post("/pdf", async (req, res) => {
+  registrar.post("/pdf", async (req, res) => {
     const profileCtx = resolveProfileContext(req, res, ctx);
     if (!profileCtx) return;
     const body = readBody(req);
@@ -78,7 +85,7 @@ export function registerBrowserAgentSnapshotRoutes(app: express.Express, ctx: Br
     }
   });
 
-  app.post("/screenshot", async (req, res) => {
+  registrar.post("/screenshot", async (req, res) => {
     const profileCtx = resolveProfileContext(req, res, ctx);
     if (!profileCtx) return;
     const body = readBody(req);
@@ -140,7 +147,7 @@ export function registerBrowserAgentSnapshotRoutes(app: express.Express, ctx: Br
     }
   });
 
-  app.get("/snapshot", async (req, res) => {
+  registrar.get("/snapshot", async (req, res) => {
     const profileCtx = resolveProfileContext(req, res, ctx);
     if (!profileCtx) return;
     const targetId = typeof req.query.targetId === "string" ? req.query.targetId.trim() : "";

@@ -242,7 +242,7 @@ function resolveBrowserBaseUrl(params: {
       "Browser control is disabled. Set browser.enabled=true in ~/.clawdbot-cn/clawdbot-cn.json.",
     );
   }
-  return undefined;
+  return resolved.controlUrl;
 }
 
 export function createBrowserTool(opts?: {

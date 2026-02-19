@@ -9,7 +9,9 @@ import { browserMutationGuardMiddleware } from "./csrf.js";
 import { ensureChromeExtensionRelayServer } from "./extension-relay.js";
 import { isAuthorizedBrowserRequest } from "./http-auth.js";
 import { registerBrowserRoutes } from "./routes/index.js";
+import type { BrowserRouteRegistrar } from "./routes/types.js";
 import { type BrowserServerState, createBrowserRouteContext } from "./server-context.js";
+import { ensureExtensionRelayForProfiles, stopKnownBrowserProfiles } from "./server-lifecycle.js";
 
 let state: BrowserServerState | null = null;
 const log = createSubsystemLogger("browser");
@@ -29,17 +31,20 @@ export async function startBrowserControlServerFromConfig(): Promise<BrowserServ
     return null;
   }
 
-  const app = express();
-  app.use(express.json({ limit: "1mb" }));
-  app.use(browserMutationGuardMiddleware());
-
   let browserAuth = resolveBrowserControlAuth(cfg);
   try {
     const ensured = await ensureBrowserControlAuth({ cfg });
     browserAuth = ensured.auth;
-  } catch {
-    // ignore - use default auth
+    if (ensured.generatedToken) {
+      logServer.info("No browser auth configured; generated gateway.auth.token automatically.");
+    }
+  } catch (err) {
+    logServer.warn(`failed to auto-configure browser auth: ${String(err)}`);
   }
+
+  const app = express();
+  app.use(express.json({ limit: "1mb" }));
+  app.use(browserMutationGuardMiddleware());
 
   if (browserAuth.token || browserAuth.password) {
     app.use((req, res, next) => {
@@ -52,15 +57,16 @@ export async function startBrowserControlServerFromConfig(): Promise<BrowserServ
 
   const ctx = createBrowserRouteContext({
     getState: () => state,
+    refreshConfigFromDisk: true,
   });
-  registerBrowserRoutes(app, ctx);
+  registerBrowserRoutes(app as unknown as BrowserRouteRegistrar, ctx);
 
   const port = resolved.controlPort;
   const server = await new Promise<Server>((resolve, reject) => {
     const s = app.listen(port, "127.0.0.1", () => resolve(s));
     s.once("error", reject);
   }).catch((err) => {
-    logServer.error(`clawd browser server failed to bind 127.0.0.1:${port}: ${String(err)}`);
+    logServer.error(`openclaw browser server failed to bind 127.0.0.1:${port}: ${String(err)}`);
     return null;
   });
 
@@ -73,17 +79,13 @@ export async function startBrowserControlServerFromConfig(): Promise<BrowserServ
     profiles: new Map(),
   };
 
-  // If any profile uses the Chrome extension relay, start the local relay server eagerly
-  // so the extension can connect before the first browser action.
-  for (const name of Object.keys(resolved.profiles)) {
-    const profile = resolveProfile(resolved, name);
-    if (!profile || profile.driver !== "extension") continue;
-    await ensureChromeExtensionRelayServer({ cdpUrl: profile.cdpUrl }).catch((err) => {
-      logServer.warn(`Chrome extension relay init failed for profile "${name}": ${String(err)}`);
-    });
-  }
+  await ensureExtensionRelayForProfiles({
+    resolved,
+    onWarn: (message) => logServer.warn(message),
+  });
 
-  logServer.info(`Browser control listening on http://127.0.0.1:${port}/`);
+  const authMode = browserAuth.token ? "token" : browserAuth.password ? "password" : "off";
+  logServer.info(`Browser control listening on http://127.0.0.1:${port}/ (auth=${authMode})`);
   return state;
 }
 
@@ -91,28 +93,16 @@ export async function stopBrowserControlServer(): Promise<void> {
   const current = state;
   if (!current) return;
 
-  const ctx = createBrowserRouteContext({
+  await stopKnownBrowserProfiles({
     getState: () => state,
+    onWarn: (message) => logServer.warn(message),
   });
 
-  try {
-    const current = state;
-    if (current) {
-      for (const name of Object.keys(current.resolved.profiles)) {
-        try {
-          await ctx.forProfile(name).stopRunningBrowser();
-        } catch {
-          // ignore
-        }
-      }
-    }
-  } catch (err) {
-    logServer.warn(`clawd browser stop failed: ${String(err)}`);
+  if (current.server) {
+    await new Promise<void>((resolve) => {
+      current.server?.close(() => resolve());
+    });
   }
-
-  await new Promise<void>((resolve) => {
-    current.server.close(() => resolve());
-  });
   state = null;
 
   // Optional: Playwright is not always available (e.g. embedded gateway builds).
