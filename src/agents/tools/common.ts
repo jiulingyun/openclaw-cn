@@ -6,7 +6,26 @@ import { detectMime } from "../../media/mime.js";
 import { sanitizeToolResultImages } from "../tool-images.js";
 
 // biome-ignore lint/suspicious/noExplicitAny: TypeBox schema type from pi-agent-core uses a different module instance.
-export type AnyAgentTool = AgentTool<any, unknown>;
+export type AnyAgentTool = AgentTool<any, unknown> & {
+  ownerOnly?: boolean;
+};
+
+export const OWNER_ONLY_TOOL_ERROR = "Tool restricted to owner senders.";
+
+export function wrapOwnerOnlyToolExecution(
+  tool: AnyAgentTool,
+  senderIsOwner: boolean,
+): AnyAgentTool {
+  if (senderIsOwner || !tool.execute) {
+    return tool;
+  }
+  return {
+    ...tool,
+    execute: async () => {
+      throw new Error(OWNER_ONLY_TOOL_ERROR);
+    },
+  };
+}
 
 export type StringParamOptions = {
   required?: boolean;
