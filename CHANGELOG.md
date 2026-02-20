@@ -9,6 +9,10 @@ Docs: https://docs.clawd.bot
 - **Control UI 网关 Token 修复**：修复首次安装后打开带 Token 的仪表盘 URL 时，Token 未被持久化导致网关连接报 `unauthorized: gateway token missing (1008)` 的问题
 - **MiniMax API Key 认证修复**：修复手动配置 MiniMax API Key 后认证失败的问题——向导错误地将 API Key 用户路由到仅接受 OAuth Token 的 Anthropic 兼容端点 (`api.minimax.io/anthropic`)，现已切换到正确的 OpenAI 兼容端点 (`api.minimax.chat/v1`)
 
+### 🔒 安全（Security）
+
+- **飞书路径遍历加固**：防止飞书入站媒体临时文件写入中的路径遍历攻击，将密钥派生的临时文件名替换为基于 UUID 的名称。感谢 @allsmog 报告。（upstream `65a7fc6de7e9`）
+
 ### ✨ 功能改进
 
 - **MiniMax 全模型支持**：隐式 Provider 和模型目录补全所有 MiniMax 模型（M2.5、M2.5-highspeed、M2.1-highspeed、M2）
