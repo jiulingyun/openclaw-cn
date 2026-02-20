@@ -14,7 +14,6 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "baseUrl": ".",
     "noEmit": false
   },
   "include": ["index.ts", "src/**/*.ts"],

@@ -1,4 +1,5 @@
 import net from "node:net";
+import os from "node:os";
 
 import { pickPrimaryTailnetIPv4, pickPrimaryTailnetIPv6 } from "../infra/tailnet.js";
 
@@ -222,4 +223,48 @@ function isValidIPv4(host: string): boolean {
 
 export function isLoopbackHost(host: string): boolean {
   return isLoopbackAddress(host);
+}
+
+/**
+ * Returns the primary LAN IPv4 address, preferring en0/eth0, falling back to any
+ * non-internal IPv4 interface.
+ */
+export function pickPrimaryLanIPv4(): string | undefined {
+  const interfaces = os.networkInterfaces();
+  const preferred = ["en0", "eth0"];
+  for (const name of preferred) {
+    const iface = interfaces[name];
+    if (iface) {
+      for (const info of iface) {
+        if (info.family === "IPv4" && !info.internal) {
+          return info.address;
+        }
+      }
+    }
+  }
+  for (const iface of Object.values(interfaces)) {
+    if (!iface) continue;
+    for (const info of iface) {
+      if (info.family === "IPv4" && !info.internal) {
+        return info.address;
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Returns true if the URL uses wss:// or if it targets a loopback address with ws://.
+ * Plaintext ws:// to non-loopback addresses is rejected (CWE-319).
+ */
+export function isSecureWebSocketUrl(url: string): boolean {
+  if (url.startsWith("wss://")) return true;
+  if (!url.startsWith("ws://")) return false;
+  // Allow plaintext only for loopback
+  try {
+    const { hostname } = new URL(url);
+    return isLoopbackAddress(hostname);
+  } catch {
+    return false;
+  }
 }

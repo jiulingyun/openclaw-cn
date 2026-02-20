@@ -2,11 +2,12 @@ import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { ensureSandboxWorkspaceForSession } from "../../agents/sandbox.js";
 import type { ClawdbotConfig } from "../../config/config.js";
-import { logVerbose } from "../../globals.js";
-import { CONFIG_DIR } from "../../utils.js";
 import type { MsgContext, TemplateContext } from "../templating.js";
+import { ensureSandboxWorkspaceForSession } from "../../agents/sandbox.js";
+import { logVerbose } from "../../globals.js";
+import { normalizeScpRemoteHost } from "../../infra/scp-host.js";
+import { CONFIG_DIR } from "../../utils.js";
 
 export async function stageSandboxMedia(params: {
   ctx: MsgContext;
@@ -130,6 +131,10 @@ export async function stageSandboxMedia(params: {
 }
 
 async function scpFile(remoteHost: string, remotePath: string, localPath: string): Promise<void> {
+  const safeRemoteHost = normalizeScpRemoteHost(remoteHost);
+  if (!safeRemoteHost) {
+    throw new Error("invalid remote host for SCP");
+  }
   return new Promise((resolve, reject) => {
     const child = spawn(
       "/usr/bin/scp",
@@ -137,8 +142,9 @@ async function scpFile(remoteHost: string, remotePath: string, localPath: string
         "-o",
         "BatchMode=yes",
         "-o",
-        "StrictHostKeyChecking=accept-new",
-        `${remoteHost}:${remotePath}`,
+        "StrictHostKeyChecking=yes",
+        "--",
+        `${safeRemoteHost}:${remotePath}`,
         localPath,
       ],
       { stdio: ["ignore", "ignore", "pipe"] },
