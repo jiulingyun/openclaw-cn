@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { ClawdbotConfig } from "../config/config.js";
 import type { ExecApprovalsResolved } from "../infra/exec-approvals.js";
-import { createClawdbotCodingTools } from "./pi-tools.js";
+import { createOpenClawCodingTools } from "./pi-tools.js";
 
 const previousBundledPluginsDir = process.env.OPENCLAW_BUNDLED_PLUGINS_DIR;
 
@@ -87,7 +87,7 @@ describe("createClawdbotCodingTools safeBins", () => {
       },
     };
 
-    const tools = createClawdbotCodingTools({
+    const tools = createOpenClawCodingTools({
       config: cfg,
       sessionKey: "agent:main:main",
       workspaceDir: tmpDir,
@@ -127,10 +127,9 @@ describe("createClawdbotCodingTools safeBins", () => {
     const { createOpenClawCodingTools } = await import("./pi-tools.js");
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "openclaw-safe-bins-expand-"));
 
-    const secret = `TOP_SECRET_${Date.now()}`;
-    fs.writeFileSync(path.join(tmpDir, "secret.txt"), `${secret}\n`, "utf8");
+    fs.writeFileSync(path.join(tmpDir, "secret.txt"), "TOP_SECRET\n", "utf8");
 
-    const cfg: OpenClawConfig = {
+    const cfg: ClawdbotConfig = {
       tools: {
         exec: {
           host: "gateway",
@@ -150,14 +149,56 @@ describe("createClawdbotCodingTools safeBins", () => {
     const execTool = tools.find((tool) => tool.name === "exec");
     expect(execTool).toBeDefined();
 
-    const result = await execTool!.execute("call1", {
-      command: "head $FOO ; wc -l",
-      workdir: tmpDir,
-      env: { FOO: "secret.txt" },
-    });
-    const text = result.content.find((content) => content.type === "text")?.text ?? "";
+    await expect(
+      execTool!.execute("call1", {
+        command: "head $FOO ; wc -l",
+        workdir: tmpDir,
+        env: { FOO: "secret.txt" },
+      }),
+    ).rejects.toThrow("exec denied: allowlist miss");
+  });
 
-    expect(result.details.status).toBe("completed");
-    expect(text).not.toContain(secret);
+  it("does not leak file existence from sort output flags", async () => {
+    if (process.platform === "win32") {
+      return;
+    }
+
+    const { createOpenClawCodingTools } = await import("./pi-tools.js");
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "openclaw-safe-bins-oracle-"));
+    fs.writeFileSync(path.join(tmpDir, "existing.txt"), "x\n", "utf8");
+
+    const cfg: ClawdbotConfig = {
+      tools: {
+        exec: {
+          host: "gateway",
+          security: "allowlist",
+          ask: "off",
+          safeBins: ["sort"],
+        },
+      },
+    };
+
+    const tools = createOpenClawCodingTools({
+      config: cfg,
+      sessionKey: "agent:main:main",
+      workspaceDir: tmpDir,
+      agentDir: path.join(tmpDir, "agent"),
+    });
+    const execTool = tools.find((tool) => tool.name === "exec");
+    expect(execTool).toBeDefined();
+
+    const run = async (command: string) => {
+      try {
+        const result = await execTool!.execute("call-oracle", { command, workdir: tmpDir });
+        const text = result.content.find((content) => content.type === "text")?.text ?? "";
+        return { kind: "result" as const, status: result.details.status, text };
+      } catch (err) {
+        return { kind: "error" as const, message: String(err) };
+      }
+    };
+
+    const existing = await run("sort -o existing.txt");
+    const missing = await run("sort -o missing.txt");
+    expect(existing).toEqual(missing);
   });
 });

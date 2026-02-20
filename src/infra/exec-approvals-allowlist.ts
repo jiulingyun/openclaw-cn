@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import path from "node:path";
 import type { ExecAllowlistEntry } from "./exec-approvals.js";
 import {
@@ -30,14 +29,6 @@ function isPathLikeToken(value: string): boolean {
   return /^[A-Za-z]:[\\/]/.test(trimmed);
 }
 
-function defaultFileExists(filePath: string): boolean {
-  try {
-    return fs.existsSync(filePath);
-  } catch {
-    return false;
-  }
-}
-
 export function normalizeSafeBins(entries?: string[]): Set<string> {
   if (!Array.isArray(entries)) {
     return new Set();
@@ -61,12 +52,101 @@ function hasGlobToken(value: string): boolean {
   return /[*?[\]]/.test(value);
 }
 
+type SafeBinProfile = {
+  maxPositional?: number;
+  /** Flags that consume the next token as a value (skip it in positional counting). */
+  valueFlags?: ReadonlySet<string>;
+  /** Flags that are blocked outright (file-oriented or break stdin-only guarantees). */
+  blockedFlags?: ReadonlySet<string>;
+};
+
+const SAFE_BIN_GENERIC_PROFILE: SafeBinProfile = {
+  // Default: no positional args (all safe bins should be stdin-only by default).
+  maxPositional: 0,
+};
+
+const SAFE_BIN_PROFILES: Record<string, SafeBinProfile> = {
+  jq: {
+    maxPositional: 1,
+    valueFlags: new Set([
+      "--arg",
+      "--argjson",
+      "--argstr",
+      "--argfile",
+      "--rawfile",
+      "--slurpfile",
+      "--from-file",
+      "--library-path",
+      "-L",
+      "-f",
+    ]),
+    // File-oriented flags that break stdin-only guarantees.
+    blockedFlags: new Set([
+      "--argfile",
+      "--rawfile",
+      "--slurpfile",
+      "--from-file",
+      "--library-path",
+      "-L",
+      "-f",
+    ]),
+  },
+  grep: {
+    maxPositional: 1,
+    valueFlags: new Set([
+      "--regexp",
+      "--file",
+      "--max-count",
+      "--after-context",
+      "--before-context",
+      "--context",
+      "--devices",
+      "--directories",
+      "--binary-files",
+      "--exclude",
+      "--exclude-from",
+      "--include",
+      "--label",
+      "-e",
+      "-f",
+      "-m",
+      "-A",
+      "-B",
+      "-C",
+    ]),
+    // File-reading flags and recursion flags that break stdin-only guarantees.
+    blockedFlags: new Set([
+      "--file",
+      "--exclude-from",
+      "-f",
+      "--recursive",
+      "--dereference-recursive",
+      "--directories",
+      "-r",
+      "-R",
+      "-d",
+    ]),
+  },
+  sort: {
+    // sort -o/--output writes to a file; --files0-from reads file list from a file.
+    maxPositional: 0,
+    blockedFlags: new Set(["-o", "--output", "--files0-from"]),
+  },
+  wc: {
+    maxPositional: 0,
+    blockedFlags: new Set(["--files0-from"]),
+  },
+};
+
+function getSafeBinProfile(execName: string): SafeBinProfile {
+  return SAFE_BIN_PROFILES[execName] ?? SAFE_BIN_GENERIC_PROFILE;
+}
+
 export function isSafeBinUsage(params: {
   argv: string[];
   resolution: CommandResolution | null;
   safeBins: Set<string>;
   cwd?: string;
-  fileExists?: (filePath: string) => boolean;
 }): boolean {
   // Windows host exec uses PowerShell, which has different parsing/expansion rules.
   // Keep safeBins conservative there (require explicit allowlist entries).
@@ -90,27 +170,49 @@ export function isSafeBinUsage(params: {
   if (!resolution?.resolvedPath) {
     return false;
   }
-  const cwd = params.cwd ?? process.cwd();
-  const exists = params.fileExists ?? defaultFileExists;
+  const profile = getSafeBinProfile(execName);
   const argv = params.argv.slice(1);
+  let positionalCount = 0;
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
     if (!token) {
       continue;
     }
     if (token === "-") {
+      // Explicit stdin marker; not a positional file args.
       continue;
+    }
+    if (token === "--") {
+      // Everything after -- is positional.
+      const rest = argv.slice(i + 1);
+      for (const pos of rest) {
+        if (!pos) continue;
+        if (hasGlobToken(pos) || isPathLikeToken(pos)) {
+          return false;
+        }
+        positionalCount += 1;
+        if (profile.maxPositional !== undefined && positionalCount > profile.maxPositional) {
+          return false;
+        }
+      }
+      break;
     }
     if (token.startsWith("-")) {
       const eqIndex = token.indexOf("=");
+      const flagName = eqIndex > 0 ? token.slice(0, eqIndex) : token;
+      // Check blocked flags.
+      if (profile.blockedFlags?.has(flagName)) {
+        return false;
+      }
       if (eqIndex > 0) {
+        // --flag=value form: check the value portion for glob/path tokens.
         const value = token.slice(eqIndex + 1);
-        if (value && hasGlobToken(value)) {
+        if (value && (hasGlobToken(value) || isPathLikeToken(value))) {
           return false;
         }
-        if (value && (isPathLikeToken(value) || exists(path.resolve(cwd, value)))) {
-          return false;
-        }
+      } else if (profile.valueFlags?.has(flagName)) {
+        // Flag consumes next token as its value; skip it.
+        i += 1;
       }
       continue;
     }
@@ -120,7 +222,8 @@ export function isSafeBinUsage(params: {
     if (isPathLikeToken(token)) {
       return false;
     }
-    if (exists(path.resolve(cwd, token))) {
+    positionalCount += 1;
+    if (profile.maxPositional !== undefined && positionalCount > profile.maxPositional) {
       return false;
     }
   }
