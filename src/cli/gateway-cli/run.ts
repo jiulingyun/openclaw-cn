@@ -138,9 +138,11 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
   }
   const authModeRaw = toOptionString(opts.auth);
   const authMode: GatewayAuthMode | null =
-    authModeRaw === "token" || authModeRaw === "password" ? authModeRaw : null;
+    authModeRaw === "none" || authModeRaw === "token" || authModeRaw === "password"
+      ? authModeRaw
+      : null;
   if (authModeRaw && !authMode) {
-    defaultRuntime.error('Invalid --auth (use "token" or "password")');
+    defaultRuntime.error('Invalid --auth (use "none", "token" or "password")');
     defaultRuntime.exit(1);
     return;
   }
@@ -216,7 +218,7 @@ async function runGatewayCommand(opts: GatewayRunOpts) {
       '"gateway.remote.token" is for remote CLI calls; it does not enable local gateway auth.',
     );
   }
-  if (resolvedAuthMode === "token" && !hasToken && !resolvedAuth.allowTailscale) {
+  if (resolvedAuthMode === "token" && !hasToken && !resolvedAuth.allowTailscale && bind !== "loopback") {
     defaultRuntime.error(
       [
         "Gateway auth is set to token, but no token is configured.",

@@ -79,3 +79,4 @@ USER.md
 
 # local tooling
 .serena/
+.claude/settings.local.json

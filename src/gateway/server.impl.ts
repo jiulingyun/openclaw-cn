@@ -62,6 +62,7 @@ import { safeParseJson } from "./server-methods/nodes.helpers.js";
 import { loadGatewayPlugins } from "./server-plugins.js";
 import { createGatewayReloadHandlers } from "./server-reload-handlers.js";
 import { resolveGatewayRuntimeConfig } from "./server-runtime-config.js";
+import { ensureGatewayStartupAuth } from "./startup-auth.js";
 import { createGatewayRuntimeState } from "./server-runtime-state.js";
 import { hasConnectedMobileNode } from "./server-mobile-nodes.js";
 import { resolveSessionKeyForRun } from "./server-session-key.js";
@@ -220,6 +221,12 @@ export async function startGatewayServer(
   }
 
   const cfgAtStart = loadConfig();
+  // Auto-generate and persist a gateway auth token if none is configured (startup bootstrap).
+  const startupAuth = await ensureGatewayStartupAuth({ cfg: cfgAtStart, persist: true });
+  if (startupAuth.generatedToken) {
+    // Expose the generated token to auth resolution via env so resolveGatewayRuntimeConfig picks it up.
+    process.env.OPENCLAW_GATEWAY_TOKEN = startupAuth.generatedToken;
+  }
   const diagnosticsEnabled = isDiagnosticsEnabled(cfgAtStart);
   if (diagnosticsEnabled) {
     startDiagnosticHeartbeat();

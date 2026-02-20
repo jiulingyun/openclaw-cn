@@ -2,7 +2,17 @@
 
 Docs: https://docs.clawd.bot
 
-## 0.1.5-fix.2
+## 0.1.5-fix.3
+
+> 🔒 **安全加固**：同步上游 v2026.2.17→v2026.2.19 的 5 项安全补丁（P0/P1），包括网关 HTTP 安全响应头、WebChat 会话变更限制、默认网关认证自动引导等关键安全更新。
+
+### 🔒 安全修复
+
+- **Gateway/HTTP 安全响应头**：为所有 Gateway HTTP 响应添加基础安全头（`X-Content-Type-Options: nosniff`、`Referrer-Policy: no-referrer`），防止 MIME 嗅探攻击（upstream `e955582c8f0e`）
+- **Gateway/WebChat 会话变更限制**：禁止 WebChat 客户端调用 `sessions.patch` 和 `sessions.delete`，会话存储变更仅允许非 WebChat 的 Operator 操作；感谢 @allsmog 反馈（upstream `981d2664801b`）
+- **Gateway/Auth 默认引导**：网关认证默认为 token 模式，若未配置 token 则在启动时自动生成并持久化；新增 `gateway.auth.mode: "none"` 作为受信任本地回环的显式免认证选项，感谢 @gumadeiras（upstream `c5698caca31d`）
+
+
 
 ### 🐛 Bug 修复
 

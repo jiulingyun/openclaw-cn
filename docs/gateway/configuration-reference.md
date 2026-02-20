@@ -1889,7 +1889,7 @@ See [Plugins](/tools/plugin).
     port: 18789,
     bind: "loopback",
     auth: {
-      mode: "token", // token | password
+      mode: "token", // none | token | password
       token: "your-token",
       // password: "your-password", // or OPENCLAW_GATEWAY_PASSWORD
       allowTailscale: true,
@@ -1927,7 +1927,8 @@ See [Plugins](/tools/plugin).
 - `mode`: `local` (run gateway) or `remote` (connect to remote gateway). Gateway refuses to start unless `local`.
 - `port`: single multiplexed port for WS + HTTP. Precedence: `--port` > `OPENCLAW_GATEWAY_PORT` > `gateway.port` > `18789`.
 - `bind`: `auto`, `loopback` (default), `lan` (`0.0.0.0`), `tailnet` (Tailscale IP only), or `custom`.
-- **Auth**: required by default. Non-loopback binds require a shared token/password. Onboarding wizard generates a token by default.
+- **Auth**: required by default. Non-loopback binds require a shared token/password. If no token is configured, gateway startup auto-generates one and saves it to `gateway.auth.token`.
+- `auth.mode: "none"`: explicit no-auth mode. Use only for trusted local loopback setups; this is intentionally not offered by onboarding prompts.
 - `auth.allowTailscale`: when `true`, Tailscale Serve identity headers satisfy auth (verified via `tailscale whois`). Defaults to `true` when `tailscale.mode = "serve"`.
 - `tailscale.mode`: `serve` (tailnet only, loopback bind) or `funnel` (public, requires auth).
 - `remote.transport`: `ssh` (default) or `direct` (ws/wss). For `direct`, `remote.url` must be `ws://` or `wss://`.

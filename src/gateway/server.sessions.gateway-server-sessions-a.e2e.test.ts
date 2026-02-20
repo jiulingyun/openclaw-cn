@@ -15,6 +15,7 @@ import {
   writeSessionStore,
 } from "./test-helpers.js";
 import { DEFAULT_PROVIDER } from "../agents/defaults.js";
+import { GATEWAY_CLIENT_IDS, GATEWAY_CLIENT_MODES } from "./protocol/client-info.js";
 
 const sessionCleanupMocks = vi.hoisted(() => ({
   clearSessionQueues: vi.fn(() => ({ followupCleared: 0, laneCleared: 0, keys: [] })),
@@ -618,6 +619,54 @@ describe("gateway server sessions", () => {
     expect(filesAfterDeleteAttempt.some((f) => f.startsWith("sess-active.jsonl.deleted."))).toBe(
       false,
     );
+
+    ws.close();
+  });
+
+  test("webchat clients cannot patch or delete sessions", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-sessions-webchat-"));
+    const storePath = path.join(dir, "sessions.json");
+    testState.sessionStorePath = storePath;
+
+    await writeSessionStore({
+      entries: {
+        main: {
+          sessionId: "sess-main",
+          updatedAt: Date.now(),
+        },
+        "discord:group:dev": {
+          sessionId: "sess-group",
+          updatedAt: Date.now(),
+        },
+      },
+    });
+
+    const ws = new WebSocket(`ws://127.0.0.1:${port}`, {
+      headers: { origin: `http://127.0.0.1:${port}` },
+    });
+    await new Promise<void>((resolve) => ws.once("open", resolve));
+    await connectOk(ws, {
+      client: {
+        id: GATEWAY_CLIENT_IDS.WEBCHAT_UI,
+        version: "1.0.0",
+        platform: "test",
+        mode: GATEWAY_CLIENT_MODES.UI,
+      },
+      scopes: ["operator.admin"],
+    });
+
+    const patched = await rpcReq(ws, "sessions.patch", {
+      key: "agent:main:discord:group:dev",
+      label: "should-fail",
+    });
+    expect(patched.ok).toBe(false);
+    expect(patched.error?.message ?? "").toMatch(/webchat clients cannot patch sessions/i);
+
+    const deleted = await rpcReq(ws, "sessions.delete", {
+      key: "agent:main:discord:group:dev",
+    });
+    expect(deleted.ok).toBe(false);
+    expect(deleted.error?.message ?? "").toMatch(/webchat clients cannot delete sessions/i);
 
     ws.close();
   });

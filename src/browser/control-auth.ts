@@ -1,7 +1,7 @@
-import crypto from "node:crypto";
 import type { ClawdbotConfig } from "../config/config.js";
-import { loadConfig, writeConfigFile } from "../config/config.js";
+import { loadConfig } from "../config/config.js";
 import { resolveGatewayAuth } from "../gateway/auth.js";
+import { ensureGatewayStartupAuth } from "../gateway/startup-auth.js";
 
 export type BrowserControlAuth = {
   token?: string;
@@ -53,6 +53,10 @@ export async function ensureBrowserControlAuth(params: {
     return { auth };
   }
 
+  if (params.cfg.gateway?.auth?.mode === "none") {
+    return { auth };
+  }
+
   // Respect explicit password mode even if currently unset.
   if (params.cfg.gateway?.auth?.mode === "password") {
     return { auth };
@@ -72,28 +76,23 @@ export async function ensureBrowserControlAuth(params: {
   }
   if (latestCfg.gateway?.auth?.mode === "password") {
     return { auth: latestAuth };
-    // @ts-ignore -- cherry-pick upstream type mismatch
+  }
+  if (latestCfg.gateway?.auth?.mode === "none") {
+    return { auth: latestAuth };
   }
   // @ts-ignore -- cherry-pick upstream type mismatch
   if (latestCfg.gateway?.auth?.mode === "trusted-proxy") {
     return { auth: latestAuth };
   }
 
-  const generatedToken = crypto.randomBytes(24).toString("hex");
-  const nextCfg: ClawdbotConfig = {
-    ...latestCfg,
-    gateway: {
-      ...latestCfg.gateway,
-      auth: {
-        ...latestCfg.gateway?.auth,
-        mode: "token",
-        token: generatedToken,
-      },
-    },
-  };
-  await writeConfigFile(nextCfg);
+  const ensured = await ensureGatewayStartupAuth({
+    cfg: latestCfg,
+    env,
+    persist: true,
+  });
+  const ensuredAuth = resolveBrowserControlAuth(ensured.cfg, env);
   return {
-    auth: { token: generatedToken },
-    generatedToken,
+    auth: ensuredAuth,
+    generatedToken: ensured.generatedToken,
   };
 }
