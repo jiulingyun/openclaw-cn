@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   CircularIncludeError,
   ConfigIncludeError,
+  deepMerge,
   type IncludeResolver,
   resolveConfigIncludes,
 } from "./includes.js";
@@ -359,5 +360,30 @@ describe("real-world config patterns", () => {
       channels: { whatsapp: { dmPolicy: "pairing", allowFrom: ["+49123"] } },
       agents: { defaults: { sandbox: { mode: "all" } } },
     });
+  });
+});
+
+describe("deepMerge 原型链污染防护", () => {
+  it("阻止 __proto__ 键污染 Object.prototype", () => {
+    const result = deepMerge({}, JSON.parse('{"__proto__":{"polluted":true}}'));
+    expect((Object.prototype as Record<string, unknown>).polluted).toBeUndefined();
+    expect(result).toEqual({});
+  });
+
+  it("阻止 prototype 和 constructor 键", () => {
+    const result = deepMerge(
+      { safe: 1 },
+      { prototype: { x: 1 }, constructor: { y: 2 }, normal: 3 },
+    );
+    expect(result).toEqual({ safe: 1, normal: 3 });
+  });
+
+  it("阻止嵌套合并中的 __proto__", () => {
+    const result = deepMerge(
+      { nested: { a: 1 } },
+      { nested: JSON.parse('{"__proto__":{"polluted":true}}') },
+    );
+    expect((Object.prototype as Record<string, unknown>).polluted).toBeUndefined();
+    expect(result).toEqual({ nested: { a: 1 } });
   });
 });
