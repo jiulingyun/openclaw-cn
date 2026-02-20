@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { isPathInside } from "./scan-paths.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -261,12 +262,6 @@ function normalizeScanOptions(opts?: SkillScanOptions): Required<SkillScanOption
   };
 }
 
-function isPathInside(basePath: string, candidatePath: string): boolean {
-  const base = path.resolve(basePath);
-  const candidate = path.resolve(candidatePath);
-  const rel = path.relative(base, candidate);
-  return rel === "" || (!rel.startsWith(`..${path.sep}`) && rel !== ".." && !path.isAbsolute(rel));
-}
 
 async function walkDirWithLimit(dirPath: string, maxFiles: number): Promise<string[]> {
   const files: string[] = [];

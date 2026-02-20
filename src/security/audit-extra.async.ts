@@ -160,6 +160,26 @@ function extensionUsesSkippedScannerPath(entry: string): boolean {
   );
 }
 
+async function listInstalledPluginDirs(params: {
+  stateDir: string;
+  onReadError?: (error: unknown) => void;
+}): Promise<{ extensionsDir: string; pluginDirs: string[] }> {
+  const extensionsDir = path.join(params.stateDir, "extensions");
+  const st = await safeStat(extensionsDir);
+  if (!st.ok || !st.isDir) {
+    return { extensionsDir, pluginDirs: [] };
+  }
+  const entries = await fs.readdir(extensionsDir, { withFileTypes: true }).catch((err) => {
+    params.onReadError?.(err);
+    return [];
+  });
+  const pluginDirs = entries
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .filter(Boolean);
+  return { extensionsDir, pluginDirs };
+}
+
 async function readPluginManifestExtensions(pluginPath: string): Promise<string[]> {
   const manifestPath = path.join(pluginPath, "package.json");
   const raw = await fs.readFile(manifestPath, "utf-8").catch(() => "");
@@ -343,17 +363,9 @@ export async function collectPluginsTrustFindings(params: {
   stateDir: string;
 }): Promise<SecurityAuditFinding[]> {
   const findings: SecurityAuditFinding[] = [];
-  const extensionsDir = path.join(params.stateDir, "extensions");
-  const st = await safeStat(extensionsDir);
-  if (!st.ok || !st.isDir) {
-    return findings;
-  }
-
-  const entries = await fs.readdir(extensionsDir, { withFileTypes: true }).catch(() => []);
-  const pluginDirs = entries
-    .filter((e) => e.isDirectory())
-    .map((e) => e.name)
-    .filter(Boolean);
+  const { extensionsDir, pluginDirs } = await listInstalledPluginDirs({
+    stateDir: params.stateDir,
+  });
   if (pluginDirs.length === 0) {
     return findings;
   }
@@ -758,24 +770,19 @@ export async function collectPluginsCodeSafetyFindings(params: {
   stateDir: string;
 }): Promise<SecurityAuditFinding[]> {
   const findings: SecurityAuditFinding[] = [];
-  const extensionsDir = path.join(params.stateDir, "extensions");
-  const st = await safeStat(extensionsDir);
-  if (!st.ok || !st.isDir) {
-    return findings;
-  }
-
-  const entries = await fs.readdir(extensionsDir, { withFileTypes: true }).catch((err) => {
-    findings.push({
-      checkId: "plugins.code_safety.scan_failed",
-      severity: "warn",
-      title: "Plugin extensions directory scan failed",
-      detail: `Static code scan could not list extensions directory: ${String(err)}`,
-      remediation:
-        "Check file permissions and plugin layout, then rerun `openclaw security audit --deep`.",
-    });
-    return [];
+  const { extensionsDir, pluginDirs } = await listInstalledPluginDirs({
+    stateDir: params.stateDir,
+    onReadError: (err) => {
+      findings.push({
+        checkId: "plugins.code_safety.scan_failed",
+        severity: "warn",
+        title: "Plugin extensions directory scan failed",
+        detail: `Static code scan could not list extensions directory: ${String(err)}`,
+        remediation:
+          "Check file permissions and plugin layout, then rerun `openclaw security audit --deep`.",
+      });
+    },
   });
-  const pluginDirs = entries.filter((e) => e.isDirectory()).map((e) => e.name);
 
   for (const pluginName of pluginDirs) {
     const pluginPath = path.join(extensionsDir, pluginName);
