@@ -562,7 +562,7 @@ export async function compactEmbeddedPiSessionDirect(
         settingsManager,
       });
       // @ts-ignore -- cherry-pick upstream type mismatch
-      applySystemPromptOverrideToSession(session, systemPromptOverride());
+      applySystemPromptOverrideToSession(session, systemPromptOverride);
 
       try {
         const prior = await sanitizeSessionHistory({
