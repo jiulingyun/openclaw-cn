@@ -25,12 +25,18 @@ import {
 } from "./agent.shared.js";
 import { jsonError, toBoolean, toNumber, toStringOrEmpty } from "./utils.js";
 
-export function registerBrowserAgentSnapshotRoutes(app: BrowserRouteRegistrar, ctx: BrowserRouteContext) {
+export function registerBrowserAgentSnapshotRoutes(
+  app: BrowserRouteRegistrar,
+  ctx: BrowserRouteContext,
+) {
   // Adapter to allow Express-typed handlers when underlying might be browser dispatcher
   const registrar = {
-    get: (path: string, handler: (req: express.Request, res: express.Response) => any) => app.get(path, handler as any),
-    post: (path: string, handler: (req: express.Request, res: express.Response) => any) => app.post(path, handler as any),
-    delete: (path: string, handler: (req: express.Request, res: express.Response) => any) => app.delete(path, handler as any),
+    get: (path: string, handler: (req: express.Request, res: express.Response) => any) =>
+      app.get(path, handler as any),
+    post: (path: string, handler: (req: express.Request, res: express.Response) => any) =>
+      app.post(path, handler as any),
+    delete: (path: string, handler: (req: express.Request, res: express.Response) => any) =>
+      app.delete(path, handler as any),
   };
   registrar.post("/navigate", async (req, res) => {
     const profileCtx = resolveProfileContext(req, res, ctx);
@@ -43,10 +49,12 @@ export function registerBrowserAgentSnapshotRoutes(app: BrowserRouteRegistrar, c
       const tab = await profileCtx.ensureTabAvailable(targetId);
       const pw = await requirePwAi(res, "navigate");
       if (!pw) return;
+      const ssrfPolicy = ctx.state().resolved.ssrfPolicy;
       const result = await pw.navigateViaPlaywright({
         cdpUrl: profileCtx.profile.cdpUrl,
         targetId: tab.targetId,
         url,
+        ...(ssrfPolicy ? { ssrfPolicy } : {}),
       });
       res.json({ ok: true, targetId: tab.targetId, ...result });
     } catch (err) {

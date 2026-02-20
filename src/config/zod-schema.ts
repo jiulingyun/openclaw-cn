@@ -212,6 +212,14 @@ export const ClawdbotSchema = z
         attachOnly: z.boolean().optional(),
         defaultProfile: z.string().optional(),
         snapshotDefaults: BrowserSnapshotDefaultsSchema,
+        ssrfPolicy: z
+          .object({
+            allowPrivateNetwork: z.boolean().optional(),
+            allowedHostnames: z.array(z.string()).optional(),
+            hostnameAllowlist: z.array(z.string()).optional(),
+          })
+          .strict()
+          .optional(),
         profiles: z
           .record(
             z

@@ -33,6 +33,7 @@ function makeState(
       headless: true,
       noSandbox: false,
       attachOnly: false,
+      ssrfPolicy: { allowPrivateNetwork: true },
       defaultProfile: profile,
       profiles: {
         remote: {
@@ -51,12 +52,12 @@ describe("browser server-context remote profile tab operations", () => {
   it("uses Playwright tab operations when available", async () => {
     vi.resetModules();
     const listPagesViaPlaywright = vi.fn(async () => [
-      { targetId: "T1", title: "Tab 1", url: "https://a.example", type: "page" },
+      { targetId: "T1", title: "Tab 1", url: "https://example.com", type: "page" },
     ]);
     const createPageViaPlaywright = vi.fn(async () => ({
       targetId: "T2",
       title: "Tab 2",
-      url: "https://b.example",
+      url: "http://127.0.0.1:3000",
       type: "page",
     }));
     const closePageByTargetIdViaPlaywright = vi.fn(async () => {});
@@ -81,7 +82,7 @@ describe("browser server-context remote profile tab operations", () => {
     const tabs = await remote.listTabs();
     expect(tabs.map((t) => t.targetId)).toEqual(["T1"]);
 
-    const opened = await remote.openTab("https://b.example");
+    const opened = await remote.openTab("http://127.0.0.1:3000");
     expect(opened.targetId).toBe("T2");
     expect(state.profiles.get("remote")?.lastTargetId).toBe("T2");
 
@@ -98,21 +99,21 @@ describe("browser server-context remote profile tab operations", () => {
     const responses = [
       // ensureTabAvailable() calls listTabs twice
       [
-        { targetId: "A", title: "A", url: "https://a.example", type: "page" },
-        { targetId: "B", title: "B", url: "https://b.example", type: "page" },
+        { targetId: "A", title: "A", url: "https://example.com", type: "page" },
+        { targetId: "B", title: "B", url: "https://www.example.com", type: "page" },
       ],
       [
-        { targetId: "A", title: "A", url: "https://a.example", type: "page" },
-        { targetId: "B", title: "B", url: "https://b.example", type: "page" },
+        { targetId: "A", title: "A", url: "https://example.com", type: "page" },
+        { targetId: "B", title: "B", url: "https://www.example.com", type: "page" },
       ],
       // second ensureTabAvailable() calls listTabs twice, order flips
       [
-        { targetId: "B", title: "B", url: "https://b.example", type: "page" },
-        { targetId: "A", title: "A", url: "https://a.example", type: "page" },
+        { targetId: "B", title: "B", url: "https://www.example.com", type: "page" },
+        { targetId: "A", title: "A", url: "https://example.com", type: "page" },
       ],
       [
-        { targetId: "B", title: "B", url: "https://b.example", type: "page" },
-        { targetId: "A", title: "A", url: "https://a.example", type: "page" },
+        { targetId: "B", title: "B", url: "https://www.example.com", type: "page" },
+        { targetId: "A", title: "A", url: "https://example.com", type: "page" },
       ],
     ];
 
@@ -152,7 +153,7 @@ describe("browser server-context remote profile tab operations", () => {
   it("uses Playwright focus for remote profiles when available", async () => {
     vi.resetModules();
     const listPagesViaPlaywright = vi.fn(async () => [
-      { targetId: "T1", title: "Tab 1", url: "https://a.example", type: "page" },
+      { targetId: "T1", title: "Tab 1", url: "https://example.com", type: "page" },
     ]);
     const focusPageByTargetIdViaPlaywright = vi.fn(async () => {});
 
@@ -221,7 +222,7 @@ describe("browser server-context remote profile tab operations", () => {
           {
             id: "T1",
             title: "Tab 1",
-            url: "https://a.example",
+            url: "https://example.com",
             webSocketDebuggerUrl: "wss://browserless.example/devtools/page/T1",
             type: "page",
           },
@@ -263,7 +264,7 @@ describe("browser server-context tab selection state", () => {
           {
             id: "CREATED",
             title: "New Tab",
-            url: "https://created.example",
+            url: "http://127.0.0.1:8080",
             webSocketDebuggerUrl: "ws://127.0.0.1/devtools/page/CREATED",
             type: "page",
           },
@@ -278,7 +279,7 @@ describe("browser server-context tab selection state", () => {
     const ctx = createBrowserRouteContext({ getState: () => state });
     const clawd = ctx.forProfile("clawd");
 
-    const opened = await clawd.openTab("https://created.example");
+    const opened = await clawd.openTab("http://127.0.0.1:8080");
     expect(opened.targetId).toBe("CREATED");
     expect(state.profiles.get("clawd")?.lastTargetId).toBe("CREATED");
   });

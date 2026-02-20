@@ -136,6 +136,10 @@ vi.mock("./cdp.js", () => ({
   }),
 }));
 
+vi.mock("./navigation-guard.js", () => ({
+  assertBrowserNavigationAllowed: vi.fn(async () => {}),
+}));
+
 vi.mock("./pw-ai.js", () => pwMocks);
 
 vi.mock("../media/store.js", () => ({
