@@ -88,7 +88,6 @@ import {
   readChannelAllowFromStore,
   upsertChannelPairingRequest,
 } from "../../pairing/pairing-store.js";
-import { runCommandWithTimeout } from "../../process/exec.js";
 import { resolveAgentRoute } from "../../routing/resolve-route.js";
 import { monitorSignalProvider } from "../../signal/index.js";
 import { probeSignal } from "../../signal/probe.js";
@@ -162,6 +161,13 @@ function resolveVersion(): string {
   }
 }
 
+const runtimeCommandExecutionDisabled: PluginRuntime["system"]["runCommandWithTimeout"] =
+  async () => {
+    throw new Error(
+      "runtime.system.runCommandWithTimeout 已因安全加固被禁用。请使用专用的 runtime API 代替。 ",
+    );
+  };
+
 export function createPluginRuntime(): PluginRuntime {
   return {
     version: resolveVersion(),
@@ -171,7 +177,7 @@ export function createPluginRuntime(): PluginRuntime {
     },
     system: {
       enqueueSystemEvent,
-      runCommandWithTimeout,
+      runCommandWithTimeout: runtimeCommandExecutionDisabled,
       formatNativeDependencyHint,
     },
     media: {
