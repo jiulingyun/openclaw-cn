@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { OpenClawConfig, MarkdownTableMode } from "openclaw/plugin-sdk";
 import { createReplyPrefixOptions } from "openclaw/plugin-sdk";
@@ -41,8 +42,13 @@ export type ZaloMonitorResult = {
 
 const ZALO_TEXT_LIMIT = 2000;
 const DEFAULT_MEDIA_MAX_MB = 5;
+const ZALO_WEBHOOK_RATE_LIMIT_WINDOW_MS = 60_000;
+const ZALO_WEBHOOK_RATE_LIMIT_MAX_REQUESTS = 120;
+const ZALO_WEBHOOK_REPLAY_WINDOW_MS = 5 * 60_000;
+const ZALO_WEBHOOK_COUNTER_LOG_EVERY = 25;
 
 type ZaloCoreRuntime = ReturnType<typeof getZaloRuntime>;
+type WebhookRateLimitState = { count: number; windowStartMs: number };
 
 function logVerbose(core: ZaloCoreRuntime, runtime: ZaloRuntimeEnv, message: string): void {
   if (core.logging.shouldLogVerbose()) {
@@ -106,6 +112,92 @@ type WebhookTarget = {
 };
 
 const webhookTargets = new Map<string, WebhookTarget[]>();
+const webhookRateLimits = new Map<string, WebhookRateLimitState>();
+const recentWebhookEvents = new Map<string, number>();
+const webhookStatusCounters = new Map<string, number>();
+
+function isJsonContentType(value: string | string[] | undefined): boolean {
+  const first = Array.isArray(value) ? value[0] : value;
+  if (!first) {
+    return false;
+  }
+  const mediaType = first.split(";", 1)[0]?.trim().toLowerCase();
+  return mediaType === "application/json" || Boolean(mediaType?.endsWith("+json"));
+}
+
+function timingSafeEquals(left: string, right: string): boolean {
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+
+  if (leftBuffer.length !== rightBuffer.length) {
+    const length = Math.max(1, leftBuffer.length, rightBuffer.length);
+    const paddedLeft = Buffer.alloc(length);
+    const paddedRight = Buffer.alloc(length);
+    leftBuffer.copy(paddedLeft);
+    rightBuffer.copy(paddedRight);
+    // 调用 timingSafeEqual 保持恒定时间，避免通过长度差异推断 secret
+    timingSafeEqual(paddedLeft, paddedRight);
+    return false;
+  }
+
+  return timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function isWebhookRateLimited(key: string, nowMs: number): boolean {
+  const state = webhookRateLimits.get(key);
+  if (!state || nowMs - state.windowStartMs >= ZALO_WEBHOOK_RATE_LIMIT_WINDOW_MS) {
+    webhookRateLimits.set(key, { count: 1, windowStartMs: nowMs });
+    return false;
+  }
+
+  state.count += 1;
+  if (state.count > ZALO_WEBHOOK_RATE_LIMIT_MAX_REQUESTS) {
+    return true;
+  }
+  return false;
+}
+
+function isReplayEvent(update: ZaloUpdate, nowMs: number): boolean {
+  const messageId = update.message?.message_id;
+  if (!messageId) {
+    return false;
+  }
+  const key = `${update.event_name}:${messageId}`;
+  const seenAt = recentWebhookEvents.get(key);
+  recentWebhookEvents.set(key, nowMs);
+
+  if (seenAt && nowMs - seenAt < ZALO_WEBHOOK_REPLAY_WINDOW_MS) {
+    return true;
+  }
+
+  if (recentWebhookEvents.size > 5000) {
+    for (const [eventKey, timestamp] of recentWebhookEvents) {
+      if (nowMs - timestamp >= ZALO_WEBHOOK_REPLAY_WINDOW_MS) {
+        recentWebhookEvents.delete(eventKey);
+      }
+    }
+  }
+
+  return false;
+}
+
+function recordWebhookStatus(
+  runtime: ZaloRuntimeEnv | undefined,
+  path: string,
+  statusCode: number,
+): void {
+  if (![400, 401, 408, 413, 415, 429].includes(statusCode)) {
+    return;
+  }
+  const key = `${path}:${statusCode}`;
+  const next = (webhookStatusCounters.get(key) ?? 0) + 1;
+  webhookStatusCounters.set(key, next);
+  if (next === 1 || next % ZALO_WEBHOOK_COUNTER_LOG_EVERY === 0) {
+    runtime?.log?.(
+      `[zalo] webhook 异常 path=${path} status=${statusCode} count=${String(next)}`,
+    );
+  }
+}
 
 function normalizeWebhookPath(raw: string): string {
   const trimmed = raw.trim();
@@ -170,17 +262,37 @@ export async function handleZaloWebhookRequest(
   }
 
   const headerToken = String(req.headers["x-bot-api-secret-token"] ?? "");
-  const target = targets.find((entry) => entry.secret === headerToken);
+  const target = targets.find((entry) => timingSafeEquals(entry.secret, headerToken));
   if (!target) {
     res.statusCode = 401;
     res.end("unauthorized");
+    recordWebhookStatus(targets[0]?.runtime, req.url ?? "<unknown>", res.statusCode);
+    return true;
+  }
+
+  const reqPath = req.url ?? "<unknown>";
+  const rateLimitKey = `${reqPath}:${req.socket.remoteAddress ?? "unknown"}`;
+  const nowMs = Date.now();
+
+  if (isWebhookRateLimited(rateLimitKey, nowMs)) {
+    res.statusCode = 429;
+    res.end("Too Many Requests");
+    recordWebhookStatus(target.runtime, reqPath, res.statusCode);
+    return true;
+  }
+
+  if (!isJsonContentType(req.headers["content-type"])) {
+    res.statusCode = 415;
+    res.end("Unsupported Media Type");
+    recordWebhookStatus(target.runtime, reqPath, res.statusCode);
     return true;
   }
 
   const body = await readJsonBody(req, 1024 * 1024);
   if (!body.ok) {
     res.statusCode = body.error === "payload too large" ? 413 : 400;
-    res.end(body.error ?? "invalid payload");
+    res.end(body.error ?? "Bad Request");
+    recordWebhookStatus(target.runtime, reqPath, res.statusCode);
     return true;
   }
 
@@ -194,7 +306,14 @@ export async function handleZaloWebhookRequest(
 
   if (!update?.event_name) {
     res.statusCode = 400;
-    res.end("invalid payload");
+    res.end("Bad Request");
+    recordWebhookStatus(target.runtime, reqPath, res.statusCode);
+    return true;
+  }
+
+  if (isReplayEvent(update, nowMs)) {
+    res.statusCode = 200;
+    res.end("ok");
     return true;
   }
 
