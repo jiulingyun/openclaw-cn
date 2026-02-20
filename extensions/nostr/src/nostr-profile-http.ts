@@ -9,6 +9,7 @@
 
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { z } from "zod";
+import { isBlockedHostnameOrIp } from "openclaw-cn/plugin-sdk";
 
 import { NostrProfileSchema, type NostrProfile } from "./config-schema.js";
 import { publishNostrProfile, getNostrProfileState } from "./channel.js";
@@ -98,52 +99,6 @@ async function withPublishLock<T>(accountId: string, fn: () => Promise<T>): Prom
 // SSRF Protection
 // ============================================================================
 
-// Block common private/internal hostnames (quick string check)
-const BLOCKED_HOSTNAMES = new Set([
-  "localhost",
-  "localhost.localdomain",
-  "127.0.0.1",
-  "::1",
-  "[::1]",
-  "0.0.0.0",
-]);
-
-// Check if an IP address (resolved) is in a private range
-function isPrivateIp(ip: string): boolean {
-  // Handle IPv4
-  const ipv4Match = ip.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
-  if (ipv4Match) {
-    const [, a, b, c] = ipv4Match.map(Number);
-    // 127.0.0.0/8 (loopback)
-    if (a === 127) return true;
-    // 10.0.0.0/8 (private)
-    if (a === 10) return true;
-    // 172.16.0.0/12 (private)
-    if (a === 172 && b >= 16 && b <= 31) return true;
-    // 192.168.0.0/16 (private)
-    if (a === 192 && b === 168) return true;
-    // 169.254.0.0/16 (link-local)
-    if (a === 169 && b === 254) return true;
-    // 0.0.0.0/8
-    if (a === 0) return true;
-    return false;
-  }
-
-  // Handle IPv6
-  const ipLower = ip.toLowerCase().replace(/^\[|\]$/g, "");
-  // ::1 (loopback)
-  if (ipLower === "::1") return true;
-  // fe80::/10 (link-local)
-  if (ipLower.startsWith("fe80:")) return true;
-  // fc00::/7 (unique local)
-  if (ipLower.startsWith("fc") || ipLower.startsWith("fd")) return true;
-  // ::ffff:x.x.x.x (IPv4-mapped IPv6) - extract and check IPv4
-  const v4Mapped = ipLower.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-  if (v4Mapped) return isPrivateIp(v4Mapped[1]);
-
-  return false;
-}
-
 function validateUrlSafety(urlStr: string): { ok: true } | { ok: false; error: string } {
   try {
     const url = new URL(urlStr);
@@ -154,18 +109,7 @@ function validateUrlSafety(urlStr: string): { ok: true } | { ok: false; error: s
 
     const hostname = url.hostname.toLowerCase();
 
-    // Quick hostname block check
-    if (BLOCKED_HOSTNAMES.has(hostname)) {
-      return { ok: false, error: "URL must not point to private/internal addresses" };
-    }
-
-    // Check if hostname is an IP address directly
-    if (isPrivateIp(hostname)) {
-      return { ok: false, error: "URL must not point to private/internal addresses" };
-    }
-
-    // Block suspicious TLDs that resolve to localhost
-    if (hostname.endsWith(".localhost") || hostname.endsWith(".local")) {
+    if (isBlockedHostnameOrIp(hostname)) {
       return { ok: false, error: "URL must not point to private/internal addresses" };
     }
 
@@ -176,7 +120,7 @@ function validateUrlSafety(urlStr: string): { ok: true } | { ok: false; error: s
 }
 
 // Export for use in import validation
-export { validateUrlSafety }
+export { validateUrlSafety };
 
 // ============================================================================
 // Validation Schemas
@@ -249,7 +193,7 @@ function parseAccountIdFromPath(pathname: string): string | null {
 // ============================================================================
 
 export function createNostrProfileHttpHandler(
-  ctx: NostrProfileHttpContext
+  ctx: NostrProfileHttpContext,
 ): (req: IncomingMessage, res: ServerResponse) => Promise<boolean> {
   return async (req, res) => {
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
@@ -303,7 +247,7 @@ export function createNostrProfileHttpHandler(
 async function handleGetProfile(
   accountId: string,
   ctx: NostrProfileHttpContext,
-  res: ServerResponse
+  res: ServerResponse,
 ): Promise<true> {
   const configProfile = ctx.getConfigProfile(accountId);
   const publishState = await getNostrProfileState(accountId);
@@ -324,7 +268,7 @@ async function handleUpdateProfile(
   accountId: string,
   ctx: NostrProfileHttpContext,
   req: IncomingMessage,
-  res: ServerResponse
+  res: ServerResponse,
 ): Promise<true> {
   // Rate limiting
   if (!checkRateLimit(accountId)) {
@@ -423,7 +367,7 @@ async function handleImportProfile(
   accountId: string,
   ctx: NostrProfileHttpContext,
   req: IncomingMessage,
-  res: ServerResponse
+  res: ServerResponse,
 ): Promise<true> {
   // Get account info
   const accountInfo = ctx.getAccountInfo(accountId);

@@ -2,7 +2,7 @@
  * Tests for Nostr Profile HTTP Handler
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { IncomingMessage, ServerResponse } from "node:http";
 import { Socket } from "node:net";
 
@@ -30,11 +30,7 @@ import { importProfileFromRelays } from "./nostr-profile-import.js";
 // Test Helpers
 // ============================================================================
 
-function createMockRequest(
-  method: string,
-  url: string,
-  body?: unknown
-): IncomingMessage {
+function createMockRequest(method: string, url: string, body?: unknown): IncomingMessage {
   const socket = new Socket();
   const req = new IncomingMessage(socket);
   req.method = method;
@@ -56,19 +52,23 @@ function createMockRequest(
   return req;
 }
 
-function createMockResponse(): ServerResponse & { _getData: () => string; _getStatusCode: () => number } {
-  const socket = new Socket();
+function createMockResponse(): ServerResponse & {
+  _getData: () => string;
+  _getStatusCode: () => number;
+} {
   const res = new ServerResponse({} as IncomingMessage);
 
   let data = "";
   let statusCode = 200;
 
   res.write = function (chunk: unknown) {
+    // eslint-disable-next-line @typescript-eslint/no-base-to-string
     data += String(chunk);
     return true;
   };
 
   res.end = function (chunk?: unknown) {
+    // eslint-disable-next-line @typescript-eslint/no-base-to-string
     if (chunk) data += String(chunk);
     return this;
   };
@@ -212,6 +212,23 @@ describe("nostr-profile-http", () => {
       const req = createMockRequest("PUT", "/api/channels/nostr/default/profile", {
         name: "hacker",
         picture: "https://127.0.0.1/evil.jpg",
+      });
+      const res = createMockResponse();
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(400);
+      const data = JSON.parse(res._getData());
+      expect(data.ok).toBe(false);
+      expect(data.error).toContain("private");
+    });
+
+    it("rejects ISATAP-embedded private IPv4 in picture URL", async () => {
+      const ctx = createMockContext();
+      const handler = createNostrProfileHttpHandler(ctx);
+      const req = createMockRequest("PUT", "/api/channels/nostr/default/profile", {
+        name: "hacker",
+        picture: "https://[2001:db8:1234::5efe:127.0.0.1]/evil.jpg",
       });
       const res = createMockResponse();
 

@@ -23,7 +23,11 @@ export type SsrFPolicy = {
   hostnameAllowlist?: string[];
 };
 
-const BLOCKED_HOSTNAMES = new Set(["localhost", "metadata.google.internal"]);
+const BLOCKED_HOSTNAMES = new Set([
+  "localhost",
+  "localhost.localdomain",
+  "metadata.google.internal",
+]);
 
 function normalizeHostname(hostname: string): string {
   const normalized = hostname.trim().toLowerCase().replace(/\.$/, "");
@@ -153,15 +157,21 @@ function extractIpv4FromEmbeddedIpv6(hextets: number[]): number[] | null {
   // IPv4-mapped: ::ffff:a.b.c.d (and full-form variants)
   // IPv4-compatible: ::a.b.c.d (deprecated, but still needs private-network blocking)
   const zeroPrefix = hextets[0] === 0 && hextets[1] === 0 && hextets[2] === 0 && hextets[3] === 0;
-  if (!zeroPrefix || hextets[4] !== 0) {
-    return null;
+  if (zeroPrefix && hextets[4] === 0 && (hextets[5] === 0xffff || hextets[5] === 0)) {
+    const high = hextets[6];
+    const low = hextets[7];
+    return [(high >>> 8) & 0xff, high & 0xff, (low >>> 8) & 0xff, low & 0xff];
   }
-  if (hextets[5] !== 0xffff && hextets[5] !== 0) {
-    return null;
+
+  // ISATAP IID format: 000000ug00000000:5efe:w.x.y.z (RFC 5214 section 6.1).
+  // Match only the IID marker bits to avoid over-broad :5efe: detection.
+  if ((hextets[4] & 0xfcff) === 0 && hextets[5] === 0x5efe) {
+    const high = hextets[6];
+    const low = hextets[7];
+    return [(high >>> 8) & 0xff, high & 0xff, (low >>> 8) & 0xff, low & 0xff];
   }
-  const high = hextets[6];
-  const low = hextets[7];
-  return [(high >>> 8) & 0xff, high & 0xff, (low >>> 8) & 0xff, low & 0xff];
+
+  return null;
 }
 
 function isPrivateIpv4(parts: number[]): boolean {
@@ -269,6 +279,14 @@ export function isBlockedHostname(hostname: string): boolean {
     normalized.endsWith(".local") ||
     normalized.endsWith(".internal")
   );
+}
+
+export function isBlockedHostnameOrIp(hostname: string): boolean {
+  const normalized = normalizeHostname(hostname);
+  if (!normalized) {
+    return false;
+  }
+  return isBlockedHostname(normalized) || isPrivateIpAddress(normalized);
 }
 
 export function createPinnedLookup(params: {
