@@ -202,6 +202,11 @@ Docs: https://docs.clawd.bot
 - **Control UI XSS 防护**：通过移除内联脚本注入、将启动配置改为 JSON 服务、强制 `script-src 'self'` 策略，防止通过助手名称/头像进行存储型 XSS 攻击（upstream `01b1e350b20f`，感谢 @Adam55A-code）
 - **Gateway 非管理员状态脱敏**：对非管理员客户端的 `status` 响应中脱敏敏感会话/路径细节；完整信息仅对 `operator.admin` 开放（upstream `0954618cfb7f` #8590，感谢 @fr33d3m0n）
 
+#### P0-E（v2026.2.17~v2026.2.19 安全批次）
+
+- **Gateway 方法作用域集中化**：集中化网关方法作用域授权，非 CLI 调用方默认使用最小权限 scope，CLI 调用显式使用管理员 scope，并添加回归测试防止 scope 漂移（upstream `2777d8ad937d`）
+- **设备访问升级需显式审批**：要求本地客户端在请求角色/scope 升级时也必须通过显式配对审批，不再自动静默批准；新增升级审计日志（upstream `0bda0202fd12`）
+
 ### 🐛 关键 Bug 修复（Critical Bugs）
 
 #### P1-A：会话与网关稳定性（26 项）

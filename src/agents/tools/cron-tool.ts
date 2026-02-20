@@ -4,8 +4,8 @@ import { normalizeCronJobCreate, normalizeCronJobPatch } from "../../cron/normal
 import { truncateUtf16Safe } from "../../utils.js";
 import { resolveSessionAgentId } from "../agent-scope.js";
 import { optionalStringEnum, stringEnum } from "../schema/typebox.js";
-import { type AnyAgentTool, jsonResult, readStringParam } from "./common.js";
-import { callGatewayTool, type GatewayCallOptions } from "./gateway.js";
+import { assertOwnerSender, type AnyAgentTool, jsonResult, readStringParam } from "./common.js";
+import { callGatewayTool, readGatewayCallOptions, type GatewayCallOptions } from "./gateway.js";
 import { resolveInternalSessionKey, resolveMainSessionAlias } from "./sessions-helpers.js";
 
 // NOTE: We use Type.Object({}, { additionalProperties: true }) for job/patch
@@ -42,6 +42,7 @@ const CronToolSchema = Type.Object({
 
 type CronToolOptions = {
   agentSessionKey?: string;
+  senderIsOwner?: boolean;
 };
 
 type ChatMessage = {
@@ -215,12 +216,15 @@ WAKE MODES (for wake action):
 Use jobId as the canonical identifier; id is accepted for compatibility. Use contextMessages (0-10) to add previous messages as context to the job text.`,
     parameters: CronToolSchema,
     execute: async (_toolCallId, args) => {
+      assertOwnerSender(opts?.senderIsOwner);
       const params = args as Record<string, unknown>;
       const action = readStringParam(params, "action", { required: true });
       const gatewayOpts: GatewayCallOptions = {
-        gatewayUrl: readStringParam(params, "gatewayUrl", { trim: false }),
-        gatewayToken: readStringParam(params, "gatewayToken", { trim: false }),
-        timeoutMs: typeof params.timeoutMs === "number" ? params.timeoutMs : 60_000,
+        ...readGatewayCallOptions(params),
+        timeoutMs:
+          typeof params.timeoutMs === "number" && Number.isFinite(params.timeoutMs)
+            ? params.timeoutMs
+            : 60_000,
       };
 
       switch (action) {

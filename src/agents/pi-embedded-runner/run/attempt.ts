@@ -292,8 +292,6 @@ export async function runEmbeddedAttempt(
           senderName: params.senderName,
           senderUsername: params.senderUsername,
           senderE164: params.senderE164,
-          // @ts-ignore -- cherry-pick upstream type mismatch
-          // @ts-ignore -- cherry-pick upstream type mismatch
           senderIsOwner: params.senderIsOwner,
           sessionKey: params.sessionKey ?? params.sessionId,
           agentDir,

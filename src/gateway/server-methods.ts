@@ -1,4 +1,17 @@
 import { ErrorCodes, errorShape } from "./protocol/index.js";
+import {
+  ADMIN_METHOD_PREFIXES,
+  APPROVAL_METHODS,
+  GATEWAY_SCOPE_ADMIN,
+  GATEWAY_SCOPE_APPROVALS,
+  GATEWAY_SCOPE_PAIRING,
+  GATEWAY_SCOPE_READ,
+  GATEWAY_SCOPE_WRITE,
+  NODE_ROLE_METHODS,
+  PAIRING_METHODS,
+  READ_METHODS,
+  WRITE_METHODS,
+} from "./method-scopes.js";
 import { agentHandlers } from "./server-methods/agent.js";
 import { agentsHandlers } from "./server-methods/agents.js";
 import { channelsHandlers } from "./server-methods/channels.js";
@@ -25,68 +38,11 @@ import { voicewakeHandlers } from "./server-methods/voicewake.js";
 import { webHandlers } from "./server-methods/web.js";
 import { wizardHandlers } from "./server-methods/wizard.js";
 
-const ADMIN_SCOPE = "operator.admin";
-const READ_SCOPE = "operator.read";
-const WRITE_SCOPE = "operator.write";
-const APPROVALS_SCOPE = "operator.approvals";
-const PAIRING_SCOPE = "operator.pairing";
-
-const APPROVAL_METHODS = new Set(["exec.approval.request", "exec.approval.resolve"]);
-const NODE_ROLE_METHODS = new Set(["node.invoke.result", "node.event", "skills.bins"]);
-const PAIRING_METHODS = new Set([
-  "node.pair.request",
-  "node.pair.list",
-  "node.pair.approve",
-  "node.pair.reject",
-  "node.pair.verify",
-  "device.pair.list",
-  "device.pair.approve",
-  "device.pair.reject",
-  "device.token.rotate",
-  "device.token.revoke",
-  "node.rename",
-]);
-const ADMIN_METHOD_PREFIXES = ["exec.approvals."];
-const READ_METHODS = new Set([
-  "health",
-  "logs.tail",
-  "channels.status",
-  "status",
-  "usage.status",
-  "usage.cost",
-  "tts.status",
-  "tts.providers",
-  "models.list",
-  "agents.list",
-  "agent.identity.get",
-  "skills.status",
-  "voicewake.get",
-  "sessions.list",
-  "sessions.preview",
-  "cron.list",
-  "cron.status",
-  "cron.runs",
-  "system-presence",
-  "last-heartbeat",
-  "node.list",
-  "node.describe",
-  "chat.history",
-]);
-const WRITE_METHODS = new Set([
-  "send",
-  "agent",
-  "agent.wait",
-  "wake",
-  "talk.mode",
-  "tts.enable",
-  "tts.disable",
-  "tts.convert",
-  "tts.setProvider",
-  "voicewake.set",
-  "node.invoke",
-  "chat.send",
-  "chat.abort",
-]);
+const ADMIN_SCOPE = GATEWAY_SCOPE_ADMIN;
+const READ_SCOPE = GATEWAY_SCOPE_READ;
+const WRITE_SCOPE = GATEWAY_SCOPE_WRITE;
+const APPROVALS_SCOPE = GATEWAY_SCOPE_APPROVALS;
+const PAIRING_SCOPE = GATEWAY_SCOPE_PAIRING;
 
 function authorizeGatewayMethod(method: string, client: GatewayRequestOptions["client"]) {
   if (!client?.connect) return null;

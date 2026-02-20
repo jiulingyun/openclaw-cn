@@ -16,6 +16,7 @@ import {
 } from "../utils/message-channel.js";
 import { loadGatewayTlsRuntime } from "../infra/tls/gateway.js";
 import { GatewayClient } from "./client.js";
+import { resolveMethodScopes } from "./method-scopes.js";
 import { PROTOCOL_VERSION } from "./protocol/index.js";
 
 export type CallGatewayOptions = {
@@ -36,6 +37,8 @@ export type CallGatewayOptions = {
   instanceId?: string;
   minProtocol?: number;
   maxProtocol?: number;
+  /** Explicit scopes for the connection. Defaults to full admin scopes when unset. */
+  scopes?: string[];
   /**
    * Overrides the config path shown in connection error details.
    * Does not affect config loading; callers still control auth via opts.token/password/env/config.
@@ -251,7 +254,7 @@ export async function callGateway<T = unknown>(opts: CallGatewayOptions): Promis
       platform: opts.platform,
       mode: opts.mode ?? GATEWAY_CLIENT_MODES.CLI,
       role: "operator",
-      scopes: ["operator.admin", "operator.approvals", "operator.pairing"],
+      scopes: opts.scopes ?? ["operator.admin", "operator.approvals", "operator.pairing"],
       deviceIdentity: loadOrCreateDeviceIdentity(),
       minProtocol: opts.minProtocol ?? PROTOCOL_VERSION,
       maxProtocol: opts.maxProtocol ?? PROTOCOL_VERSION,
@@ -289,4 +292,27 @@ export async function callGateway<T = unknown>(opts: CallGatewayOptions): Promis
 
 export function randomIdempotencyKey() {
   return randomUUID();
+}
+
+/**
+ * Call the gateway with full CLI-level scopes (operator.admin + approvals + pairing).
+ * Use for CLI commands that need full administrative access.
+ */
+export async function callGatewayCli<T = unknown>(opts: CallGatewayOptions): Promise<T> {
+  return callGateway<T>({
+    ...opts,
+    scopes: ["operator.admin", "operator.approvals", "operator.pairing"],
+  });
+}
+
+/**
+ * Call the gateway with least-privilege scopes derived from the method name.
+ * Use for non-CLI callers (e.g. agent tools, outbound message sending) to
+ * prevent scope drift — callers only receive the scopes their method requires.
+ */
+export async function callGatewayScoped<T = unknown>(opts: CallGatewayOptions): Promise<T> {
+  return callGateway<T>({
+    ...opts,
+    scopes: resolveMethodScopes(opts.method),
+  });
 }

@@ -8,6 +8,7 @@ let lastClientOptions: {
   url?: string;
   token?: string;
   password?: string;
+  scopes?: string[];
   onHelloOk?: () => void | Promise<void>;
   onClose?: (code: number, reason: string) => void;
 } | null = null;
@@ -40,6 +41,7 @@ vi.mock("./client.js", () => ({
       url?: string;
       token?: string;
       password?: string;
+      scopes?: string[];
       onHelloOk?: () => void | Promise<void>;
       onClose?: (code: number, reason: string) => void;
     }) {
@@ -59,7 +61,8 @@ vi.mock("./client.js", () => ({
   },
 }));
 
-const { buildGatewayConnectionDetails, callGateway } = await import("./call.js");
+const { buildGatewayConnectionDetails, callGateway, callGatewayCli, callGatewayScoped } =
+  await import("./call.js");
 
 describe("callGateway url resolution", () => {
   beforeEach(() => {
@@ -433,5 +436,42 @@ describe("callGateway token resolution", () => {
     });
 
     expect(lastClientOptions?.token).toBe("explicit-token");
+  });
+});
+
+describe("callGatewayCli scope", () => {
+  beforeEach(() => {
+    loadConfig.mockReset();
+    resolveGatewayPort.mockReset();
+    pickPrimaryTailnetIPv4.mockReset();
+    lastClientOptions = null;
+    startMode = "hello";
+    loadConfig.mockReturnValue({ gateway: { mode: "local", bind: "loopback" } });
+    resolveGatewayPort.mockReturnValue(18789);
+    pickPrimaryTailnetIPv4.mockReturnValue(undefined);
+  });
+
+  it("callGatewayCli uses full admin scopes", async () => {
+    await callGatewayCli({ method: "health" });
+    expect(lastClientOptions?.scopes).toEqual([
+      "operator.admin",
+      "operator.approvals",
+      "operator.pairing",
+    ]);
+  });
+
+  it("callGatewayScoped uses least-privilege read scope for read methods", async () => {
+    await callGatewayScoped({ method: "health" });
+    expect(lastClientOptions?.scopes).toEqual(["operator.read"]);
+  });
+
+  it("callGatewayScoped uses write scope for write methods", async () => {
+    await callGatewayScoped({ method: "send" });
+    expect(lastClientOptions?.scopes).toEqual(["operator.write"]);
+  });
+
+  it("callGatewayScoped uses admin scope for unknown/admin methods", async () => {
+    await callGatewayScoped({ method: "config.apply" });
+    expect(lastClientOptions?.scopes).toEqual(["operator.admin"]);
   });
 });

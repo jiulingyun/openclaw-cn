@@ -12,6 +12,7 @@ const setRegistry = async (registry: ReturnType<typeof createTestRegistry>) => {
 const callGatewayMock = vi.fn();
 vi.mock("../../gateway/call.js", () => ({
   callGateway: (...args: unknown[]) => callGatewayMock(...args),
+  callGatewayScoped: (...args: unknown[]) => callGatewayMock(...args),
   randomIdempotencyKey: () => "idem-1",
 }));
 

@@ -161,6 +161,8 @@ export function createOpenClawCodingTools(options?: {
   requireExplicitMessageTarget?: boolean;
   /** If true, omit the message tool from the tool list. */
   disableMessageTool?: boolean;
+  /** If false, restrict cron/gateway tools to owner senders only. */
+  senderIsOwner?: boolean;
 }): AnyAgentTool[] {
   const execToolName = "exec";
   const sandbox = options?.sandbox?.enabled ? options.sandbox : undefined;
@@ -363,6 +365,7 @@ export function createOpenClawCodingTools(options?: {
       modelHasVision: options?.modelHasVision,
       requireExplicitMessageTarget: options?.requireExplicitMessageTarget,
       disableMessageTool: options?.disableMessageTool,
+      senderIsOwner: options?.senderIsOwner,
       requesterAgentIdOverride: agentId,
     }),
   ];

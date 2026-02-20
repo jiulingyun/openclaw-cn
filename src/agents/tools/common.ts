@@ -20,6 +20,8 @@ export type ActionGate<T extends Record<string, boolean | undefined>> = (
   defaultValue?: boolean,
 ) => boolean;
 
+export const OWNER_ONLY_TOOL_ERROR = "Tool restricted to owner senders.";
+
 export function createActionGate<T extends Record<string, boolean | undefined>>(
   actions: T | undefined,
 ): ActionGate<T> {
@@ -178,6 +180,12 @@ export function jsonResult(payload: unknown): AgentToolResult<unknown> {
     ],
     details: payload,
   };
+}
+
+export function assertOwnerSender(senderIsOwner?: boolean): void {
+  if (senderIsOwner === false) {
+    throw new Error(OWNER_ONLY_TOOL_ERROR);
+  }
 }
 
 export async function imageResult(params: {

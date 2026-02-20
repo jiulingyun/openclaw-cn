@@ -2,7 +2,7 @@ import { getChannelPlugin, normalizeChannelId } from "../../channels/plugins/ind
 import type { ChannelId } from "../../channels/plugins/types.js";
 import type { ClawdbotConfig } from "../../config/config.js";
 import { loadConfig } from "../../config/config.js";
-import { callGateway, randomIdempotencyKey } from "../../gateway/call.js";
+import { callGatewayScoped, randomIdempotencyKey } from "../../gateway/call.js";
 import type { PollInput } from "../../polls.js";
 import { normalizePollInput } from "../../polls.js";
 import {
@@ -196,7 +196,7 @@ export async function sendMessage(params: MessageSendParams): Promise<MessageSen
   }
 
   const gateway = resolveGatewayOptions(params.gateway);
-  const result = await callGateway<{ messageId: string }>({
+  const result = await callGatewayScoped<{ messageId: string }>({
     url: gateway.url,
     token: gateway.token,
     method: "send",
@@ -265,7 +265,7 @@ export async function sendPoll(params: MessagePollParams): Promise<MessagePollRe
   }
 
   const gateway = resolveGatewayOptions(params.gateway);
-  const result = await callGateway<{
+  const result = await callGatewayScoped<{
     messageId: string;
     toJid?: string;
     channelId?: string;

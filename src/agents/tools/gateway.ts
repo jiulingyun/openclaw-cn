@@ -76,6 +76,22 @@ function validateGatewayUrlOverrideForAgentTools(urlOverride: string): string {
   return parsed.origin;
 }
 
+export function readGatewayCallOptions(params: Record<string, unknown>): GatewayCallOptions {
+  const gatewayUrl =
+    typeof params.gatewayUrl === "string" && params.gatewayUrl.trim()
+      ? params.gatewayUrl.trim()
+      : undefined;
+  const gatewayToken =
+    typeof params.gatewayToken === "string" && params.gatewayToken.trim()
+      ? params.gatewayToken.trim()
+      : undefined;
+  const timeoutMs =
+    typeof params.timeoutMs === "number" && Number.isFinite(params.timeoutMs)
+      ? Math.max(1, Math.floor(params.timeoutMs))
+      : undefined;
+  return { gatewayUrl, gatewayToken, timeoutMs };
+}
+
 export function resolveGatewayOptions(opts?: GatewayCallOptions) {
   // Prefer an explicit override; otherwise let callGateway choose based on config.
   const url =

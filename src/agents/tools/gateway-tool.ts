@@ -10,8 +10,8 @@ import {
   writeRestartSentinel,
 } from "../../infra/restart-sentinel.js";
 import { stringEnum } from "../schema/typebox.js";
-import { type AnyAgentTool, jsonResult, readStringParam } from "./common.js";
-import { callGatewayTool } from "./gateway.js";
+import { assertOwnerSender, type AnyAgentTool, jsonResult, readStringParam } from "./common.js";
+import { callGatewayTool, readGatewayCallOptions } from "./gateway.js";
 
 function resolveBaseHashFromSnapshot(snapshot: unknown): string | undefined {
   if (!snapshot || typeof snapshot !== "object") return undefined;
@@ -61,6 +61,7 @@ const GatewayToolSchema = Type.Object({
 export function createGatewayTool(opts?: {
   agentSessionKey?: string;
   config?: ClawdbotConfig;
+  senderIsOwner?: boolean;
 }): AnyAgentTool {
   return {
     label: "Gateway",
@@ -69,6 +70,7 @@ export function createGatewayTool(opts?: {
       "Restart, apply config, or update the gateway in-place (SIGUSR1). Use config.patch for safe partial config updates (merges with existing). Use config.apply only when replacing entire config. Both trigger restart after writing.",
     parameters: GatewayToolSchema,
     execute: async (_toolCallId, args) => {
+      assertOwnerSender(opts?.senderIsOwner);
       const params = args as Record<string, unknown>;
       const action = readStringParam(params, "action", { required: true });
       if (action === "restart") {
@@ -147,19 +149,7 @@ export function createGatewayTool(opts?: {
         return jsonResult(scheduled);
       }
 
-      const gatewayUrl =
-        typeof params.gatewayUrl === "string" && params.gatewayUrl.trim()
-          ? params.gatewayUrl.trim()
-          : undefined;
-      const gatewayToken =
-        typeof params.gatewayToken === "string" && params.gatewayToken.trim()
-          ? params.gatewayToken.trim()
-          : undefined;
-      const timeoutMs =
-        typeof params.timeoutMs === "number" && Number.isFinite(params.timeoutMs)
-          ? Math.max(1, Math.floor(params.timeoutMs))
-          : undefined;
-      const gatewayOpts = { gatewayUrl, gatewayToken, timeoutMs };
+      const gatewayOpts = readGatewayCallOptions(params);
 
       if (action === "config.get") {
         const result = await callGatewayTool("config.get", gatewayOpts, {});
@@ -236,7 +226,7 @@ export function createGatewayTool(opts?: {
           sessionKey,
           note,
           restartDelayMs,
-          timeoutMs,
+          timeoutMs: gatewayOpts.timeoutMs,
         });
         return jsonResult({ ok: true, result });
       }
