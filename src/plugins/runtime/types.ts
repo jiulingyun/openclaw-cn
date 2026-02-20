@@ -183,6 +183,7 @@ export type PluginRuntime = {
   };
   system: {
     enqueueSystemEvent: EnqueueSystemEvent;
+    /** @deprecated 运行时命令执行接口已因安全加固被禁用。 */
     runCommandWithTimeout: RunCommandWithTimeout;
     formatNativeDependencyHint: FormatNativeDependencyHint;
   };
