@@ -1,6 +1,8 @@
-import type { OpenClawConfig as ClawdbotConfig } from "openclaw/plugin-sdk";
+import {
+  buildRandomTempFilePath,
+  type OpenClawConfig as ClawdbotConfig,
+} from "openclaw/plugin-sdk";
 import fs from "fs";
-import os from "os";
 import path from "path";
 import { Readable } from "stream";
 import { resolveFeishuAccount } from "./accounts.js";
@@ -68,7 +70,7 @@ export async function downloadImageFeishu(params: {
     buffer = Buffer.concat(chunks);
   } else if (typeof responseAny.writeFile === "function") {
     // SDK provides writeFile method - use a temp file
-    const tmpPath = path.join(os.tmpdir(), `feishu_img_${Date.now()}_${imageKey}`);
+    const tmpPath = buildRandomTempFilePath({ prefix: "feishu_img" });
     await responseAny.writeFile(tmpPath);
     buffer = await fs.promises.readFile(tmpPath);
     await fs.promises.unlink(tmpPath).catch(() => {}); // cleanup
@@ -149,7 +151,7 @@ export async function downloadMessageResourceFeishu(params: {
     buffer = Buffer.concat(chunks);
   } else if (typeof responseAny.writeFile === "function") {
     // SDK provides writeFile method - use a temp file
-    const tmpPath = path.join(os.tmpdir(), `feishu_${Date.now()}_${fileKey}`);
+    const tmpPath = buildRandomTempFilePath({ prefix: "feishu" });
     await responseAny.writeFile(tmpPath);
     buffer = await fs.promises.readFile(tmpPath);
     await fs.promises.unlink(tmpPath).catch(() => {}); // cleanup

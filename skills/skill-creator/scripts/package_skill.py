@@ -69,6 +69,11 @@ def package_skill(skill_path, output_dir=None):
         with zipfile.ZipFile(skill_filename, "w", zipfile.ZIP_DEFLATED) as zipf:
             # Walk through the skill directory
             for file_path in skill_path.rglob("*"):
+                # Reject symlinks to prevent external file inclusion (security)
+                if file_path.is_symlink():
+                    print(f"[ERROR] Symlinks are not allowed in skill packages: {file_path}")
+                    skill_filename.unlink(missing_ok=True)
+                    return None
                 if file_path.is_file():
                     # Calculate the relative path within the zip
                     arcname = file_path.relative_to(skill_path.parent)

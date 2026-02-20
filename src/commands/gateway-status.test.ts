@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 const loadConfig = vi.fn(() => ({
   gateway: {
     mode: "remote",
-    remote: { url: "ws://remote.example:18789", token: "rtok" },
+    remote: { url: "wss://remote.example:18789", token: "rtok" },
     auth: { token: "ltok" },
   },
 }));
@@ -208,7 +208,7 @@ describe("gateway-status command", () => {
       loadConfig.mockReturnValueOnce({
         gateway: {
           mode: "remote",
-          remote: { url: "ws://peters-mac-studio-1.sheep-coho.ts.net:18789", token: "rtok" },
+          remote: { url: "wss://peters-mac-studio-1.sheep-coho.ts.net:18789", token: "rtok" },
         },
       });
       resolveSshConfig.mockResolvedValueOnce({
@@ -253,7 +253,7 @@ describe("gateway-status command", () => {
       loadConfig.mockReturnValueOnce({
         gateway: {
           mode: "remote",
-          remote: { url: "ws://studio.example:18789", token: "rtok" },
+          remote: { url: "wss://studio.example:18789", token: "rtok" },
         },
       });
       resolveSshConfig.mockResolvedValueOnce(null);
@@ -287,7 +287,7 @@ describe("gateway-status command", () => {
     loadConfig.mockReturnValueOnce({
       gateway: {
         mode: "remote",
-        remote: { url: "ws://studio.example:18789", token: "rtok" },
+        remote: { url: "wss://studio.example:18789", token: "rtok" },
       },
     });
     resolveSshConfig.mockResolvedValueOnce({

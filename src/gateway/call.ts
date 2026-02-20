@@ -16,6 +16,7 @@ import {
 } from "../utils/message-channel.js";
 import { loadGatewayTlsRuntime } from "../infra/tls/gateway.js";
 import { GatewayClient } from "./client.js";
+import { isSecureWebSocketUrl, pickPrimaryLanIPv4 } from "./net.js";
 import { PROTOCOL_VERSION } from "./protocol/index.js";
 
 export type CallGatewayOptions = {
@@ -99,13 +100,17 @@ export function buildGatewayConnectionDetails(
   const tlsEnabled = config.gateway?.tls?.enabled === true;
   const localPort = resolveGatewayPort(config);
   const tailnetIPv4 = pickPrimaryTailnetIPv4();
+  const lanIPv4 = pickPrimaryLanIPv4();
   const bindMode = config.gateway?.bind ?? "loopback";
   const preferTailnet = bindMode === "tailnet" && !!tailnetIPv4;
+  const preferLan = bindMode === "lan" && !!lanIPv4;
   const scheme = tlsEnabled ? "wss" : "ws";
   const localUrl =
     preferTailnet && tailnetIPv4
       ? `${scheme}://${tailnetIPv4}:${localPort}`
-      : `${scheme}://127.0.0.1:${localPort}`;
+      : preferLan && lanIPv4
+        ? `${scheme}://${lanIPv4}:${localPort}`
+        : `${scheme}://127.0.0.1:${localPort}`;
   const urlOverride =
     typeof options.url === "string" && options.url.trim().length > 0
       ? options.url.trim()
@@ -122,11 +127,23 @@ export function buildGatewayConnectionDetails(
         ? "missing gateway.remote.url (fallback local)"
         : preferTailnet && tailnetIPv4
           ? `local tailnet ${tailnetIPv4}`
-          : "local loopback";
+          : preferLan && lanIPv4
+            ? `local lan ${lanIPv4}`
+            : "local loopback";
   const remoteFallbackNote = remoteMisconfigured
     ? "Warn: gateway.mode=remote but gateway.remote.url is missing; set gateway.remote.url or switch gateway.mode=local."
     : undefined;
   const bindDetail = !urlOverride && !remoteUrl ? `Bind: ${bindMode}` : undefined;
+
+  // Block plaintext WebSocket connections to non-loopback addresses (CWE-319)
+  if (!urlOverride && !isSecureWebSocketUrl(url)) {
+    throw new Error(
+      `SECURITY ERROR: plaintext ws:// connection to a non-loopback address is blocked. ` +
+        `Replace with wss:// or enable TLS (gateway.tls.enabled=true). ` +
+        `Offending URL: ${url}`,
+    );
+  }
+
   const message = [
     `Gateway target: ${url}`,
     `Source: ${urlSource}`,
