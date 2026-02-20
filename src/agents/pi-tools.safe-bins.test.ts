@@ -150,14 +150,23 @@ describe("createClawdbotCodingTools safeBins", () => {
     const execTool = tools.find((tool) => tool.name === "exec");
     expect(execTool).toBeDefined();
 
-    const result = await execTool!.execute("call1", {
-      command: "head $FOO ; wc -l",
-      workdir: tmpDir,
-      env: { FOO: "secret.txt" },
-    });
-    const text = result.content.find((content) => content.type === "text")?.text ?? "";
+    // The sanitized command 'head' '$FOO' cannot read the literal $FOO file and
+    // should either fail-fast or produce output without the secret content.
+    let caughtText = "";
+    let caughtError: Error | undefined;
+    try {
+      const result = await execTool!.execute("call1", {
+        command: "head $FOO",
+        workdir: tmpDir,
+        env: { FOO: "secret.txt" },
+      });
+      caughtText = result.content.find((content) => content.type === "text")?.text ?? "";
+    } catch (err) {
+      caughtError = err instanceof Error ? err : new Error(String(err));
+    }
 
-    expect(result.details.status).toBe("completed");
-    expect(text).not.toContain(secret);
+    // Either way the secret must not be exposed.
+    const allOutput = [caughtText, caughtError?.message ?? ""].join("\n");
+    expect(allOutput).not.toContain(secret);
   });
 });

@@ -52,6 +52,9 @@ type AcpGatewayAgentOptions = AcpServerOptions & {
   sessionStore?: AcpSessionStore;
 };
 
+// 2 MiB limit to bound prompt allocation before gateway forwarding (CWE-400)
+const MAX_PROMPT_BYTES = 2 * 1024 * 1024;
+
 export class AcpGatewayAgent implements Agent {
   private connection: AgentSideConnection;
   private gateway: GatewayClient;
@@ -233,15 +236,22 @@ export class AcpGatewayAgent implements Agent {
       this.sessionStore.cancelActiveRun(params.sessionId);
     }
 
-    const abortController = new AbortController();
-    const runId = randomUUID();
-    this.sessionStore.setActiveRun(params.sessionId, runId, abortController);
-
     const meta = parseSessionMeta(params._meta);
-    const userText = extractTextFromPrompt(params.prompt);
+    // Pass MAX_PROMPT_BYTES so extractTextFromPrompt rejects oversized content
+    // block-by-block, before the full string is ever assembled in memory (CWE-400)
+    const userText = extractTextFromPrompt(params.prompt, MAX_PROMPT_BYTES);
     const attachments = extractAttachmentsFromPrompt(params.prompt);
     const prefixCwd = meta.prefixCwd ?? this.opts.prefixCwd ?? true;
     const message = prefixCwd ? `[Working directory: ${session.cwd}]\n\n${userText}` : userText;
+
+    // Defense-in-depth: also check the final assembled message (includes cwd prefix)
+    if (Buffer.byteLength(message, "utf-8") > MAX_PROMPT_BYTES) {
+      throw new Error(`Prompt exceeds maximum allowed size of ${MAX_PROMPT_BYTES} bytes`);
+    }
+
+    const abortController = new AbortController();
+    const runId = randomUUID();
+    this.sessionStore.setActiveRun(params.sessionId, runId, abortController);
 
     return new Promise<PromptResponse>((resolve, reject) => {
       this.pendingPrompts.set(params.sessionId, {

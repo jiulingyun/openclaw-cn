@@ -7,6 +7,14 @@ If you believe you've found a security issue in Clawdbot, please report it priva
 - Email: `steipete@gmail.com`
 - What to include: reproduction steps, impact assessment, and (if possible) a minimal PoC.
 
+## Plugin Trust Boundary
+
+Plugins/extensions are loaded **in-process** with the Gateway and are treated as trusted code.
+
+- Plugins can execute with the same OS privileges as the OpenClaw process.
+- Runtime helpers (for example `runtime.system.runCommandWithTimeout`) are convenience APIs, not a sandbox boundary.
+- Only install plugins you trust, and prefer `plugins.allow` to pin explicit trusted plugin ids.
+
 ## Operational Guidance
 
 For threat model + hardening guidance (including `clawdbot security audit --deep` and `--fix`), see:

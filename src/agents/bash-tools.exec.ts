@@ -345,6 +345,7 @@ function emitExecSystemEvent(text: string, opts: { sessionKey?: string; contextK
 
 async function runExecProcess(opts: {
   command: string;
+  execCommand?: string;
   workdir: string;
   env: Record<string, string>;
   sandbox?: BashSandboxConfig;
@@ -354,6 +355,7 @@ async function runExecProcess(opts: {
   maxOutput: number;
   pendingMaxOutput: number;
   notifyOnExit: boolean;
+  notifyOnExitEmptySuccess?: boolean;
   scopeKey?: string;
   sessionKey?: string;
   timeoutSec: number;
@@ -410,7 +412,7 @@ async function runExecProcess(opts: {
       if (!spawnPty) {
         throw new Error("PTY support is unavailable (node-pty spawn not found).");
       }
-      pty = spawnPty(shell, [...shellArgs, opts.command], {
+      pty = spawnPty(shell, [...shellArgs, opts.execCommand ?? opts.command], {
         cwd: opts.workdir,
         env: opts.env,
         name: process.env.TERM ?? "xterm-256color",
@@ -442,7 +444,7 @@ async function runExecProcess(opts: {
       logWarn(`exec: PTY spawn failed (${errText}); retrying without PTY for "${opts.command}".`);
       opts.warnings.push(warning);
       const { child: spawned } = await spawnWithFallback({
-        argv: [shell, ...shellArgs, opts.command],
+        argv: [shell, ...shellArgs, opts.execCommand ?? opts.command],
         options: {
           cwd: opts.workdir,
           env: opts.env,
@@ -469,7 +471,7 @@ async function runExecProcess(opts: {
   } else {
     const { shell, args: shellArgs } = getShellConfig();
     const { child: spawned } = await spawnWithFallback({
-      argv: [shell, ...shellArgs, opts.command],
+      argv: [shell, ...shellArgs, opts.execCommand ?? opts.command],
       options: {
         cwd: opts.workdir,
         env: opts.env,

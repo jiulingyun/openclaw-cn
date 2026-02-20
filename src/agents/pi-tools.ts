@@ -454,3 +454,6 @@ export function createOpenClawCodingTools(options?: {
   // on the wire and maps them back for tool dispatch.
   return withAbort;
 }
+
+/** Backward-compatible alias used by tests and external callers. */
+export const createClawdbotCodingTools = createOpenClawCodingTools;

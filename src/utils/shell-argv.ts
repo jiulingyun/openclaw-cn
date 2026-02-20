@@ -32,6 +32,12 @@ export function splitShellArgs(raw: string): string[] | null {
       continue;
     }
     if (inDouble) {
+      // Handle POSIX double-quote escape sequences: \", \\, \$, \`
+      if (ch === "\\" && raw[i + 1] !== undefined && /["\\$`]/.test(raw[i + 1]!)) {
+        buf += raw[i + 1];
+        i += 1;
+        continue;
+      }
       if (ch === '"') {
         inDouble = false;
       } else {
