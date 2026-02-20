@@ -237,7 +237,7 @@ export async function buildStatusReply(params: {
     },
     subagentsLine,
     mediaDecisions: params.mediaDecisions,
-    includeTranscriptUsage: false,
+    includeTranscriptUsage: true,
   });
 
   return { text: statusText };
