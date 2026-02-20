@@ -71,16 +71,32 @@ function matchesHostnameAllowlist(hostname: string, allowlist: string[]): boolea
   return allowlist.some((pattern) => isHostnameAllowedByPattern(hostname, pattern));
 }
 
+function parseStrictIpv4Octet(part: string): number | null {
+  if (!/^[0-9]+$/.test(part)) {
+    return null;
+  }
+  const value = Number.parseInt(part, 10);
+  if (Number.isNaN(value) || value < 0 || value > 255) {
+    return null;
+  }
+  // Accept only canonical decimal octets (no leading zeros, no alternate radices).
+  if (part !== String(value)) {
+    return null;
+  }
+  return value;
+}
+
 function parseIpv4(address: string): number[] | null {
   const parts = address.split(".");
   if (parts.length !== 4) {
     return null;
   }
-  const numbers = parts.map((part) => Number.parseInt(part, 10));
-  if (numbers.some((value) => Number.isNaN(value) || value < 0 || value > 255)) {
-    return null;
+  for (const part of parts) {
+    if (parseStrictIpv4Octet(part) === null) {
+      return null;
+    }
   }
-  return numbers;
+  return parts.map((part) => Number.parseInt(part, 10));
 }
 
 function stripIpv6ZoneId(address: string): string {
@@ -190,6 +206,27 @@ function isPrivateIpv4(parts: number[]): boolean {
   return false;
 }
 
+function isUnsupportedLegacyIpv4Literal(address: string): boolean {
+  // Detect strings that look like legacy IPv4 literal forms that our strict
+  // parser rejects but which some HTTP stacks accept as private addresses.
+  // Examples: octal (0177.0.0.1), hex (0x7f.0.0.1), short (127.1), packed (2130706433).
+  // Fail closed: anything matching these patterns is treated as private.
+  if (!address || address.length === 0) return false;
+  const parts = address.split(".");
+  if (parts.length < 1 || parts.length > 4) return false;
+  if (parts.every((p) => p.length === 0)) return false;
+  // Each non-empty part must look like a numeric literal in some base
+  // (decimal, octal with leading zero, or hex with 0x prefix — even if malformed).
+  // The hex pattern is intentionally broad ([0-9a-zA-Z]+) to catch malformed
+  // hex literals like `0x7g` that are clearly intended as IP addresses but contain
+  // invalid hex digits. The goal is fail-closed detection, not strict hex validation.
+  const numericLike = /^(0[xX][0-9a-zA-Z]+|[0-9]+)$/;
+  for (const part of parts) {
+    if (part.length > 0 && !numericLike.test(part)) return false;
+  }
+  return true;
+}
+
 export function isPrivateIpAddress(address: string): boolean {
   let normalized = address.trim().toLowerCase();
   if (normalized.startsWith("[") && normalized.endsWith("]")) {
@@ -251,7 +288,9 @@ export function isPrivateIpAddress(address: string): boolean {
 
   const ipv4 = parseIpv4(normalized);
   if (!ipv4) {
-    return false;
+    // Fail closed: if this looks like a legacy IPv4 literal that we can't parse
+    // with strict rules, treat it as private/blocked to prevent SSRF bypasses.
+    return isUnsupportedLegacyIpv4Literal(normalized);
   }
   return isPrivateIpv4(ipv4);
 }
@@ -269,6 +308,13 @@ export function isBlockedHostname(hostname: string): boolean {
     normalized.endsWith(".local") ||
     normalized.endsWith(".internal")
   );
+}
+
+export function isBlockedHostnameOrIp(hostname: string): boolean {
+  const normalized = normalizeHostname(hostname);
+  if (!normalized) return false;
+  if (isBlockedHostname(normalized)) return true;
+  return isPrivateIpAddress(normalized);
 }
 
 export function createPinnedLookup(params: {

@@ -5,6 +5,7 @@ import { resolveConfigDir, resolveUserPath } from "../utils.js";
 import { resolveBundledPluginsDir } from "./bundled-dir.js";
 import type { OpenclawPackageManifest, PackageManifest } from "./manifest.js";
 import { resolvePackageOpenclawMeta } from "./manifest.js";
+import { isPathInside, isPathInsideWithRealpath } from "../security/scan-paths.js";
 import type { PluginDiagnostic, PluginOrigin } from "./types.js";
 
 const EXTENSION_EXTS = new Set([".ts", ".js", ".mts", ".cts", ".mjs", ".cjs"]);
@@ -141,6 +142,23 @@ function discoverInDirectory(params: {
     if (extensions.length > 0) {
       for (const extPath of extensions) {
         const resolved = path.resolve(fullPath, extPath);
+        // Enforce path containment: extension entry must stay inside package directory
+        if (!isPathInside(fullPath, resolved)) {
+          params.diagnostics.push({
+            level: "error",
+            message: `openclaw.extensions entry escapes package directory: ${extPath}`,
+            source: fullPath,
+          });
+          continue;
+        }
+        if (!isPathInsideWithRealpath(fullPath, resolved, { requireRealpath: true })) {
+          params.diagnostics.push({
+            level: "error",
+            message: `openclaw.extensions entry resolves outside package directory: ${extPath}`,
+            source: fullPath,
+          });
+          continue;
+        }
         addCandidate({
           candidates: params.candidates,
           seen: params.seen,
@@ -227,6 +245,23 @@ function discoverFromPath(params: {
     if (extensions.length > 0) {
       for (const extPath of extensions) {
         const source = path.resolve(resolved, extPath);
+        // Enforce path containment: extension entry must stay inside package directory
+        if (!isPathInside(resolved, source)) {
+          params.diagnostics.push({
+            level: "error",
+            message: `openclaw.extensions entry escapes package directory: ${extPath}`,
+            source: resolved,
+          });
+          continue;
+        }
+        if (!isPathInsideWithRealpath(resolved, source, { requireRealpath: true })) {
+          params.diagnostics.push({
+            level: "error",
+            message: `openclaw.extensions entry resolves outside package directory: ${extPath}`,
+            source: resolved,
+          });
+          continue;
+        }
         addCandidate({
           candidates: params.candidates,
           seen: params.seen,

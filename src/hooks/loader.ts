@@ -13,6 +13,7 @@ import type { InternalHookHandler } from "./internal-hooks.js";
 import { loadWorkspaceHookEntries } from "./workspace.js";
 import { resolveHookConfig } from "./config.js";
 import { shouldIncludeHook } from "./config.js";
+import { isPathInsideWithRealpath } from "../security/scan-paths.js";
 
 /**
  * Load and register all hook handlers
@@ -60,6 +61,18 @@ export async function loadInternalHooks(
       }
 
       try {
+        // Reject handlers that escape the hook directory via symlink
+        if (
+          !isPathInsideWithRealpath(entry.hook.baseDir, entry.hook.handlerPath, {
+            requireRealpath: true,
+          })
+        ) {
+          console.error(
+            `Hook error: Handler for '${entry.hook.name}' resolves outside hook directory (symlink escape rejected)`,
+          );
+          continue;
+        }
+
         // Import handler module with cache-busting
         const url = pathToFileURL(entry.hook.handlerPath).href;
         const cacheBustedUrl = `${url}?t=${Date.now()}`;
