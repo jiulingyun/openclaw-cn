@@ -103,6 +103,20 @@
 - Never commit or publish real phone numbers, videos, or live configuration values. Use obviously fake placeholders in docs, tests, and examples.
  - Release flow: always read `docs/reference/RELEASING.md` and `docs/platforms/mac/release.md` before any release work; do not ask routine questions once those docs answer them.
 
+## GHSA（仓库安全公告）补丁与发布
+
+- 在审查安全公告之前，请先阅读 `SECURITY.md`。
+- 获取公告: `gh api /repos/jiulingyun/openclaw-cn/security-advisories/<GHSA>`
+- 最新 npm 版本: `npm view openclaw-cn version --userconfig "$(mktemp)"`
+- 私有 fork 的 PR 必须已关闭:
+  `fork=$(gh api /repos/jiulingyun/openclaw-cn/security-advisories/<GHSA> | jq -r .private_fork.full_name)`
+  `gh pr list -R "$fork" --state open`（结果必须为空）
+- 描述换行注意事项: 通过 heredoc 将 Markdown 写入 `/tmp/ghsa.desc.md`（不要使用 `"\\n"` 字符串）
+- 通过 jq 构建补丁 JSON: `jq -n --rawfile desc /tmp/ghsa.desc.md '{summary,severity,description:$desc,vulnerabilities:[...]}' > /tmp/ghsa.patch.json`
+- 补丁并发布: `gh api -X PATCH /repos/jiulingyun/openclaw-cn/security-advisories/<GHSA> --input /tmp/ghsa.patch.json`（发布时需包含 `"state":"published"`；无 `/publish` 端点）
+- 若发布失败（HTTP 422）: 缺少 `severity`/`description`/`vulnerabilities[]`，或私有 fork 存在未关闭的 PR
+- 验证: 重新获取；确认 `state=published`，`published_at` 已设置；`jq -r .description | rg '\\\\n'` 返回空
+
 ## Troubleshooting
 - Rebrand/migration issues or legacy config/service warnings: run `clawdbot-cn doctor` (see `docs/gateway/doctor.md`).
 
