@@ -5,6 +5,7 @@ import JSON5 from "json5";
 
 // New sync collectors from upstream hardening
 export {
+  collectGatewayHttpNoAuthFindings,
   collectMinimalProfileOverrideFindings,
   collectNodeDenyCommandPatternFindings,
   collectSandboxDockerNoopFindings,

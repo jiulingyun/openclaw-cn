@@ -13,6 +13,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "clawdbot/plugin-sdk": path.join(repoRoot, "src", "plugin-sdk", "index.ts"),
+      "openclaw-cn/plugin-sdk": path.join(repoRoot, "src", "plugin-sdk", "index.ts"),
     },
   },
   test: {

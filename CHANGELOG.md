@@ -2,7 +2,15 @@
 
 Docs: https://docs.clawd.bot
 
-## 0.1.5-fix.2
+## 0.1.5-fix.3
+
+### 🔒 安全加固（security-part4: upstream v2026.2.17→v2026.2.19）
+
+- **Security/Audit**：新增 `gateway.http.no_auth` 检查项——当 `gateway.auth.mode="none"` 时，对 Gateway HTTP API（`/tools/invoke` 及已启用的 `/v1/*` 端点）无认证可访问问题进行 loopback 警告（warn）或远程暴露严重告警（critical），并新增回归测试与文档更新。
+- **Security/Exec**：修复 `tools.exec.safeBins` 的文件存在性预言（file-existence oracle）行为——改为仅基于 argv 形状进行确定性验证，阻断文件导向标志（如 `sort -o`、`jq -f/--from-file`、`grep -f/--file`），allow/deny 结果不再泄露主机文件是否存在。感谢 @nedlir 报告。
+- **Security/Exec**：加固 safeBins stdin-only 强制执行——拦截输出/递归标志（`sort -o/--output`、grep 递归），收紧默认 safe bins 以移除 `sort`/`grep`，防止通过 safe-bin allowlist 绕过文件写入/递归读取。感谢 @nedlir 报告。
+
+
 
 ### 🐛 Bug 修复
 

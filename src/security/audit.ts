@@ -11,6 +11,7 @@ import { probeGateway } from "../gateway/probe.js";
 import {
   collectAttackSurfaceSummaryFindings,
   collectExposureMatrixFindings,
+  collectGatewayHttpNoAuthFindings,
   collectHooksHardeningFindings,
   collectIncludeFilePermFindings,
   collectInstalledSkillsCodeSafetyFindings,
@@ -80,6 +81,8 @@ export type SecurityAuditOptions = {
   configPath?: string;
   /** Time limit for deep gateway probe. */
   deepTimeoutMs?: number;
+  /** Override process environment (default: process.env). */
+  env?: NodeJS.ProcessEnv;
   /** Dependency injection for tests. */
   plugins?: ReturnType<typeof listChannelPlugins>;
   /** Dependency injection for tests. */
@@ -855,7 +858,7 @@ async function maybeProbeGateway(params: {
 export async function runSecurityAudit(opts: SecurityAuditOptions): Promise<SecurityAuditReport> {
   const findings: SecurityAuditFinding[] = [];
   const cfg = opts.config;
-  const env = process.env;
+  const env = opts.env ?? process.env;
   const stateDir = opts.stateDir ?? resolveStateDir(env);
   const configPath = opts.configPath ?? resolveConfigPath(env, stateDir);
 
@@ -863,6 +866,7 @@ export async function runSecurityAudit(opts: SecurityAuditOptions): Promise<Secu
   findings.push(...collectSyncedFolderFindings({ stateDir, configPath }));
 
   findings.push(...collectGatewayConfigFindings(cfg));
+  findings.push(...collectGatewayHttpNoAuthFindings(cfg, env));
   findings.push(...collectBrowserControlFindings(cfg));
   findings.push(...collectLoggingFindings(cfg));
   findings.push(...collectElevatedFindings(cfg));
