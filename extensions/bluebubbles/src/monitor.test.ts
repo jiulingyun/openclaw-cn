@@ -485,7 +485,7 @@ describe("BlueBubbles webhook monitor", () => {
       expect(res.statusCode).toBe(401);
     });
 
-    it("allows localhost requests without authentication", async () => {
+    it("requires authentication for loopback requests when password is configured", async () => {
       const account = createMockAccount({ password: "secret-token" });
       const config: ClawdbotConfig = {};
       const core = createMockRuntime();
@@ -501,7 +501,7 @@ describe("BlueBubbles webhook monitor", () => {
           guid: "msg-1",
         },
       });
-      // Localhost address
+      // Localhost address — authentication still required
       (req as unknown as { socket: { remoteAddress: string } }).socket = { remoteAddress: "127.0.0.1" };
 
       unregister = registerBlueBubblesWebhookTarget({
@@ -516,7 +516,7 @@ describe("BlueBubbles webhook monitor", () => {
       const handled = await handleBlueBubblesWebhookRequest(req, res);
 
       expect(handled).toBe(true);
-      expect(res.statusCode).toBe(200);
+      expect(res.statusCode).toBe(401);
     });
 
     it("ignores unregistered webhook paths", async () => {

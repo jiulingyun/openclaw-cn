@@ -161,14 +161,21 @@ const execHostFallbackAllowed =
 
 const blockedEnvKeys = new Set([
   "NODE_OPTIONS",
+  "NODE_PATH",
   "PYTHONHOME",
   "PYTHONPATH",
   "PERL5LIB",
   "PERL5OPT",
+  "RUBYLIB",
   "RUBYOPT",
+  "BASH_ENV",
+  "ENV",
+  "GCONV_PATH",
+  "IFS",
+  "SSLKEYLOGFILE",
 ]);
 
-const blockedEnvPrefixes = ["DYLD_", "LD_"];
+const blockedEnvPrefixes = ["DYLD_", "LD_", "BASH_FUNC_"];
 
 class SkillBinsCache {
   private bins = new Set<string>();
@@ -202,9 +209,19 @@ class SkillBinsCache {
 
 export function sanitizeEnv(
   overrides?: Record<string, string> | null,
-): Record<string, string> | undefined {
-  if (!overrides) return undefined;
-  const merged = { ...process.env } as Record<string, string>;
+): Record<string, string> {
+  // Sanitize the base environment to strip dangerous vars that could be inherited.
+  const merged: Record<string, string> = {};
+  for (const [rawKey, value] of Object.entries(process.env)) {
+    if (value === undefined) continue;
+    const key = rawKey.trim();
+    if (!key) continue;
+    const upper = key.toUpperCase();
+    if (blockedEnvKeys.has(upper)) continue;
+    if (blockedEnvPrefixes.some((prefix) => upper.startsWith(prefix))) continue;
+    merged[key] = value;
+  }
+  if (!overrides) return merged;
   const basePath = process.env.PATH ?? DEFAULT_NODE_PATH;
   for (const [rawKey, value] of Object.entries(overrides)) {
     const key = rawKey.trim();

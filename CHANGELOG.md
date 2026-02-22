@@ -2,7 +2,15 @@
 
 Docs: https://docs.clawd.bot
 
-## 0.1.6
+## 0.1.7
+
+> 🔒 **安全加固**：同步上游 v2026.2.19→v2026.2.21 安全补丁（security-part3 P0）
+
+### 🔒 安全修复
+
+- **BlueBubbles/Security**：要求所有 BlueBubbles webhook 请求进行 token 认证，移除 loopback/本地代理的免密码访问回退行为（上游 commit `6b2f2811dc62`）
+- **Security/Exec**：阻断 shell 启动文件环境注入（`BASH_ENV`、`ENV`、`BASH_FUNC_*`、`LD_*`、`DYLD_*` 等），在 config env 摄入、node-host 继承环境清理和 macOS exec 宿主运行时三处统一拦截，防止攻击者通过环境变量触发预命令执行（上游 commit `2cdbadee1f8f`）
+
 
 > 🆕 **重要功能**：新增 GLM-5 模型支持，完善 Z.AI Provider 集成
 > 🐛 **关键修复**：修复 Context 显示、压缩功能、浏览器控制等核心问题
