@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generateChutesPkce, parseOAuthCallbackInput } from "./chutes-oauth.js";
+import { generateChutesPkce, parseOAuthCallbackInput, refreshChutesTokens } from "./chutes-oauth.js";
 
 describe("parseOAuthCallbackInput", () => {
   it("rejects code-only input (state required)", () => {
@@ -48,5 +48,31 @@ describe("generateChutesPkce", () => {
     const pkce = generateChutesPkce();
     expect(pkce.verifier).toMatch(/^[0-9a-f]{64}$/);
     expect(pkce.challenge).toMatch(/^[A-Za-z0-9_-]+$/);
+  });
+});
+
+describe("refreshChutesTokens", () => {
+  it("preserves old refresh token when response returns empty refresh_token", async () => {
+    const fetchFn = async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      new Response(
+        JSON.stringify({ access_token: "at_new", refresh_token: "", expires_in: 1800 }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+
+    const now = 3_000_000;
+    const result = await refreshChutesTokens({
+      credential: {
+        access: "at_old",
+        refresh: "rt_old",
+        expires: now - 10_000,
+        email: "user@example.com",
+        clientId: "cid_test",
+      } as unknown as Parameters<typeof refreshChutesTokens>[0]["credential"],
+      fetchFn,
+      now,
+    });
+
+    expect(result.access).toBe("at_new");
+    expect(result.refresh).toBe("rt_old");
   });
 });
