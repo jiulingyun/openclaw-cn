@@ -1183,12 +1183,21 @@ export function createExecTool(
         const analysisOk = allowlistEval.analysisOk;
         const allowlistSatisfied =
           hostSecurity === "allowlist" && analysisOk ? allowlistEval.allowlistSatisfied : false;
-        const requiresAsk = requiresExecApproval({
-          ask: hostAsk,
-          security: hostSecurity,
-          analysisOk,
-          allowlistSatisfied,
-        });
+        const hasHeredocSegment = allowlistEval.segments.some((segment) =>
+          segment.argv.some((token) => token.startsWith("<<")),
+        );
+        const requiresHeredocApproval =
+          hostSecurity === "allowlist" && analysisOk && allowlistSatisfied && hasHeredocSegment;
+        const requiresAsk =
+          requiresExecApproval({
+            ask: hostAsk,
+            security: hostSecurity,
+            analysisOk,
+            allowlistSatisfied,
+          }) || requiresHeredocApproval;
+        if (requiresHeredocApproval) {
+          warnings.push("Warning: heredoc execution requires explicit approval in allowlist mode.");
+        }
 
         if (requiresAsk) {
           const approvalId = crypto.randomUUID();
