@@ -7,7 +7,7 @@ settings:
 overrides:
   libsignal: npm:@openclaw-cn/libsignal@2.0.1
   '@sinclair/typebox': 0.34.47
-  hono: 4.11.4
+  hono: 4.11.10
   tar: 7.5.4
   openclaw: link:.
 
@@ -28,7 +28,7 @@ importers:
         version: 3.975.0
       '@buape/carbon':
         specifier: 0.14.0
-        version: 0.14.0(hono@4.11.4)
+        version: 0.14.0(hono@4.11.10)
       '@clack/prompts':
         specifier: ^0.11.0
         version: 0.11.0
@@ -120,8 +120,8 @@ importers:
         specifier: ^1.39.3
         version: 1.39.3
       hono:
-        specifier: 4.11.4
-        version: 4.11.4
+        specifier: 4.11.10
+        version: 4.11.10
       jiti:
         specifier: ^2.6.1
         version: 2.6.1
@@ -1098,7 +1098,7 @@ packages:
     resolution: {integrity: sha512-vHL6w3ecZsky+8P5MD+eFfaGTyCeOHUIFYMGpQGbrBTSmNNoxv0if69rEZ5giu36weC5saFuznL411gRX7bJDw==}
     engines: {node: '>=18.14.1'}
     peerDependencies:
-      hono: 4.11.4
+      hono: 4.11.10
 
   '@huggingface/jinja@0.5.3':
     resolution: {integrity: sha512-asqfZ4GQS0hD876Uw4qiUb7Tr/V5Q+JZuo2L+BtdrD4U40QU58nIRq3ZSgAzJgT874VLjhGVacaYfrdpXtEvtA==}
@@ -3832,8 +3832,8 @@ packages:
     resolution: {integrity: sha512-Xwwo44whKBVCYoliBQwaPvtd/2tYFkRQtXDWj1nackaV2JPXx3L0+Jvd8/qCJ2p+ML0/XVkJ2q+Mr+UVdpJK5w==}
     engines: {node: '>=12.0.0'}
 
-  hono@4.11.4:
-    resolution: {integrity: sha512-U7tt8JsyrxSRKspfhtLET79pU8K+tInj5QZXs1jSugO1Vq5dFj3kmZsRldo29mTBfcjDRVRXrEZ6LS63Cog9ZA==}
+  hono@4.11.10:
+    resolution: {integrity: sha512-kyWP5PAiMooEvGrA9jcD3IXF7ATu8+o7B3KCbPXid5se52NPqnOpM/r9qeW2heMnOekF4kqR1fXJqCYeCLKrZg==}
     engines: {node: '>=16.9.0'}
 
   hookified@1.15.0:
@@ -6653,14 +6653,14 @@ snapshots:
 
   '@borewit/text-codec@0.2.1': {}
 
-  '@buape/carbon@0.14.0(hono@4.11.4)':
+  '@buape/carbon@0.14.0(hono@4.11.10)':
     dependencies:
       '@types/node': 25.0.10
       discord-api-types: 0.38.37
     optionalDependencies:
       '@cloudflare/workers-types': 4.20260120.0
       '@discordjs/voice': 0.19.0
-      '@hono/node-server': 1.19.9(hono@4.11.4)
+      '@hono/node-server': 1.19.9(hono@4.11.10)
       '@types/bun': 1.3.6
       '@types/ws': 8.18.1
       ws: 8.19.0
@@ -6868,9 +6868,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@hono/node-server@1.19.9(hono@4.11.4)':
+  '@hono/node-server@1.19.9(hono@4.11.10)':
     dependencies:
-      hono: 4.11.4
+      hono: 4.11.10
     optional: true
 
   '@huggingface/jinja@0.5.3':
@@ -9985,7 +9985,7 @@ snapshots:
 
   highlight.js@11.11.1: {}
 
-  hono@4.11.4: {}
+  hono@4.11.10: {}
 
   hookified@1.15.0: {}
 
@@ -10796,7 +10796,7 @@ snapshots:
     dependencies:
       '@agentclientprotocol/sdk': 0.13.1(zod@4.3.6)
       '@aws-sdk/client-bedrock': 3.980.0
-      '@buape/carbon': 0.14.0(hono@4.11.4)
+      '@buape/carbon': 0.14.0(hono@4.11.10)
       '@clack/prompts': 0.11.0
       '@grammyjs/runner': 2.0.3(grammy@1.39.3)
       '@grammyjs/transformer-throttler': 1.2.1(grammy@1.39.3)
@@ -10827,7 +10827,7 @@ snapshots:
       express: 5.2.1
       file-type: 21.3.0
       grammy: 1.39.3
-      hono: 4.11.4
+      hono: 4.11.10
       jiti: 2.6.1
       json5: 2.2.3
       jszip: 3.10.1

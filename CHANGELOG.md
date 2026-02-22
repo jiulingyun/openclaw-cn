@@ -35,6 +35,10 @@ Docs: https://docs.clawd.bot
   - 现在从 Git 标签名中提取版本号判断发布频道，而不是从 package.json
   - 添加调试输出显示发布频道
 
+### 🔒 安全更新
+
+- **依赖安全加固**：将 `hono` 升级至 `4.11.10`，修复 `basicAuth`/`bearerAuth` 中的时序安全认证比较漏洞（`GHSA-gq3j-xvxp-8hrf`）。（上游：@vincentkoc）
+
 ### 📦 上游同步
 
 - **v2026.2.17**：同步上游核心稳定性更新
