@@ -20,6 +20,7 @@ Docs: https://docs.clawd.bot
 ### 🐛 Bug 修复
 
 - **Security/Exec**: block unquoted heredoc body expansion tokens in shell allowlist analysis, reject unterminated heredocs, and require explicit approval for allowlisted heredoc execution on gateway hosts to prevent heredoc substitution allowlist bypass. Thanks @torturado for reporting.
+- **Security/Sandbox Browser**: default browser sandbox containers to a dedicated Docker network (`openclaw-sandbox-browser`), add optional CDP ingress source-range restrictions, auto-create missing dedicated networks, and warn in `openclaw security --audit` when browser sandboxing runs on bridge without source-range limits. Thanks @TerminalsandCoffee for reporting.
 - **Context 显示修复**：修复 `/status` 命令显示 `Context: ?/200k` 的问题，现在会显示实际 token 使用量（如 `Context: 1.5k/200k (1%)`）
   - 启用 `includeTranscriptUsage` 标志，从 session transcript 文件读取实际使用量
 - **压缩功能修复**：修复 `/compact` 命令失败的问题（`systemPromptOverride is not a function`）

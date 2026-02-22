@@ -7,6 +7,7 @@ import JSON5 from "json5";
 export {
   collectMinimalProfileOverrideFindings,
   collectNodeDenyCommandPatternFindings,
+  collectSandboxBrowserNetworkFindings,
   collectSandboxDockerNoopFindings,
 } from "./audit-extra.sync.js";
 

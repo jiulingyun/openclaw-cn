@@ -557,6 +557,30 @@ export function collectHooksHardeningFindings(cfg: ClawdbotConfig): SecurityAudi
   return findings;
 }
 
+export function collectSandboxBrowserNetworkFindings(cfg: ClawdbotConfig): SecurityAuditFinding[] {
+  const findings: SecurityAuditFinding[] = [];
+  const sandboxCfg = resolveSandboxConfigForAgent(cfg);
+  if (sandboxCfg.mode === "off" || !sandboxCfg.browser.enabled) {
+    return findings;
+  }
+  const network = sandboxCfg.browser.network?.trim().toLowerCase() || "bridge";
+  const hasCdpSourceRange = Boolean(sandboxCfg.browser.cdpSourceRange?.trim());
+  if (network === "bridge" && !hasCdpSourceRange) {
+    findings.push({
+      checkId: "sandbox.browser_bridge_no_cdp_source_range",
+      severity: "warn",
+      title: "Sandbox browser uses Docker bridge network without CDP source-range restriction",
+      detail:
+        'sandbox.browser.network is set to "bridge" (global Docker bridge), which exposes the CDP port to all containers on that network. ' +
+        "Without a cdpSourceRange restriction, any container on the bridge can reach the browser CDP endpoint.",
+      remediation:
+        'Use a dedicated network (`agents.defaults.sandbox.browser.network="openclaw-sandbox-browser"`) or ' +
+        "set `agents.defaults.sandbox.browser.cdpSourceRange` to restrict CDP ingress (for example `172.21.0.1/32`).",
+    });
+  }
+  return findings;
+}
+
 export function collectSandboxDockerNoopFindings(cfg: ClawdbotConfig): SecurityAuditFinding[] {
   const findings: SecurityAuditFinding[] = [];
   const configuredPaths: string[] = [];

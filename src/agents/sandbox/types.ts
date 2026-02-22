@@ -31,7 +31,9 @@ export type SandboxBrowserConfig = {
   enabled: boolean;
   image: string;
   containerPrefix: string;
+  network?: string;
   cdpPort: number;
+  cdpSourceRange?: string;
   vncPort: number;
   noVncPort: number;
   headless: boolean;

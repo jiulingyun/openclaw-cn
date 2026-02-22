@@ -48,7 +48,11 @@ export type SandboxBrowserSettings = {
   enabled?: boolean;
   image?: string;
   containerPrefix?: string;
+  /** Docker network for the browser container (default: `openclaw-sandbox-browser`). */
+  network?: string;
   cdpPort?: number;
+  /** Optional CIDR range to restrict CDP ingress at the container edge. */
+  cdpSourceRange?: string;
   vncPort?: number;
   noVncPort?: number;
   headless?: boolean;

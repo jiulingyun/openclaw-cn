@@ -38,6 +38,7 @@ export const DEFAULT_TOOL_DENY = [
 ] as const;
 
 export const DEFAULT_SANDBOX_BROWSER_IMAGE = "clawdbot-sandbox-browser:bookworm-slim";
+export const DEFAULT_SANDBOX_BROWSER_NETWORK = "openclaw-sandbox-browser";
 export const DEFAULT_SANDBOX_COMMON_IMAGE = "clawdbot-sandbox-common:bookworm-slim";
 
 export const DEFAULT_SANDBOX_BROWSER_PREFIX = "clawdbot-sbx-browser-";

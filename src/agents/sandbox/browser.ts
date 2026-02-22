@@ -2,7 +2,11 @@ import { startBrowserBridgeServer, stopBrowserBridgeServer } from "../../browser
 import { type ResolvedBrowserConfig, resolveProfile } from "../../browser/config.js";
 import { DEFAULT_CLAWD_BROWSER_COLOR } from "../../browser/constants.js";
 import { BROWSER_BRIDGES } from "./browser-bridges.js";
-import { DEFAULT_SANDBOX_BROWSER_IMAGE, SANDBOX_AGENT_WORKSPACE_MOUNT } from "./constants.js";
+import {
+  DEFAULT_SANDBOX_BROWSER_IMAGE,
+  DEFAULT_SANDBOX_BROWSER_NETWORK,
+  SANDBOX_AGENT_WORKSPACE_MOUNT,
+} from "./constants.js";
 import {
   buildSandboxCreateArgs,
   dockerContainerState,
@@ -13,6 +17,9 @@ import { updateBrowserRegistry } from "./registry.js";
 import { slugifySessionKey } from "./shared.js";
 import { isToolAllowed } from "./tool-policy.js";
 import type { SandboxBrowserContext, SandboxConfig } from "./types.js";
+
+const _HOT_BROWSER_WINDOW_MS = 5 * 60 * 1000;
+const CDP_SOURCE_RANGE_ENV_KEY = "OPENCLAW_BROWSER_CDP_SOURCE_RANGE";
 
 async function waitForSandboxCdp(params: { cdpPort: number; timeoutMs: number }): Promise<boolean> {
   const deadline = Date.now() + Math.max(0, params.timeoutMs);
@@ -75,6 +82,23 @@ async function ensureSandboxBrowserImage(image: string) {
   );
 }
 
+async function ensureDockerNetwork(network: string) {
+  const normalized = network.trim().toLowerCase();
+  if (
+    !normalized ||
+    normalized === "bridge" ||
+    normalized === "none" ||
+    normalized.startsWith("container:")
+  ) {
+    return;
+  }
+  const inspect = await execDocker(["network", "inspect", network], { allowFailure: true });
+  if (inspect.code === 0) {
+    return;
+  }
+  await execDocker(["network", "create", "--driver", "bridge", network]);
+}
+
 export async function ensureSandboxBrowser(params: {
   scopeKey: string;
   workspaceDir: string;
@@ -88,11 +112,15 @@ export async function ensureSandboxBrowser(params: {
   const name = `${params.cfg.browser.containerPrefix}${slug}`;
   const containerName = name.slice(0, 63);
   const state = await dockerContainerState(containerName);
+  const browserNetwork = params.cfg.browser.network?.trim() || DEFAULT_SANDBOX_BROWSER_NETWORK;
+  const cdpSourceRange = params.cfg.browser.cdpSourceRange?.trim() || undefined;
   if (!state.exists) {
+    await ensureDockerNetwork(browserNetwork);
     await ensureSandboxBrowserImage(params.cfg.browser.image ?? DEFAULT_SANDBOX_BROWSER_IMAGE);
+    const browserDockerCfg = { ...params.cfg.docker, network: browserNetwork };
     const args = buildSandboxCreateArgs({
       name: containerName,
-      cfg: params.cfg.docker,
+      cfg: browserDockerCfg,
       scopeKey: params.scopeKey,
       labels: { "clawdbot.sandboxBrowser": "1" },
     });
@@ -115,6 +143,9 @@ export async function ensureSandboxBrowser(params: {
     args.push("-e", `OPENCLAW_BROWSER_HEADLESS=${params.cfg.browser.headless ? "1" : "0"}`);
     args.push("-e", `OPENCLAW_BROWSER_ENABLE_NOVNC=${params.cfg.browser.enableNoVnc ? "1" : "0"}`);
     args.push("-e", `OPENCLAW_BROWSER_CDP_PORT=${params.cfg.browser.cdpPort}`);
+    if (cdpSourceRange) {
+      args.push("-e", `${CDP_SOURCE_RANGE_ENV_KEY}=${cdpSourceRange}`);
+    }
     args.push("-e", `OPENCLAW_BROWSER_VNC_PORT=${params.cfg.browser.vncPort}`);
     args.push("-e", `OPENCLAW_BROWSER_NOVNC_PORT=${params.cfg.browser.noVncPort}`);
     args.push(params.cfg.browser.image);
