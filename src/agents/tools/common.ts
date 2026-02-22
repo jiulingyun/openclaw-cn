@@ -168,6 +168,17 @@ export function readReactionParams(
   return { emoji, remove, isEmpty: !emoji };
 }
 
+/**
+ * Thrown by tool handlers when an operation is rejected due to authorization failure.
+ * The HTTP tools endpoint returns 403 for this error type.
+ */
+export class ToolAuthError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ToolAuthError";
+  }
+}
+
 export function jsonResult(payload: unknown): AgentToolResult<unknown> {
   return {
     content: [

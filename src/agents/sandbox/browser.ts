@@ -18,7 +18,6 @@ import { slugifySessionKey } from "./shared.js";
 import { isToolAllowed } from "./tool-policy.js";
 import type { SandboxBrowserContext, SandboxConfig } from "./types.js";
 
-const _HOT_BROWSER_WINDOW_MS = 5 * 60 * 1000;
 const CDP_SOURCE_RANGE_ENV_KEY = "OPENCLAW_BROWSER_CDP_SOURCE_RANGE";
 
 async function waitForSandboxCdp(params: { cdpPort: number; timeoutMs: number }): Promise<boolean> {
@@ -83,6 +82,8 @@ async function ensureSandboxBrowserImage(image: string) {
 }
 
 async function ensureDockerNetwork(network: string) {
+  // Use lowercase only for matching special Docker network names; pass original to Docker commands
+  // since user-defined network names are case-sensitive in Docker.
   const normalized = network.trim().toLowerCase();
   if (
     !normalized ||

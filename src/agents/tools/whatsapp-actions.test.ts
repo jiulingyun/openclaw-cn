@@ -108,4 +108,47 @@ describe("handleWhatsAppAction", () => {
       ),
     ).rejects.toThrow(/WhatsApp reactions are disabled/);
   });
+
+  it("blocks reactions to non-allowlisted JIDs when allowFrom is set", async () => {
+    const cfg = {
+      channels: {
+        whatsapp: {
+          actions: { reactions: true },
+          allowFrom: ["+15551234567"],
+        },
+      },
+    } as ClawdbotConfig;
+    await expect(
+      handleWhatsAppAction(
+        {
+          action: "react",
+          chatJid: "9999999999@s.whatsapp.net",
+          messageId: "msg1",
+          emoji: "✅",
+        },
+        cfg,
+      ),
+    ).rejects.toThrow(/not authorized/);
+  });
+
+  it("allows reactions to allowlisted JIDs", async () => {
+    const cfg = {
+      channels: {
+        whatsapp: {
+          actions: { reactions: true },
+          allowFrom: ["+15551234567"],
+        },
+      },
+    } as ClawdbotConfig;
+    await handleWhatsAppAction(
+      {
+        action: "react",
+        chatJid: "15551234567@s.whatsapp.net",
+        messageId: "msg1",
+        emoji: "✅",
+      },
+      cfg,
+    );
+    expect(sendReactionWhatsApp).toHaveBeenCalled();
+  });
 });

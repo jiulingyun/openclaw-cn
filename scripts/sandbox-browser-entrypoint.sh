@@ -58,7 +58,10 @@ done
 
 SOCAT_LISTEN_ADDR="TCP-LISTEN:${CDP_PORT},fork,reuseaddr,bind=0.0.0.0"
 if [[ -n "${CDP_SOURCE_RANGE}" ]]; then
-  SOCAT_LISTEN_ADDR="${SOCAT_LISTEN_ADDR},range=${CDP_SOURCE_RANGE}"
+  # Validate CDP_SOURCE_RANGE is a CIDR (digits, dots, slash, colon only) before use.
+  if [[ "${CDP_SOURCE_RANGE}" =~ ^[0-9a-fA-F.:/]+$ ]]; then
+    SOCAT_LISTEN_ADDR="${SOCAT_LISTEN_ADDR},range=${CDP_SOURCE_RANGE}"
+  fi
 fi
 socat "${SOCAT_LISTEN_ADDR}" "TCP:127.0.0.1:${CHROME_CDP_PORT}" &
 

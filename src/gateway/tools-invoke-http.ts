@@ -15,6 +15,7 @@ import {
   resolveToolProfilePolicy,
   stripPluginOnlyAllowlist,
 } from "../agents/tool-policy.js";
+import { ToolAuthError } from "../agents/tools/common.js";
 import { loadConfig } from "../config/config.js";
 import { resolveMainSessionKey } from "../config/sessions.js";
 import { logWarn } from "../logger.js";
@@ -33,7 +34,7 @@ import {
 } from "./http-common.js";
 
 const DEFAULT_BODY_BYTES = 2 * 1024 * 1024;
-const MEMORY_TOOL_NAMES = new Set(["memory_search", "memory_get"]);
+const _MEMORY_TOOL_NAMES = new Set(["memory_search", "memory_get"]);
 
 /**
  * Tools denied via HTTP /tools/invoke regardless of session policy.
@@ -273,10 +274,17 @@ export async function handleToolsInvokeHttpRequest(
     const result = await (tool as any).execute?.(`http-${Date.now()}`, toolArgs);
     sendJson(res, 200, { ok: true, result });
   } catch (err) {
-    sendJson(res, 400, {
-      ok: false,
-      error: { type: "tool_error", message: err instanceof Error ? err.message : String(err) },
-    });
+    if (err instanceof ToolAuthError) {
+      sendJson(res, 403, {
+        ok: false,
+        error: { type: "tool_auth_error", message: err.message },
+      });
+    } else {
+      sendJson(res, 400, {
+        ok: false,
+        error: { type: "tool_error", message: err instanceof Error ? err.message : String(err) },
+      });
+    }
   }
 
   return true;

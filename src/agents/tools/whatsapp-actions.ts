@@ -2,7 +2,14 @@ import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 
 import type { ClawdbotConfig } from "../../config/config.js";
 import { sendReactionWhatsApp } from "../../web/outbound.js";
-import { createActionGate, jsonResult, readReactionParams, readStringParam } from "./common.js";
+import {
+  ToolAuthError,
+  createActionGate,
+  jsonResult,
+  readReactionParams,
+  readStringParam,
+} from "./common.js";
+import { checkWhatsAppTargetAuth } from "./whatsapp-target-auth.js";
 
 export async function handleWhatsAppAction(
   params: Record<string, unknown>,
@@ -16,12 +23,16 @@ export async function handleWhatsAppAction(
       throw new Error("WhatsApp reactions are disabled.");
     }
     const chatJid = readStringParam(params, "chatJid", { required: true });
+    const accountId = readStringParam(params, "accountId");
+    const authResult = checkWhatsAppTargetAuth({ chatJid, cfg, accountId });
+    if (!authResult.ok) {
+      throw new ToolAuthError(authResult.reason ?? "WhatsApp target not authorized");
+    }
     const messageId = readStringParam(params, "messageId", { required: true });
     const { emoji, remove, isEmpty } = readReactionParams(params, {
       removeErrorMessage: "Emoji is required to remove a WhatsApp reaction.",
     });
     const participant = readStringParam(params, "participant");
-    const accountId = readStringParam(params, "accountId");
     const fromMeRaw = params.fromMe;
     const fromMe = typeof fromMeRaw === "boolean" ? fromMeRaw : undefined;
     const resolvedEmoji = remove ? "" : emoji;
