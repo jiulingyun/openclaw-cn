@@ -7,7 +7,12 @@ Docs: https://docs.clawd.bot
 > 🆕 **重要功能**：新增 GLM-5 模型支持，完善 Z.AI Provider 集成
 > 🐛 **关键修复**：修复 Context 显示、压缩功能、浏览器控制等核心问题
 > 🔧 **开发体验**：改进 macOS pre-commit hook 兼容性，修复 CI/CD 发布流程
-> 📡 **上游同步**：同步上游 v2026.2.17更新
+> 🔒 **安全加固**：移除 Canvas 端点共享 IP 回退，强制要求 Token 或会话能力
+> 📡 **上游同步**：同步上游 v2026.2.17 → v2026.2.21 更新
+
+### 🔒 安全加固
+
+- **Gateway/安全**：移除 Canvas 端点的共享 IP 回退机制，要求提供 Token 或会话能力方可访问 Canvas。感谢 @thewilloftheshadow。（upstream v2026.2.21）
 
 ### ✨ 新增功能
 
@@ -37,6 +42,7 @@ Docs: https://docs.clawd.bot
 
 ### 📦 上游同步
 
+- **v2026.2.21**：同步上游安全加固更新（Canvas 端点认证加固）
 - **v2026.2.17**：同步上游核心稳定性更新
 
 ### 📝 文档更新
