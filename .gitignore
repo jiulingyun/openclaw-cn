@@ -11,6 +11,7 @@ dist
 pnpm-lock.yaml
 bun.lock
 bun.lockb
+package-lock.json
 coverage
 .pnpm-store
 .worktrees/
