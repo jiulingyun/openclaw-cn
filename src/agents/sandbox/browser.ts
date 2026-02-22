@@ -7,8 +7,18 @@ import {
   buildSandboxCreateArgs,
   dockerContainerState,
   execDocker,
+  readDockerContainerEnvVar,
   readDockerPort,
 } from "./docker.js";
+import {
+  buildNoVncDirectUrl,
+  buildNoVncObserverTokenUrl,
+  consumeNoVncObserverToken,
+  generateNoVncPassword,
+  isNoVncEnabled,
+  issueNoVncObserverToken,
+  NOVNC_PASSWORD_ENV_KEY,
+} from "./novnc-auth.js";
 import { updateBrowserRegistry } from "./registry.js";
 import { slugifySessionKey } from "./shared.js";
 import { isToolAllowed } from "./tool-policy.js";
@@ -88,8 +98,14 @@ export async function ensureSandboxBrowser(params: {
   const name = `${params.cfg.browser.containerPrefix}${slug}`;
   const containerName = name.slice(0, 63);
   const state = await dockerContainerState(containerName);
+  const noVncEnabled = isNoVncEnabled(params.cfg.browser);
+  let noVncPassword: string | undefined;
+
   if (!state.exists) {
     await ensureSandboxBrowserImage(params.cfg.browser.image ?? DEFAULT_SANDBOX_BROWSER_IMAGE);
+    if (noVncEnabled) {
+      noVncPassword = generateNoVncPassword();
+    }
     const args = buildSandboxCreateArgs({
       name: containerName,
       cfg: params.cfg.docker,
@@ -109,7 +125,7 @@ export async function ensureSandboxBrowser(params: {
       );
     }
     args.push("-p", `127.0.0.1::${params.cfg.browser.cdpPort}`);
-    if (params.cfg.browser.enableNoVnc && !params.cfg.browser.headless) {
+    if (noVncEnabled) {
       args.push("-p", `127.0.0.1::${params.cfg.browser.noVncPort}`);
     }
     args.push("-e", `OPENCLAW_BROWSER_HEADLESS=${params.cfg.browser.headless ? "1" : "0"}`);
@@ -117,11 +133,20 @@ export async function ensureSandboxBrowser(params: {
     args.push("-e", `OPENCLAW_BROWSER_CDP_PORT=${params.cfg.browser.cdpPort}`);
     args.push("-e", `OPENCLAW_BROWSER_VNC_PORT=${params.cfg.browser.vncPort}`);
     args.push("-e", `OPENCLAW_BROWSER_NOVNC_PORT=${params.cfg.browser.noVncPort}`);
+    if (noVncEnabled && noVncPassword) {
+      args.push("-e", `${NOVNC_PASSWORD_ENV_KEY}=${noVncPassword}`);
+    }
     args.push(params.cfg.browser.image);
     await execDocker(args);
     await execDocker(["start", containerName]);
-  } else if (!state.running) {
-    await execDocker(["start", containerName]);
+  } else {
+    if (noVncEnabled) {
+      noVncPassword =
+        (await readDockerContainerEnvVar(containerName, NOVNC_PASSWORD_ENV_KEY)) ?? undefined;
+    }
+    if (!state.running) {
+      await execDocker(["start", containerName]);
+    }
   }
 
   const mappedCdp = await readDockerPort(containerName, params.cfg.browser.cdpPort);
@@ -129,10 +154,9 @@ export async function ensureSandboxBrowser(params: {
     throw new Error(`Failed to resolve CDP port mapping for ${containerName}.`);
   }
 
-  const mappedNoVnc =
-    params.cfg.browser.enableNoVnc && !params.cfg.browser.headless
-      ? await readDockerPort(containerName, params.cfg.browser.noVncPort)
-      : null;
+  const mappedNoVnc = noVncEnabled
+    ? await readDockerPort(containerName, params.cfg.browser.noVncPort)
+    : null;
 
   const existing = BROWSER_BRIDGES.get(params.scopeKey);
   const existingProfile = existing ? resolveProfile(existing.bridge.state.resolved, "clawd") : null;
@@ -176,6 +200,7 @@ export async function ensureSandboxBrowser(params: {
         headless: params.cfg.browser.headless,
       }),
       onEnsureAttachTarget,
+      resolveSandboxNoVncToken: consumeNoVncObserverToken,
     });
   };
 
@@ -198,10 +223,12 @@ export async function ensureSandboxBrowser(params: {
     noVncPort: mappedNoVnc ?? undefined,
   });
 
-  const noVncUrl =
-    mappedNoVnc && params.cfg.browser.enableNoVnc && !params.cfg.browser.headless
-      ? `http://127.0.0.1:${mappedNoVnc}/vnc.html?autoconnect=1&resize=remote`
-      : undefined;
+  let noVncUrl: string | undefined;
+  if (mappedNoVnc && noVncEnabled) {
+    const directUrl = buildNoVncDirectUrl(mappedNoVnc, noVncPassword);
+    const token = issueNoVncObserverToken({ url: directUrl });
+    noVncUrl = buildNoVncObserverTokenUrl(resolvedBridge.baseUrl, token);
+  }
 
   return {
     controlUrl: resolvedBridge.baseUrl,

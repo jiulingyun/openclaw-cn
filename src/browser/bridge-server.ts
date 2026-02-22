@@ -3,11 +3,7 @@ import type { AddressInfo } from "node:net";
 import express from "express";
 
 import type { ResolvedBrowserConfig } from "./config.js";
-import type { BrowserRouteRegistrar } from "./routes/types.js";
-import { isLoopbackHost } from "../gateway/net.js";
-import { deleteBridgeAuthForPort, setBridgeAuthForPort } from "./bridge-auth-registry.js";
 import { browserMutationGuardMiddleware } from "./csrf.js";
-import { isAuthorizedBrowserRequest } from "./http-auth.js";
 import { registerBrowserRoutes } from "./routes/index.js";
 import {
   type BrowserServerState,
@@ -28,6 +24,7 @@ export async function startBrowserBridgeServer(params: {
   port?: number;
   authToken?: string;
   onEnsureAttachTarget?: (profile: ProfileContext["profile"]) => Promise<void>;
+  resolveSandboxNoVncToken?: (token: string) => string | null;
 }): Promise<BrowserBridge> {
   const host = params.host ?? "127.0.0.1";
   const port = params.port ?? 0;
@@ -35,6 +32,23 @@ export async function startBrowserBridgeServer(params: {
   const app = express();
   app.use(express.json({ limit: "1mb" }));
   app.use(browserMutationGuardMiddleware());
+
+  if (params.resolveSandboxNoVncToken) {
+    app.get("/sandbox/novnc", (req, res) => {
+      const rawToken = typeof req.query?.token === "string" ? req.query.token.trim() : "";
+      if (!rawToken) {
+        res.status(400).send("缺少 token");
+        return;
+      }
+      const redirectUrl = params.resolveSandboxNoVncToken?.(rawToken);
+      if (!redirectUrl) {
+        res.status(404).send("token 无效或已过期");
+        return;
+      }
+      res.setHeader("Cache-Control", "no-store");
+      res.redirect(302, redirectUrl);
+    });
+  }
 
   const authToken = params.authToken?.trim();
   if (authToken) {

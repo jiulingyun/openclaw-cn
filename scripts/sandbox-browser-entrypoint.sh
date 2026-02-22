@@ -11,6 +11,7 @@ VNC_PORT="${CLAWDBOT_BROWSER_VNC_PORT:-5900}"
 NOVNC_PORT="${CLAWDBOT_BROWSER_NOVNC_PORT:-6080}"
 ENABLE_NOVNC="${CLAWDBOT_BROWSER_ENABLE_NOVNC:-1}"
 HEADLESS="${CLAWDBOT_BROWSER_HEADLESS:-0}"
+NOVNC_PASSWORD="${CLAWDBOT_BROWSER_NOVNC_PASSWORD:-}"
 
 mkdir -p "${HOME}" "${HOME}/.chrome" "${XDG_CONFIG_HOME}" "${XDG_CACHE_HOME}"
 
@@ -60,7 +61,15 @@ socat \
   TCP:127.0.0.1:"${CHROME_CDP_PORT}" &
 
 if [[ "${ENABLE_NOVNC}" == "1" && "${HEADLESS}" != "1" ]]; then
-  x11vnc -display :1 -rfbport "${VNC_PORT}" -shared -forever -nopw -localhost &
+  # VNC auth 密码最多 8 个字符；未提供时使用随机默认密码。
+  if [[ -z "${NOVNC_PASSWORD}" ]]; then
+    NOVNC_PASSWORD="$(tr -dc 'a-f0-9' < /dev/urandom | head -c 8)"
+  fi
+  NOVNC_PASSWD_FILE="${HOME}/.vnc/passwd"
+  mkdir -p "${HOME}/.vnc"
+  x11vnc -storepasswd "${NOVNC_PASSWORD}" "${NOVNC_PASSWD_FILE}" >/dev/null
+  chmod 600 "${NOVNC_PASSWD_FILE}"
+  x11vnc -display :1 -rfbport "${VNC_PORT}" -shared -forever -rfbauth "${NOVNC_PASSWD_FILE}" -localhost &
   websockify --web /usr/share/novnc/ "${NOVNC_PORT}" "localhost:${VNC_PORT}" &
 fi
 
