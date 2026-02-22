@@ -1,3 +1,5 @@
+import { stripInboundMetadata } from "../auto-reply/reply/strip-inbound-meta.js";
+
 const ENVELOPE_PREFIX = /^\[([^\]]+)\]\s*/;
 const ENVELOPE_CHANNELS = [
   "WebChat",
@@ -44,7 +46,7 @@ function stripEnvelopeFromContent(content: unknown[]): { content: unknown[]; cha
     if (!item || typeof item !== "object") return item;
     const entry = item as Record<string, unknown>;
     if (entry.type !== "text" || typeof entry.text !== "string") return item;
-    const stripped = stripMessageIdHints(stripEnvelope(entry.text));
+    const stripped = stripMessageIdHints(stripEnvelope(stripInboundMetadata(entry.text)));
     if (stripped === entry.text) return item;
     changed = true;
     return {
@@ -65,7 +67,7 @@ export function stripEnvelopeFromMessage(message: unknown): unknown {
   const next: Record<string, unknown> = { ...entry };
 
   if (typeof entry.content === "string") {
-    const stripped = stripMessageIdHints(stripEnvelope(entry.content));
+    const stripped = stripMessageIdHints(stripEnvelope(stripInboundMetadata(entry.content)));
     if (stripped !== entry.content) {
       next.content = stripped;
       changed = true;
@@ -77,7 +79,7 @@ export function stripEnvelopeFromMessage(message: unknown): unknown {
       changed = true;
     }
   } else if (typeof entry.text === "string") {
-    const stripped = stripMessageIdHints(stripEnvelope(entry.text));
+    const stripped = stripMessageIdHints(stripEnvelope(stripInboundMetadata(entry.text)));
     if (stripped !== entry.text) {
       next.text = stripped;
       changed = true;
