@@ -206,6 +206,7 @@ export function buildWorkspaceSkillSnapshot(
     skills: eligible.map((entry) => ({
       name: entry.skill.name,
       primaryEnv: entry.openclaw?.primaryEnv,
+      requiredEnv: (entry.openclaw ?? entry.metadata)?.requires?.env?.slice(),
     })),
     resolvedSkills,
     version: opts?.snapshotVersion,

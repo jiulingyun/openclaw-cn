@@ -140,7 +140,7 @@ export type GroupKeyResolution = {
 
 export type SessionSkillSnapshot = {
   prompt: string;
-  skills: Array<{ name: string; primaryEnv?: string }>;
+  skills: Array<{ name: string; primaryEnv?: string; requiredEnv?: string[] }>;
   resolvedSkills?: Skill[];
   version?: number;
 };

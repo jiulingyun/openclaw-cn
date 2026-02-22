@@ -1,3 +1,4 @@
+import os from "node:os";
 import path from "node:path";
 
 import type { ClawdbotConfig } from "../config/config.js";
@@ -18,4 +19,30 @@ export function resolveMediaLocalRoots(cfg: ClawdbotConfig): string[] {
   }
 
   return Array.from(roots);
+}
+
+export function getAgentScopedMediaLocalRoots(
+  cfg: ClawdbotConfig,
+  agentId?: string,
+): readonly string[] {
+  const configDir = resolveConfigDir();
+  const roots: string[] = [
+    os.tmpdir(),
+    path.join(configDir, "media"),
+    path.join(configDir, "agents"),
+    path.join(configDir, "workspace"),
+    path.join(configDir, "sandboxes"),
+  ];
+  if (!agentId?.trim()) {
+    return roots;
+  }
+  const workspaceDir = resolveAgentWorkspaceDir(cfg, agentId);
+  if (!workspaceDir) {
+    return roots;
+  }
+  const normalizedWorkspaceDir = path.resolve(workspaceDir);
+  if (!roots.includes(normalizedWorkspaceDir)) {
+    roots.push(normalizedWorkspaceDir);
+  }
+  return roots;
 }

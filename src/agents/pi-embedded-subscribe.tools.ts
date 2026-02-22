@@ -1,7 +1,9 @@
 import { getChannelPlugin, normalizeChannelId } from "../channels/plugins/index.js";
+import { MEDIA_TOKEN_RE } from "../media/parse.js";
 import { truncateUtf16Safe } from "../utils.js";
 import { type MessagingToolSend } from "./pi-embedded-messaging.js";
 import { normalizeTargetForProvider } from "../infra/outbound/target-normalization.js";
+import { normalizeToolName } from "./tool-policy.js";
 
 const TOOL_RESULT_MAX_CHARS = 8000;
 const TOOL_ERROR_MAX_CHARS = 400;
@@ -93,6 +95,130 @@ export function isToolResultError(result: unknown): boolean {
   if (typeof status !== "string") return false;
   const normalized = status.trim().toLowerCase();
   return normalized === "error" || normalized === "timeout";
+}
+
+// Core tool names that are allowed to emit local MEDIA: paths.
+// Plugin/MCP tools are intentionally excluded to prevent untrusted file reads.
+const TRUSTED_TOOL_RESULT_MEDIA = new Set([
+  "agents_list",
+  "apply_patch",
+  "browser",
+  "canvas",
+  "cron",
+  "edit",
+  "exec",
+  "gateway",
+  "image",
+  "memory_get",
+  "memory_search",
+  "message",
+  "nodes",
+  "process",
+  "read",
+  "session_status",
+  "sessions_history",
+  "sessions_list",
+  "sessions_send",
+  "sessions_spawn",
+  "subagents",
+  "tts",
+  "web_fetch",
+  "web_search",
+  "write",
+]);
+const HTTP_URL_RE = /^https?:\/\//i;
+
+export function isToolResultMediaTrusted(toolName?: string): boolean {
+  if (!toolName) {
+    return false;
+  }
+  const normalized = normalizeToolName(toolName);
+  return TRUSTED_TOOL_RESULT_MEDIA.has(normalized);
+}
+
+export function filterToolResultMediaUrls(
+  toolName: string | undefined,
+  mediaUrls: string[],
+): string[] {
+  if (mediaUrls.length === 0) {
+    return mediaUrls;
+  }
+  if (isToolResultMediaTrusted(toolName)) {
+    return mediaUrls;
+  }
+  return mediaUrls.filter((url) => HTTP_URL_RE.test(url.trim()));
+}
+
+/**
+ * Extract media file paths from a tool result.
+ *
+ * Strategy (first match wins):
+ * 1. Parse `MEDIA:` tokens from text content blocks (all OpenClaw tools).
+ * 2. Fall back to `details.path` when image content exists (OpenClaw imageResult).
+ *
+ * Returns an empty array when no media is found.
+ */
+export function extractToolResultMediaPaths(result: unknown): string[] {
+  if (!result || typeof result !== "object") {
+    return [];
+  }
+  const record = result as Record<string, unknown>;
+  const content = Array.isArray(record.content) ? record.content : null;
+  if (!content) {
+    return [];
+  }
+
+  // Extract MEDIA: paths from text content blocks.
+  const paths: string[] = [];
+  let hasImageContent = false;
+  for (const item of content) {
+    if (!item || typeof item !== "object") {
+      continue;
+    }
+    const entry = item as Record<string, unknown>;
+    if (entry.type === "image") {
+      hasImageContent = true;
+      continue;
+    }
+    if (entry.type === "text" && typeof entry.text === "string") {
+      // Only parse lines that start with MEDIA: (after trimming) to avoid
+      // false-matching placeholders like <media:audio> or mid-line mentions.
+      for (const line of entry.text.split("\n")) {
+        if (!line.includes("MEDIA:")) {
+          continue;
+        }
+        if (!line.trimStart().startsWith("MEDIA:")) {
+          continue;
+        }
+        MEDIA_TOKEN_RE.lastIndex = 0;
+        let match: RegExpExecArray | null;
+        while ((match = MEDIA_TOKEN_RE.exec(line)) !== null) {
+          const p = match[1]
+            ?.replace(/^[`"'[{(]+/, "")
+            .replace(/[`"'\]})\\,]+$/, "")
+            .trim();
+          if (p && p.length <= 4096) {
+            paths.push(p);
+          }
+        }
+      }
+    }
+  }
+
+  if (paths.length > 0) {
+    return paths;
+  }
+
+  // Fall back to details.path when image content exists but no MEDIA: text.
+  if (hasImageContent) {
+    const details = record.details as Record<string, unknown> | undefined;
+    const p = typeof details?.path === "string" ? details.path.trim() : "";
+    if (p) {
+      return [p];
+    }
+  }
+
+  return [];
 }
 
 export function extractToolErrorMessage(result: unknown): string | undefined {

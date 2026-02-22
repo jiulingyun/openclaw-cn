@@ -37,7 +37,11 @@ Docs: https://docs.clawd.bot
 
 ### 📦 上游同步
 
-- **v2026.2.17**：同步上游核心稳定性更新
+- **v2026.2.19→v2026.2.21 (agents-part2)**：同步以下安全与功能修复：
+  - Providers/Copilot：丢弃 Claude 模型持久化的 `thinking` 块，防止后续请求因 `thinkingSignature` 无效而失败。感谢 @jackheuberger。
+  - Security/Agents：限制本地 MEDIA 工具附件仅允许核心工具和 OpenClaw 临时根目录，防止不可信 MCP 工具文件泄露。感谢 @NucleiAv 和 @thewilloftheshadow。
+  - Security/Canvas：限制 A2UI JSONL 文件读取到允许的本地根目录，拒绝非本地 `jsonlPath` scheme，防止意外文件暴露。感谢 @thewilloftheshadow。
+  - Skills/Security：对 skill 环境变量覆盖进行净化处理，屏蔽不安全的运行时注入变量，仅允许在 skill 元数据中声明的敏感键，并对可疑值给出警告。感谢 @thewilloftheshadow。
 
 ### 📝 文档更新
 

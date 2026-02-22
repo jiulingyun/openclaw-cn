@@ -15,6 +15,7 @@ import {
 } from "../pi-embedded-helpers.js";
 import { sanitizeToolUseResultPairing } from "../session-transcript-repair.js";
 import { log } from "./logger.js";
+import { dropThinkingBlocks } from "./thinking.js";
 import { describeUnknownError } from "./utils.js";
 import { cleanToolSchemaForGemini } from "../pi-tools.schema.js";
 import type { TranscriptPolicy } from "../transcript-policy.js";
@@ -349,9 +350,12 @@ export async function sanitizeSessionHistory(params: {
     preserveSignatures: policy.preserveSignatures,
     sanitizeThoughtSignatures: policy.sanitizeThoughtSignatures,
   });
-  const sanitizedThinking = policy.normalizeAntigravityThinkingBlocks
-    ? sanitizeAntigravityThinkingBlocks(sanitizedImages)
+  const droppedThinking = policy.dropThinkingBlocks
+    ? dropThinkingBlocks(sanitizedImages)
     : sanitizedImages;
+  const sanitizedThinking = policy.sanitizeThinkingSignatures
+    ? sanitizeAntigravityThinkingBlocks(droppedThinking)
+    : droppedThinking;
   const repairedTools = policy.repairToolUseResultPairing
     ? sanitizeToolUseResultPairing(sanitizedThinking)
     : sanitizedThinking;
