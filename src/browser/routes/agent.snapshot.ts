@@ -14,6 +14,7 @@ import {
   DEFAULT_BROWSER_SCREENSHOT_MAX_SIDE,
   normalizeBrowserScreenshot,
 } from "../screenshot.js";
+import { assertBrowserNavigationAllowed } from "../navigation-guard.js";
 import type { BrowserRouteContext } from "../server-context.js";
 import type { BrowserRouteRegistrar } from "./types.js";
 import {
@@ -40,6 +41,7 @@ export function registerBrowserAgentSnapshotRoutes(app: BrowserRouteRegistrar, c
     const targetId = toStringOrEmpty(body.targetId) || undefined;
     if (!url) return jsonError(res, 400, "url is required");
     try {
+      await assertBrowserNavigationAllowed({ url });
       const tab = await profileCtx.ensureTabAvailable(targetId);
       const pw = await requirePwAi(res, "navigate");
       if (!pw) return;

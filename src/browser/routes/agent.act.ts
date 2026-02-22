@@ -20,7 +20,7 @@ import {
   DEFAULT_DOWNLOAD_DIR,
   DEFAULT_UPLOAD_DIR,
   resolvePathWithinRoot,
-  resolvePathsWithinRoot,
+  resolveExistingPathsWithinRoot,
 } from "./path-output.js";
 import { jsonError, toBoolean, toNumber, toStringArray, toStringOrEmpty } from "./utils.js";
 
@@ -292,7 +292,7 @@ export function registerBrowserAgentActRoutes(app: BrowserRouteRegistrar, ctx: B
     const timeoutMs = toNumber(body.timeoutMs);
     if (!paths.length) return jsonError(res, 400, "paths are required");
     try {
-      const uploadPathsResult = resolvePathsWithinRoot({
+      const uploadPathsResult = await resolveExistingPathsWithinRoot({
         rootDir: DEFAULT_UPLOAD_DIR,
         requestedPaths: paths,
         scopeLabel: `uploads directory (${DEFAULT_UPLOAD_DIR})`,
