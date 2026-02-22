@@ -19,6 +19,10 @@ Docs: https://docs.clawd.bot
 
 ### 🐛 Bug 修复
 
+- **安全/Agents**: 将嵌入式 Pi Runner 外部重试循环上限设为 24 次，当重试无法收敛时返回明确的 `retry_limit` 错误，防止无限内部重试循环（`GHSA-76m6-pj3w-v7mf`）。
+- **Agents/工具图片**: 在 `agents/tool-images` 调整图片日志中包含源文件名，以便将压缩事件追踪到具体文件。
+- **Agents/工具策略**: 将 google-gemini-cli 模型跳过逻辑与 google 对齐；优化 tool-policy 导入确保浏览器安全。
+- **安全/外部内容**: 为每次 `wrapExternalContent` 调用生成唯一 ID，防止嵌套/注入的标记造成混淆。
 - **Context 显示修复**：修复 `/status` 命令显示 `Context: ?/200k` 的问题，现在会显示实际 token 使用量（如 `Context: 1.5k/200k (1%)`）
   - 启用 `includeTranscriptUsage` 标志，从 session transcript 文件读取实际使用量
 - **压缩功能修复**：修复 `/compact` 命令失败的问题（`systemPromptOverride is not a function`）

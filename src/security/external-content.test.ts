@@ -7,6 +7,15 @@ import {
   wrapExternalContent,
 } from "./external-content.js";
 
+const START_MARKER_REGEX = /<<<external_untrusted_content id="([a-f0-9]{16})">>>/g;
+const END_MARKER_REGEX = /<<<end_external_untrusted_content id="([a-f0-9]{16})">>>/g;
+
+function extractMarkerIds(content: string): { start: string[]; end: string[] } {
+  const start = [...content.matchAll(START_MARKER_REGEX)].map((match) => match[1]);
+  const end = [...content.matchAll(END_MARKER_REGEX)].map((match) => match[1]);
+  return { start, end };
+}
+
 describe("external-content security", () => {
   describe("detectSuspiciousPatterns", () => {
     it("detects ignore previous instructions pattern", () => {
@@ -47,13 +56,18 @@ describe("external-content security", () => {
   });
 
   describe("wrapExternalContent", () => {
-    it("wraps content with security boundaries", () => {
+    it("wraps content with security boundaries and matching IDs", () => {
       const result = wrapExternalContent("Hello world", { source: "email" });
 
-      expect(result).toContain("<<<EXTERNAL_UNTRUSTED_CONTENT>>>");
-      expect(result).toContain("<<<END_EXTERNAL_UNTRUSTED_CONTENT>>>");
+      expect(result).toMatch(/<<<external_untrusted_content id="[a-f0-9]{16}">>>/);
+      expect(result).toMatch(/<<<end_external_untrusted_content id="[a-f0-9]{16}">>>/);
       expect(result).toContain("Hello world");
       expect(result).toContain("SECURITY NOTICE");
+
+      const ids = extractMarkerIds(result);
+      expect(ids.start).toHaveLength(1);
+      expect(ids.end).toHaveLength(1);
+      expect(ids.start[0]).toBe(ids.end[0]);
     });
 
     it("includes sender metadata when provided", () => {
@@ -82,7 +96,7 @@ describe("external-content security", () => {
       });
 
       expect(result).not.toContain("SECURITY NOTICE");
-      expect(result).toContain("<<<EXTERNAL_UNTRUSTED_CONTENT>>>");
+      expect(result).toMatch(/<<<external_untrusted_content id="[a-f0-9]{16}">>>/);
     });
   });
 
@@ -173,8 +187,8 @@ describe("external-content security", () => {
       });
 
       // Verify the content is wrapped with security boundaries
-      expect(result).toContain("<<<EXTERNAL_UNTRUSTED_CONTENT>>>");
-      expect(result).toContain("<<<END_EXTERNAL_UNTRUSTED_CONTENT>>>");
+      expect(result).toMatch(/<<<external_untrusted_content id="[a-f0-9]{16}">>>/);
+      expect(result).toMatch(/<<<end_external_untrusted_content id="[a-f0-9]{16}">>>/);
 
       // Verify security warning is present
       expect(result).toContain("EXTERNAL, UNTRUSTED source");
@@ -201,10 +215,9 @@ describe("external-content security", () => {
       const result = wrapExternalContent(maliciousContent, { source: "email" });
 
       // The malicious tags are contained within the safe boundaries
-      expect(result).toContain("<<<EXTERNAL_UNTRUSTED_CONTENT>>>");
-      expect(result.indexOf("<<<EXTERNAL_UNTRUSTED_CONTENT>>>")).toBeLessThan(
-        result.indexOf("</user>"),
-      );
+      expect(result).toMatch(/<<<external_untrusted_content id="[a-f0-9]{16}">>>/);
+      const markerMatch = result.match(/<<<external_untrusted_content id="[a-f0-9]{16}">>>/);
+      expect(result.indexOf(markerMatch![0])).toBeLessThan(result.indexOf("</user>"));
     });
   });
 });

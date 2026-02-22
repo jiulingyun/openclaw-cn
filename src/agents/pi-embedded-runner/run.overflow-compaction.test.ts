@@ -62,7 +62,7 @@ vi.mock("../../utils/message-channel.js", () => ({
 }));
 
 vi.mock("../agent-paths.js", () => ({
-  resolveOpenClawAgentDir: vi.fn(() => "/tmp/agent-dir"),
+  resolveClawdbotAgentDir: vi.fn(() => "/tmp/agent-dir"),
 }));
 
 vi.mock("../auth-profiles.js", () => ({
@@ -172,9 +172,11 @@ import type { EmbeddedRunAttemptResult } from "./run/types.js";
 import { compactEmbeddedPiSessionDirect } from "./compact.js";
 import { runEmbeddedPiAgent } from "./run.js";
 import { runEmbeddedAttempt } from "./run/attempt.js";
+import { pickFallbackThinkingLevel } from "../pi-embedded-helpers.js";
 
 const mockedRunEmbeddedAttempt = vi.mocked(runEmbeddedAttempt);
 const mockedCompactDirect = vi.mocked(compactEmbeddedPiSessionDirect);
+const mockedPickFallbackThinkingLevel = vi.mocked(pickFallbackThinkingLevel);
 
 function makeAttemptResult(
   overrides: Partial<EmbeddedRunAttemptResult> = {},
@@ -236,5 +238,30 @@ describe("runEmbeddedPiAgent overflow compaction trigger routing", () => {
         authProfileId: "test-profile",
       }),
     );
+  });
+
+  it("returns retry_limit when repeated retries never converge", async () => {
+    mockedRunEmbeddedAttempt.mockReset();
+    mockedCompactDirect.mockReset();
+    mockedPickFallbackThinkingLevel.mockReset();
+    mockedRunEmbeddedAttempt.mockResolvedValue(
+      makeAttemptResult({ promptError: new Error("unsupported reasoning mode") }),
+    );
+    mockedPickFallbackThinkingLevel.mockReturnValue("low");
+
+    const result = await runEmbeddedPiAgent({
+      sessionId: "test-session",
+      sessionKey: "test-key",
+      sessionFile: "/tmp/session.json",
+      workspaceDir: "/tmp/workspace",
+      prompt: "hello",
+      timeoutMs: 30000,
+      runId: "run-1",
+    });
+
+    expect(mockedRunEmbeddedAttempt).toHaveBeenCalledTimes(24);
+    expect(mockedCompactDirect).not.toHaveBeenCalled();
+    expect(result.meta.error?.kind).toBe("retry_limit");
+    expect(result.payloads?.[0]?.isError).toBe(true);
   });
 });

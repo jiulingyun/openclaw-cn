@@ -43,9 +43,13 @@ export function detectSuspiciousPatterns(content: string): string[] {
 /**
  * Unique boundary markers for external content.
  * Using XML-style tags that are unlikely to appear in legitimate content.
+ * Each call generates a unique ID to prevent wrapper confusion by nested/injected markers.
  */
-const EXTERNAL_CONTENT_START = "<<<EXTERNAL_UNTRUSTED_CONTENT>>>";
-const EXTERNAL_CONTENT_END = "<<<END_EXTERNAL_UNTRUSTED_CONTENT>>>";
+function generateWrapperId(): string {
+  const bytes = new Uint8Array(8);
+  globalThis.crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 /**
  * Security warning prepended to external content.
@@ -116,8 +120,11 @@ function replaceMarkers(content: string): string {
   }
   const replacements: Array<{ start: number; end: number; value: string }> = [];
   const patterns: Array<{ regex: RegExp; value: string }> = [
-    { regex: /<<<EXTERNAL_UNTRUSTED_CONTENT>>>/gi, value: "[[MARKER_SANITIZED]]" },
-    { regex: /<<<END_EXTERNAL_UNTRUSTED_CONTENT>>>/gi, value: "[[END_MARKER_SANITIZED]]" },
+    { regex: /<<<external_untrusted_content\b[^>]*>>>/gi, value: "[[MARKER_SANITIZED]]" },
+    {
+      regex: /<<<end_external_untrusted_content\b[^>]*>>>/gi,
+      value: "[[END_MARKER_SANITIZED]]",
+    },
   ];
 
   for (const pattern of patterns) {
@@ -181,7 +188,7 @@ export type WrapExternalContentOptions = {
 export function wrapExternalContent(content: string, options: WrapExternalContentOptions): string {
   const { source, sender, subject, includeWarning = true } = options;
 
-  const sourceLabel = source === "email" ? "Email" : source === "webhook" ? "Webhook" : "External";
+  const sourceLabel = EXTERNAL_SOURCE_LABELS[source] ?? "External";
   const metadataLines: string[] = [`Source: ${sourceLabel}`];
 
   if (sender) {
@@ -194,14 +201,12 @@ export function wrapExternalContent(content: string, options: WrapExternalConten
   const metadata = metadataLines.join("\n");
   const warningBlock = includeWarning ? `${EXTERNAL_CONTENT_WARNING}\n\n` : "";
 
-  return [
-    warningBlock,
-    EXTERNAL_CONTENT_START,
-    metadata,
-    "---",
-    content,
-    EXTERNAL_CONTENT_END,
-  ].join("\n");
+  const sanitizedContent = replaceMarkers(content);
+  const id = generateWrapperId();
+  const start = `<<<external_untrusted_content id="${id}">>>`;
+  const end = `<<<end_external_untrusted_content id="${id}">>>`;
+
+  return [warningBlock, start, metadata, "---", sanitizedContent, end].join("\n");
 }
 
 /**

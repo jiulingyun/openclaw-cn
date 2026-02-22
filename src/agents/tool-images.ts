@@ -39,12 +39,87 @@ function inferMimeTypeFromBase64(base64: string): string | undefined {
   return undefined;
 }
 
+function parseMediaPathFromText(text: string): string | undefined {
+  for (const line of text.split(/\r?\n/u)) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("MEDIA:")) {
+      continue;
+    }
+    const raw = trimmed.slice("MEDIA:".length).trim();
+    if (!raw) {
+      continue;
+    }
+    const backtickWrapped = raw.match(/^`([^`]+)`$/u);
+    return (backtickWrapped?.[1] ?? raw).trim();
+  }
+  return undefined;
+}
+
+function fileNameFromPathLike(pathLike: string): string | undefined {
+  const value = pathLike.trim();
+  if (!value) {
+    return undefined;
+  }
+
+  try {
+    const url = new URL(value);
+    const candidate = url.pathname.split("/").filter(Boolean).at(-1);
+    return candidate && candidate.length > 0 ? candidate : undefined;
+  } catch {
+    // Not a URL; continue with path-like parsing.
+  }
+
+  const normalized = value.replaceAll("\\", "/");
+  const candidate = normalized.split("/").filter(Boolean).at(-1);
+  return candidate && candidate.length > 0 ? candidate : undefined;
+}
+
+function inferImageFileName(params: {
+  block: ImageContentBlock;
+  label?: string;
+  mediaPathHint?: string;
+}): string | undefined {
+  const rec = params.block as unknown as Record<string, unknown>;
+  const explicitKeys = ["fileName", "filename", "path", "url"] as const;
+  for (const key of explicitKeys) {
+    const raw = rec[key];
+    if (typeof raw !== "string" || raw.trim().length === 0) {
+      continue;
+    }
+    const candidate = fileNameFromPathLike(raw);
+    if (candidate) {
+      return candidate;
+    }
+  }
+
+  if (typeof rec.name === "string" && rec.name.trim().length > 0) {
+    return rec.name.trim();
+  }
+
+  if (params.mediaPathHint) {
+    const candidate = fileNameFromPathLike(params.mediaPathHint);
+    if (candidate) {
+      return candidate;
+    }
+  }
+
+  if (typeof params.label === "string" && params.label.startsWith("read:")) {
+    const candidate = fileNameFromPathLike(params.label.slice("read:".length));
+    if (candidate) {
+      return candidate;
+    }
+  }
+
+  return undefined;
+}
+
 async function resizeImageBase64IfNeeded(params: {
   base64: string;
   mimeType: string;
   maxDimensionPx: number;
   maxBytes: number;
   label?: string;
+  fileName?: string;
 }): Promise<{
   base64: string;
   mimeType: string;
@@ -106,8 +181,10 @@ async function resizeImageBase64IfNeeded(params: {
         smallest = { buffer: out, size: out.byteLength };
       }
       if (out.byteLength <= params.maxBytes) {
-        log.info("Image resized", {
+        const fileInfo = params.fileName ? ` (${params.fileName})` : "";
+        log.info(`Image resized${fileInfo}`, {
           label: params.label,
+          fileName: params.fileName,
           width,
           height,
           maxDimensionPx: params.maxDimensionPx,
@@ -142,12 +219,19 @@ export async function sanitizeContentBlocksImages(
   const maxDimensionPx = Math.max(opts.maxDimensionPx ?? MAX_IMAGE_DIMENSION_PX, 1);
   const maxBytes = Math.max(opts.maxBytes ?? MAX_IMAGE_BYTES, 1);
   const out: ToolContentBlock[] = [];
+  let lastTextBlock: TextContentBlock | undefined;
 
   for (const block of blocks) {
     if (!isImageBlock(block)) {
       out.push(block);
+      if (isTextBlock(block)) {
+        lastTextBlock = block;
+      }
       continue;
     }
+
+    const mediaPathHint = lastTextBlock ? parseMediaPathFromText(lastTextBlock.text) : undefined;
+    const fileName = inferImageFileName({ block, label, mediaPathHint });
 
     const data = block.data.trim();
     if (!data) {
@@ -167,6 +251,7 @@ export async function sanitizeContentBlocksImages(
         maxDimensionPx,
         maxBytes,
         label,
+        fileName,
       });
       out.push({
         ...block,

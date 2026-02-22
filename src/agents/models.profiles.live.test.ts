@@ -48,6 +48,9 @@ function logProgress(message: string): void {
 function isGoogleModelNotFoundError(err: unknown): boolean {
   const msg = String(err);
   if (!/not found/i.test(msg)) return false;
+  if (/\b404\b/.test(msg)) {
+    return true;
+  }
   if (/models\/.+ is not found for api version/i.test(msg)) return true;
   if (/"status"\\s*:\\s*"NOT_FOUND"/.test(msg)) return true;
   if (/"code"\\s*:\\s*404/.test(msg)) return true;
@@ -415,7 +418,10 @@ describeLive("live models (profile keys)", () => {
               logProgress(`${progressLabel}: skip (anthropic billing)`);
               break;
             }
-            if (model.provider === "google" && isGoogleModelNotFoundError(err)) {
+            if (
+              (model.provider === "google" || model.provider === "google-gemini-cli") &&
+              isGoogleModelNotFoundError(err)
+            ) {
               skipped.push({ model: id, reason: message });
               logProgress(`${progressLabel}: skip (google model not found)`);
               break;
