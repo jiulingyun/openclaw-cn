@@ -4,11 +4,13 @@ import { createExecTool } from "../../agents/bash-tools.js";
 import { resolveSandboxRuntimeStatus } from "../../agents/sandbox.js";
 import { killProcessTree } from "../../agents/shell-utils.js";
 import type { ClawdbotConfig } from "../../config/config.js";
+import { isCommandFlagEnabled } from "../../config/commands.js";
 import { formatCliCommand } from "../../cli/command-format.js";
 import { logVerbose } from "../../globals.js";
 import { clampInt } from "../../utils.js";
 import type { MsgContext } from "../templating.js";
 import type { ReplyPayload } from "../types.js";
+import { buildDisabledCommandReply } from "./command-gates.js";
 import { stripMentions, stripStructuralPrefixes } from "./mentions.js";
 
 const CHAT_BASH_SCOPE_KEY = "chat:bash";
@@ -185,10 +187,12 @@ export async function handleBashChatCommand(params: {
     failures: Array<{ gate: string; key: string }>;
   };
 }): Promise<ReplyPayload> {
-  if (params.cfg.commands?.bash !== true) {
-    return {
-      text: "⚠️ bash 已禁用。设置 commands.bash=true 以启用。文档: https://docs.clawd.bot/tools/slash-commands#config",
-    };
+  if (!isCommandFlagEnabled(params.cfg, "bash")) {
+    return buildDisabledCommandReply({
+      label: "bash",
+      configKey: "bash",
+      docsUrl: "https://docs.clawd.bot/tools/slash-commands#config",
+    });
   }
 
   const agentId =

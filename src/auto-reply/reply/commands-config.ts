@@ -17,7 +17,7 @@ import {
 } from "../../config/runtime-overrides.js";
 import { resolveChannelConfigWrites } from "../../channels/plugins/config-writes.js";
 import { normalizeChannelId } from "../../channels/registry.js";
-import { logVerbose } from "../../globals.js";
+import { rejectUnauthorizedCommand, requireCommandFlagEnabled } from "./command-gates.js";
 import type { CommandHandler } from "./commands-types.js";
 import { parseConfigCommand } from "./config-commands.js";
 import { parseDebugCommand } from "./debug-commands.js";
@@ -26,20 +26,13 @@ export const handleConfigCommand: CommandHandler = async (params, allowTextComma
   if (!allowTextCommands) return null;
   const configCommand = parseConfigCommand(params.command.commandBodyNormalized);
   if (!configCommand) return null;
-  if (!params.command.isAuthorizedSender) {
-    logVerbose(
-      `Ignoring /config from unauthorized sender: ${params.command.senderId || "<unknown>"}`,
-    );
-    return { shouldContinue: false };
-  }
-  if (params.cfg.commands?.config !== true) {
-    return {
-      shouldContinue: false,
-      reply: {
-        text: "⚠️ /config 已禁用。设置 commands.config=true 以启用。",
-      },
-    };
-  }
+  const unauthorized = rejectUnauthorizedCommand(params, "/config");
+  if (unauthorized) return unauthorized;
+  const configDisabled = requireCommandFlagEnabled(params.cfg, {
+    label: "/config",
+    configKey: "config",
+  });
+  if (configDisabled) return configDisabled;
   if (configCommand.action === "error") {
     return {
       shouldContinue: false,
@@ -176,20 +169,13 @@ export const handleDebugCommand: CommandHandler = async (params, allowTextComman
   if (!allowTextCommands) return null;
   const debugCommand = parseDebugCommand(params.command.commandBodyNormalized);
   if (!debugCommand) return null;
-  if (!params.command.isAuthorizedSender) {
-    logVerbose(
-      `Ignoring /debug from unauthorized sender: ${params.command.senderId || "<unknown>"}`,
-    );
-    return { shouldContinue: false };
-  }
-  if (params.cfg.commands?.debug !== true) {
-    return {
-      shouldContinue: false,
-      reply: {
-        text: "⚠️ /debug 已禁用。设置 commands.debug=true 以启用。",
-      },
-    };
-  }
+  const unauthorized = rejectUnauthorizedCommand(params, "/debug");
+  if (unauthorized) return unauthorized;
+  const debugDisabled = requireCommandFlagEnabled(params.cfg, {
+    label: "/debug",
+    configKey: "debug",
+  });
+  if (debugDisabled) return debugDisabled;
   if (debugCommand.action === "error") {
     return {
       shouldContinue: false,

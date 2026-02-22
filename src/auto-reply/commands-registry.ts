@@ -3,6 +3,7 @@ import type { SkillCommandSpec } from "../agents/skills.js";
 import { getChatCommands, getNativeCommandSurfaces } from "./commands-registry.data.js";
 import { DEFAULT_MODEL, DEFAULT_PROVIDER } from "../agents/defaults.js";
 import { resolveConfiguredModelRef } from "../agents/model-selection.js";
+import { isCommandFlagEnabled } from "../config/commands.js";
 import type {
   ChatCommandDefinition,
   CommandArgChoiceContext,
@@ -90,9 +91,9 @@ export function listChatCommands(params?: {
 }
 
 export function isCommandEnabled(cfg: ClawdbotConfig, commandKey: string): boolean {
-  if (commandKey === "config") return cfg.commands?.config === true;
-  if (commandKey === "debug") return cfg.commands?.debug === true;
-  if (commandKey === "bash") return cfg.commands?.bash === true;
+  if (commandKey === "config") return isCommandFlagEnabled(cfg, "config");
+  if (commandKey === "debug") return isCommandFlagEnabled(cfg, "debug");
+  if (commandKey === "bash") return isCommandFlagEnabled(cfg, "bash");
   return true;
 }
 

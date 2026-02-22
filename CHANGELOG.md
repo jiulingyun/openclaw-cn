@@ -19,6 +19,8 @@ Docs: https://docs.clawd.bot
 
 ### 🐛 Bug 修复
 
+- **Security/Commands**: block prototype-key injection in runtime `/debug` overrides and require own-property checks for gated command flags (`bash`, `config`, `debug`) so inherited prototype values cannot enable privileged commands.
+- **Security/Agents**: keep overflow compaction retry budgeting global across tool-result truncation recovery so successful truncation cannot reset the overflow retry counter and amplify retry/cost cycles.
 - **Context 显示修复**：修复 `/status` 命令显示 `Context: ?/200k` 的问题，现在会显示实际 token 使用量（如 `Context: 1.5k/200k (1%)`）
   - 启用 `includeTranscriptUsage` 标志，从 session transcript 文件读取实际使用量
 - **压缩功能修复**：修复 `/compact` 命令失败的问题（`systemPromptOverride is not a function`）

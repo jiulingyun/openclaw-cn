@@ -2,6 +2,19 @@ import type { ChannelId } from "../channels/plugins/types.js";
 import { normalizeChannelId } from "../channels/plugins/index.js";
 import type { NativeCommandsSetting } from "./types.js";
 
+export type CommandFlagKey = "bash" | "config" | "debug";
+
+export function isCommandFlagEnabled(
+  cfg: { commands?: unknown } | undefined,
+  key: CommandFlagKey,
+): boolean {
+  const commands = cfg?.commands;
+  if (!commands || typeof commands !== "object") return false;
+  // Use hasOwnProperty to prevent prototype-pollution enabling privileged commands.
+  if (!Object.prototype.hasOwnProperty.call(commands, key)) return false;
+  return (commands as Record<string, unknown>)[key] === true;
+}
+
 function resolveAutoDefault(providerId?: ChannelId): boolean {
   const id = normalizeChannelId(providerId);
   if (!id) return false;

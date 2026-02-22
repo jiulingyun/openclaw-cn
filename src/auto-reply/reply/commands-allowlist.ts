@@ -7,7 +7,6 @@ import { resolveChannelConfigWrites } from "../../channels/plugins/config-writes
 import { getChannelDock } from "../../channels/dock.js";
 import { normalizeChannelId } from "../../channels/registry.js";
 import { listPairingChannels } from "../../channels/plugins/pairing.js";
-import { logVerbose } from "../../globals.js";
 import { DEFAULT_ACCOUNT_ID, normalizeAccountId } from "../../routing/session-key.js";
 import { resolveDiscordAccount } from "../../discord/accounts.js";
 import { resolveIMessageAccount } from "../../imessage/accounts.js";
@@ -24,6 +23,7 @@ import {
 } from "../../pairing/pairing-store.js";
 import type { ClawdbotConfig } from "../../config/config.js";
 import type { ChannelId } from "../../channels/plugins/types.js";
+import { rejectUnauthorizedCommand, requireCommandFlagEnabled } from "./command-gates.js";
 import type { CommandHandler } from "./commands-types.js";
 
 type AllowlistScope = "dm" | "group" | "all";
@@ -297,12 +297,8 @@ export const handleAllowlistCommand: CommandHandler = async (params, allowTextCo
   if (parsed.action === "error") {
     return { shouldContinue: false, reply: { text: `⚠️ ${parsed.message}` } };
   }
-  if (!params.command.isAuthorizedSender) {
-    logVerbose(
-      `Ignoring /allowlist from unauthorized sender: ${params.command.senderId || "<unknown>"}`,
-    );
-    return { shouldContinue: false };
-  }
+  const unauthorized = rejectUnauthorizedCommand(params, "/allowlist");
+  if (unauthorized) return unauthorized;
 
   const channelId =
     normalizeChannelId(parsed.channel) ??
@@ -482,12 +478,12 @@ export const handleAllowlistCommand: CommandHandler = async (params, allowTextCo
     return { shouldContinue: false, reply: { text: lines.join("\n") } };
   }
 
-  if (params.cfg.commands?.config !== true) {
-    return {
-      shouldContinue: false,
-      reply: { text: "⚠️ /allowlist 编辑已禁用。设置 commands.config=true 以启用。" },
-    };
-  }
+  const allowlistDisabled = requireCommandFlagEnabled(params.cfg, {
+    label: "/allowlist edits",
+    configKey: "config",
+    disabledVerb: "are",
+  });
+  if (allowlistDisabled) return allowlistDisabled;
 
   const shouldUpdateConfig = parsed.target !== "store";
   const shouldTouchStore = parsed.target !== "config" && listPairingChannels().includes(channelId);

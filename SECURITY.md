@@ -13,6 +13,14 @@ For threat model + hardening guidance (including `clawdbot security audit --deep
 
 - `https://docs.clawd.bot/gateway/security`
 
+## Deployment Assumptions
+
+Clawdbot security guidance assumes:
+
+- The host where Clawdbot runs is within a trusted OS/admin boundary.
+- Anyone who can modify `~/.clawdbot-cn` state/config (including `clawdbot.json`) is effectively a trusted operator.
+- A single Gateway shared by mutually untrusted people is **not a recommended setup**. Use separate gateways (or at minimum separate OS users/hosts) per trust boundary.
+
 ## Runtime Requirements
 
 ### Node.js Version
