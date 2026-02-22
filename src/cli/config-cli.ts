@@ -10,6 +10,9 @@ import { theme } from "../terminal/theme.js";
 import { shortenHomePath } from "../utils.js";
 
 type PathSegment = string;
+type ConfigSetParseOpts = {
+  strictJson?: boolean;
+};
 
 function isIndexSegment(raw: string): boolean {
   return /^[0-9]+$/.test(raw);
@@ -53,9 +56,9 @@ function parsePath(raw: string): PathSegment[] {
   return parts.map((part) => part.trim()).filter(Boolean);
 }
 
-function parseValue(raw: string, opts: { json?: boolean }): unknown {
+function parseValue(raw: string, opts: ConfigSetParseOpts): unknown {
   const trimmed = raw.trim();
-  if (opts.json) {
+  if (opts.strictJson) {
     try {
       return JSON5.parse(trimmed);
     } catch (err) {
@@ -260,12 +263,15 @@ export function registerConfigCli(program: Command) {
     .description("通过点路径设置配置值")
     .argument("<path>", "配置路径（点或括号表示法）")
     .argument("<value>", "值（JSON5 或原始字符串）")
-    .option("--json", "将值解析为 JSON5（必需）", false)
+    .option("--strict-json", "严格 JSON5 解析（失败时不回退到原始字符串）", false)
+    .option("--json", "--strict-json 的旧版别名", false)
     .action(async (path: string, value: string, opts) => {
       try {
         const parsedPath = parsePath(path);
         if (parsedPath.length === 0) throw new Error("Path is empty.");
-        const parsedValue = parseValue(value, opts);
+        const parsedValue = parseValue(value, {
+          strictJson: Boolean(opts.strictJson || opts.json),
+        });
         const snapshot = await loadValidConfig();
         const next = snapshot.config as Record<string, unknown>;
         setAtPath(next, parsedPath, parsedValue);
