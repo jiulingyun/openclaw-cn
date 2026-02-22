@@ -7,7 +7,8 @@ Docs: https://docs.clawd.bot
 > 🆕 **重要功能**：新增 GLM-5 模型支持，完善 Z.AI Provider 集成
 > 🐛 **关键修复**：修复 Context 显示、压缩功能、浏览器控制等核心问题
 > 🔧 **开发体验**：改进 macOS pre-commit hook 兼容性，修复 CI/CD 发布流程
-> 📡 **上游同步**：同步上游 v2026.2.17更新
+> 📡 **上游同步**：同步上游 v2026.2.17 ~ v2026.2.21 更新
+> 🔒 **安全加固**：同步上游 v2026.2.19 ~ v2026.2.21 安全修复
 
 ### ✨ 新增功能
 
@@ -38,6 +39,14 @@ Docs: https://docs.clawd.bot
 ### 📦 上游同步
 
 - **v2026.2.17**：同步上游核心稳定性更新
+- **v2026.2.19 ~ v2026.2.21**：同步上游安全修复（见下方安全加固章节）
+
+### 🔒 安全加固（v2026.2.19 ~ v2026.2.21）
+
+- **WhatsApp/安全**：对 reaction 操作强制执行允许列表 JID 授权，防止已认证调用者通过伪造 `chatJid` + 有效 `messageId` 对来针对非允许列表聊天发起操作。将在下一个 npm 版本发布。感谢 @aether-ai-agent 报告。
+- **Gateway/安全**：将无 Token 的 Tailscale 转发头认证范围限制为仅 Control UI WebSocket 认证，确保即使在受信任主机上，HTTP 网关路由仍需要 Token/密码认证。将在下一个 npm 版本发布。感谢 @zpbrent 报告。
+- **Gateway/安全**：即使设置了 `gateway.controlUi.allowInsecureAuth`，也强制 Control UI 认证需要安全上下文和已配对设备检查，并对齐审计消息与加固后的行为。将在下一个 npm 版本发布。(#20684) 感谢 @coygeek 和 @Vasco0x4 报告。
+- **安全/Exec**：阻止 shell 启动文件环境注入（`BASH_ENV`、`ENV`、`BASH_FUNC_*`、`LD_*`、`DYLD_*`）——覆盖配置环境变量摄取、node-host 继承环境变量清理和 macOS exec host 运行时，防止攻击者控制的环境变量在命令执行前注入。将在下一个 npm 版本发布。感谢 @tdjackey 报告。
 
 ### 📝 文档更新
 
