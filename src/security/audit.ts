@@ -1,3 +1,4 @@
+import { isIP } from "node:net";
 import { listChannelPlugins } from "../channels/plugins/index.js";
 import { resolveChannelDefaultAccountId } from "../channels/plugins/helpers.js";
 import type { ChannelId } from "../channels/plugins/types.js";
@@ -7,6 +8,7 @@ import { resolveConfigPath, resolveStateDir } from "../config/paths.js";
 import { resolveGatewayAuth } from "../gateway/auth.js";
 import { formatCliCommand } from "../cli/command-format.js";
 import { buildGatewayConnectionDetails } from "../gateway/call.js";
+import { isLoopbackAddress } from "../gateway/net.js";
 import { probeGateway } from "../gateway/probe.js";
 import {
   collectAttackSurfaceSummaryFindings,
@@ -222,6 +224,7 @@ function collectGatewayConfigFindings(cfg: ClawdbotConfig): SecurityAuditFinding
     (auth.mode === "token" && hasToken) || (auth.mode === "password" && hasPassword);
   const hasTailscaleAuth = auth.allowTailscale === true && tailscaleMode === "serve";
   const hasGatewayAuth = hasSharedSecret || hasTailscaleAuth;
+  const allowRealIpFallback = cfg.gateway?.allowRealIpFallback === true;
 
   if (bind !== "loopback" && !hasSharedSecret) {
     findings.push({
@@ -256,6 +259,25 @@ function collectGatewayConfigFindings(cfg: ClawdbotConfig): SecurityAuditFinding
         "gateway.bind is loopback but no gateway auth secret is configured. " +
         "If the Control UI is exposed through a reverse proxy, unauthenticated access is possible.",
       remediation: "Set gateway.auth (token recommended) or keep the Control UI local-only.",
+    });
+  }
+
+  if (allowRealIpFallback) {
+    const hasNonLoopbackTrustedProxy = trustedProxies.some(
+      (proxy) => !isLoopbackOnlyTrustedProxyEntry(proxy),
+    );
+    const exposed =
+      bind !== "loopback" || ((auth.mode as string) === "trusted-proxy" && hasNonLoopbackTrustedProxy);
+    findings.push({
+      checkId: "gateway.real_ip_fallback_enabled",
+      severity: exposed ? "critical" : "warn",
+      title: "X-Real-IP fallback is enabled",
+      detail:
+        "gateway.allowRealIpFallback=true trusts X-Real-IP when trusted proxies omit X-Forwarded-For. " +
+        "Misconfigured proxies that forward client-supplied X-Real-IP can spoof source IP and local-client checks.",
+      remediation:
+        "Keep gateway.allowRealIpFallback=false (default). Only enable this when your trusted proxy " +
+        "always overwrites X-Real-IP and cannot provide X-Forwarded-For.",
     });
   }
 
@@ -310,6 +332,37 @@ function collectGatewayConfigFindings(cfg: ClawdbotConfig): SecurityAuditFinding
   }
 
   return findings;
+}
+
+function isLoopbackOnlyTrustedProxyEntry(entry: string): boolean {
+  const candidate = entry.trim();
+  if (!candidate) {
+    return false;
+  }
+  if (!candidate.includes("/")) {
+    return isLoopbackAddress(candidate);
+  }
+
+  const [rawIp, rawPrefix] = candidate.split("/", 2);
+  if (!rawIp || !rawPrefix) {
+    return false;
+  }
+  const ipVersion = isIP(rawIp.trim());
+  const prefix = Number.parseInt(rawPrefix.trim(), 10);
+  if (!Number.isInteger(prefix)) {
+    return false;
+  }
+  if (ipVersion === 4) {
+    if (prefix < 8 || prefix > 32) {
+      return false;
+    }
+    const firstOctet = Number.parseInt(rawIp.trim().split(".")[0] ?? "", 10);
+    return firstOctet === 127;
+  }
+  if (ipVersion === 6) {
+    return prefix === 128 && rawIp.trim().toLowerCase() === "::1";
+  }
+  return false;
 }
 
 function isLoopbackClientHost(hostname: string): boolean {

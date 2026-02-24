@@ -102,6 +102,95 @@ describe("security audit", () => {
     );
   });
 
+  it("scores X-Real-IP fallback risk by gateway exposure", async () => {
+    const cases: Array<{
+      name: string;
+      cfg: ClawdbotConfig;
+      expectedSeverity: "warn" | "critical";
+    }> = [
+      {
+        name: "loopback gateway",
+        cfg: {
+          gateway: {
+            bind: "loopback",
+            allowRealIpFallback: true,
+            trustedProxies: ["127.0.0.1"],
+            auth: {
+              mode: "token",
+              token: "very-long-token-1234567890",
+            },
+          },
+        },
+        expectedSeverity: "warn",
+      },
+      {
+        name: "lan gateway",
+        cfg: {
+          gateway: {
+            bind: "lan",
+            allowRealIpFallback: true,
+            trustedProxies: ["10.0.0.1"],
+            auth: {
+              mode: "token",
+              token: "very-long-token-1234567890",
+            },
+          },
+        },
+        expectedSeverity: "critical",
+      },
+      {
+        name: "loopback trusted-proxy with loopback-only proxies",
+        cfg: {
+          gateway: {
+            bind: "loopback",
+            allowRealIpFallback: true,
+            trustedProxies: ["127.0.0.1"],
+            auth: {
+              mode: "trusted-proxy" as any,
+              trustedProxy: {
+                userHeader: "x-forwarded-user",
+              },
+            },
+          },
+        },
+        expectedSeverity: "warn",
+      },
+      {
+        name: "loopback trusted-proxy with non-loopback proxy range",
+        cfg: {
+          gateway: {
+            bind: "loopback",
+            allowRealIpFallback: true,
+            trustedProxies: ["127.0.0.1", "10.0.0.0/8"],
+            auth: {
+              mode: "trusted-proxy" as any,
+              trustedProxy: {
+                userHeader: "x-forwarded-user",
+              },
+            },
+          },
+        },
+        expectedSeverity: "critical",
+      },
+    ];
+
+    for (const testCase of cases) {
+      const res = await runSecurityAudit({
+        config: testCase.cfg,
+        includeFilesystem: false,
+        includeChannelSecurity: false,
+      });
+      expect(
+        res.findings.some(
+          (f) =>
+            f.checkId === "gateway.real_ip_fallback_enabled" &&
+            f.severity === testCase.expectedSeverity,
+        ),
+        testCase.name,
+      ).toBe(true);
+    }
+  });
+
   it("flags logging.redactSensitive=off", async () => {
     const cfg: ClawdbotConfig = {
       logging: { redactSensitive: "off" },

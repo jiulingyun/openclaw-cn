@@ -254,4 +254,9 @@ export type GatewayConfig = {
    * `x-real-ip`) to determine the client IP for local pairing and HTTP checks.
    */
   trustedProxies?: string[];
+  /**
+   * When true, fall back to X-Real-IP for client IP resolution when a trusted
+   * proxy omits X-Forwarded-For. Defaults to false.
+   */
+  allowRealIpFallback?: boolean;
 };
