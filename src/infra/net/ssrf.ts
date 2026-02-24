@@ -187,6 +187,10 @@ function isPrivateIpv4(parts: number[]): boolean {
   if (octet1 === 100 && octet2 >= 64 && octet2 <= 127) {
     return true;
   }
+  // RFC2544 benchmarking range: 198.18.0.0/15
+  if (octet1 === 198 && octet2 >= 18 && octet2 <= 19) {
+    return true;
+  }
   return false;
 }
 

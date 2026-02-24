@@ -28,6 +28,7 @@ const { initSpy, runSpy, loadConfig } = vi.hoisted(() => ({
   runSpy: vi.fn(() => ({
     task: () => Promise.resolve(),
     stop: vi.fn(),
+    isRunning: (): boolean => false,
   })),
   loadConfig: vi.fn(() => ({
     agents: { defaults: { maxConcurrent: 2 } },
