@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import sharp from "sharp";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { sendVoiceMessageDiscord } from "../discord/send.js";
 import { optimizeImageToPng } from "../media/image-ops.js";
 import { loadWebMedia, loadWebMediaRaw, optimizeImageToJpeg } from "./media.js";
 
@@ -103,6 +104,30 @@ describe("web media loading", () => {
       /Failed to fetch media from https:\/\/example\.com\/missing\.jpg.*HTTP 404/i,
     );
 
+    fetchMock.mockRestore();
+  });
+
+  it("blocks SSRF URLs before fetch", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    const cases = [
+      {
+        name: "private network host",
+        url: "http://127.0.0.1:8080/internal-api",
+        expectedMessage: /blocked|private|internal/i,
+      },
+      {
+        name: "cloud metadata hostname",
+        url: "http://metadata.google.internal/computeMetadata/v1/",
+        expectedMessage: /blocked|private|internal|metadata/i,
+      },
+    ] as const;
+
+    for (const testCase of cases) {
+      await expect(loadWebMedia(testCase.url, 1024 * 1024), testCase.name).rejects.toThrow(
+        testCase.expectedMessage,
+      );
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
     fetchMock.mockRestore();
   });
 
@@ -276,5 +301,34 @@ describe("web media loading", () => {
     expect(result.kind).toBe("image");
     expect(result.contentType).toBe("image/jpeg");
     expect(result.buffer.length).toBeLessThanOrEqual(cap);
+  });
+});
+
+describe("Discord voice message input hardening", () => {
+  it("rejects unsafe voice message inputs", async () => {
+    const cases = [
+      {
+        name: "local path outside allowed media roots",
+        candidate: path.join(process.cwd(), "package.json"),
+        expectedMessage: /Local media path is not under an allowed directory/i,
+      },
+      {
+        name: "private-network URL",
+        candidate: "http://127.0.0.1/voice.ogg",
+        expectedMessage: /Failed to fetch media|Blocked|private|internal/i,
+      },
+      {
+        name: "non-http URL scheme",
+        candidate: "rtsp://example.com/voice.ogg",
+        expectedMessage: /Local media path is not under an allowed directory|ENOENT|no such file/i,
+      },
+    ] as const;
+
+    for (const testCase of cases) {
+      await expect(
+        sendVoiceMessageDiscord("channel:123", testCase.candidate),
+        testCase.name,
+      ).rejects.toThrow(testCase.expectedMessage);
+    }
   });
 });
