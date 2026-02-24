@@ -16,6 +16,7 @@ import {
   requiresExecApproval,
   resolveSafeBins,
   recordAllowlistUse,
+  resolveAllowAlwaysPatterns,
   resolveExecApprovals,
   resolveExecApprovalsFromFile,
   buildSafeShellCommand,
@@ -1255,8 +1256,13 @@ export function createExecTool(
             } else if (decision === "allow-always") {
               approvedByAsk = true;
               if (hostSecurity === "allowlist") {
-                for (const segment of allowlistEval.segments) {
-                  const pattern = segment.resolution?.resolvedPath ?? "";
+                const patterns = resolveAllowAlwaysPatterns({
+                  segments: allowlistEval.segments,
+                  cwd: workdir,
+                  env,
+                  platform: process.platform,
+                });
+                for (const pattern of patterns) {
                   if (pattern) {
                     addAllowlistEntry(approvals.file, agentId, pattern);
                   }
