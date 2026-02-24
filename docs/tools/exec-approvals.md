@@ -20,10 +20,12 @@ resolved by the **ask fallback** (default: deny).
 ## Where it applies
 
 Exec approvals are enforced locally on the execution host:
+
 - **gateway host** → `clawdbot` process on the gateway machine
 - **node host** → node runner (macOS companion app or headless node host)
 
 macOS split:
+
 - **node host service** forwards `system.run` to the **macOS app** over local IPC.
 - **macOS app** enforces approvals + executes the command in UI context.
 
@@ -34,6 +36,7 @@ Approvals live in a local JSON file on the execution host:
 `~/.openclaw/exec-approvals.json`
 
 Example schema:
+
 ```json
 {
   "version": 1,
@@ -70,17 +73,21 @@ Example schema:
 ## Policy knobs
 
 ### Security (`exec.security`)
+
 - **deny**: block all host exec requests.
 - **allowlist**: allow only allowlisted commands.
 - **full**: allow everything (equivalent to elevated).
 
 ### Ask (`exec.ask`)
+
 - **off**: never prompt.
 - **on-miss**: prompt only when allowlist does not match.
 - **always**: prompt on every command.
 
 ### Ask fallback (`askFallback`)
+
 If a prompt is required but no UI is reachable, fallback decides:
+
 - **deny**: block.
 - **allowlist**: allow only if allowlist matches.
 - **full**: allow.
@@ -93,11 +100,13 @@ Patterns should resolve to **binary paths** (basename-only entries are ignored).
 Legacy `agents.default` entries are migrated to `agents.main` on load.
 
 Examples:
+
 - `~/Projects/**/bin/bird`
 - `~/.local/bin/*`
 - `/opt/homebrew/bin/rg`
 
 Each allowlist entry tracks:
+
 - **id** stable UUID used for UI identity (optional)
 - **last used** timestamp
 - **last used command**
@@ -151,6 +160,7 @@ correlate later system events (`Exec finished` / `Exec denied`). If no decision 
 timeout, the request is treated as an approval timeout and surfaced as a denial reason.
 
 The confirmation dialog includes:
+
 - command + args
 - cwd
 - agent id
@@ -158,6 +168,7 @@ The confirmation dialog includes:
 - host + policy metadata
 
 Actions:
+
 - **Allow once** → run now
 - **Always allow** → add to allowlist + run
 - **Deny** → block
@@ -168,6 +179,7 @@ You can forward exec approval prompts to any chat channel (including plugin chan
 them with `/approve`. This uses the normal outbound delivery pipeline.
 
 Config:
+
 ```json5
 {
   approvals: {
@@ -178,14 +190,15 @@ Config:
       sessionFilter: ["discord"], // substring or regex
       targets: [
         { channel: "slack", to: "U12345678" },
-        { channel: "telegram", to: "123456789" }
-      ]
-    }
-  }
+        { channel: "telegram", to: "123456789" },
+      ],
+    },
+  },
 }
 ```
 
 Reply in chat:
+
 ```
 /approve <id> allow-once
 /approve <id> allow-always
@@ -193,6 +206,7 @@ Reply in chat:
 ```
 
 ### macOS IPC flow
+
 ```
 Gateway -> Node Service (WS)
                  |  IPC (UDS + token + HMAC + TTL)
@@ -201,6 +215,7 @@ Gateway -> Node Service (WS)
 ```
 
 Security notes:
+
 - Unix socket mode `0600`, token stored in `exec-approvals.json`.
 - Same-UID peer check.
 - Challenge/response (nonce + HMAC token + request hash) + short TTL.
@@ -208,6 +223,7 @@ Security notes:
 ## System events
 
 Exec lifecycle is surfaced as system messages:
+
 - `Exec running` (only if the command exceeds the running notice threshold)
 - `Exec finished`
 - `Exec denied`
@@ -221,8 +237,10 @@ Approval-gated execs reuse the approval id as the `runId` in these messages for 
 - **full** is powerful; prefer allowlists when possible.
 - **ask** keeps you in the loop while still allowing fast approvals.
 - Per-agent allowlists prevent one agent’s approvals from leaking into others.
+- Exec approvals are operator guardrails for reducing accidental execution, not a multi-tenant authorization boundary. For hostile-user isolation, use separate gateways and separate OS users/hosts.
 
 Related:
+
 - [Exec tool](/tools/exec)
 - [Elevated mode](/tools/elevated)
 - [Skills](/tools/skills)

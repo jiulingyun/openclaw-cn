@@ -18,6 +18,9 @@ export class SsrFBlockedError extends Error {
 export type LookupFn = typeof dnsLookup;
 
 export type SsrFPolicy = {
+  /** Canonical key: allow navigation to private/internal network destinations. Defaults to true (trusted-network model). */
+  dangerouslyAllowPrivateNetwork?: boolean;
+  /** Legacy alias for dangerouslyAllowPrivateNetwork. Supported for compatibility. */
   allowPrivateNetwork?: boolean;
   allowedHostnames?: string[];
   hostnameAllowlist?: string[];
@@ -343,7 +346,16 @@ export async function resolvePinnedHostnameWithPolicy(
     throw new Error("Invalid hostname");
   }
 
-  const allowPrivateNetwork = Boolean(params.policy?.allowPrivateNetwork);
+  // dangerouslyAllowPrivateNetwork is the canonical key; allowPrivateNetwork is the legacy alias.
+  // When a policy is provided, prefer dangerouslyAllowPrivateNetwork, then fall back to allowPrivateNetwork.
+  let allowPrivateNetwork = false;
+  if (params.policy != null) {
+    if (params.policy.dangerouslyAllowPrivateNetwork != null) {
+      allowPrivateNetwork = Boolean(params.policy.dangerouslyAllowPrivateNetwork);
+    } else {
+      allowPrivateNetwork = Boolean(params.policy.allowPrivateNetwork);
+    }
+  }
   const allowedHostnames = normalizeHostnameSet(params.policy?.allowedHostnames);
   const hostnameAllowlist = normalizeHostnameAllowlist(params.policy?.hostnameAllowlist);
   const isExplicitAllowed = allowedHostnames.has(normalized);

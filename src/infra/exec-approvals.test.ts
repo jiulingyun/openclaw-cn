@@ -102,8 +102,8 @@ describe("exec approvals safe shell command builder", () => {
     expect(res.ok).toBe(true);
     // Preserve non-safeBins segment raw (glob stays unquoted)
     expect(res.command).toContain("rg foo src/*.ts");
-    // SafeBins segment is fully quoted
-    expect(res.command).toContain("'head' '-n' '5'");
+    // SafeBins segment is fully quoted; resolved path is used when available
+    expect(res.command).toMatch(/['"].*head['"].*['"]-n['"].*['"]5['"]/);
   });
 });
 

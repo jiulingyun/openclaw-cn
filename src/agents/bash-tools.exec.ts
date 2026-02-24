@@ -18,8 +18,7 @@ import {
   recordAllowlistUse,
   resolveExecApprovals,
   resolveExecApprovalsFromFile,
-  buildSafeShellCommand,
-  buildSafeBinsShellCommand,
+  buildEnforcedShellCommand,
 } from "../infra/exec-approvals.js";
 import { requestHeartbeatNow } from "../infra/heartbeat-wake.js";
 import { buildNodeShellCommand } from "../infra/node-shell.js";
@@ -1373,45 +1372,20 @@ export function createExecTool(
           throw new Error("exec denied: allowlist miss");
         }
 
-        // If allowlist uses safeBins, sanitize only those stdin-only segments:
-        // disable glob/var expansion by forcing argv tokens to be literal via single-quoting.
-        if (
-          hostSecurity === "allowlist" &&
-          analysisOk &&
-          // @ts-ignore -- cherry-pick upstream type mismatch
-          allowlistSatisfied &&
-          // @ts-ignore -- cherry-pick upstream type mismatch
-          allowlistEval.segmentSatisfiedBy.some((by) => by === "safeBins")
-        ) {
-          const safe = buildSafeBinsShellCommand({
-            // @ts-ignore -- cherry-pick upstream type mismatch
+        // Enforce canonical execution plan for allowlist-satisfied commands:
+        // resolve effective argv and resolved paths so execution matches what was analyzed.
+        if (hostSecurity === "allowlist" && analysisOk && allowlistSatisfied) {
+          const enforced = buildEnforcedShellCommand({
             command: params.command,
             segments: allowlistEval.segments,
-            // @ts-ignore -- cherry-pick upstream type mismatch
-            segmentSatisfiedBy: allowlistEval.segmentSatisfiedBy,
             platform: process.platform,
           });
-          if (!safe.ok || !safe.command) {
-            // Fallback: quote everything (safe, but may change glob behavior).
-            const fallback = buildSafeShellCommand({
-              command: params.command,
-              platform: process.platform,
-            });
-            if (!fallback.ok || !fallback.command) {
-              throw new Error(
-                `exec denied: safeBins sanitize failed (${safe.reason ?? "unknown"})`,
-              );
-            }
-            warnings.push(
-              "Warning: safeBins hardening used fallback quoting due to parser mismatch.",
+          if (!enforced.ok || !enforced.command) {
+            throw new Error(
+              `exec denied: allowlist execution plan unavailable (${enforced.reason ?? "unknown"})`,
             );
-            execCommandOverride = fallback.command;
-          } else {
-            warnings.push(
-              "Warning: safeBins hardening disabled glob/variable expansion for stdin-only segments.",
-            );
-            execCommandOverride = safe.command;
           }
+          execCommandOverride = enforced.command;
         }
 
         if (allowlistMatches.length > 0) {

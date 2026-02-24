@@ -37,6 +37,10 @@ Docs: https://docs.clawd.bot
 
 ### 📦 上游同步
 
+- **v2026.2.23**：同步上游安全加固更新 (security-part3)
+  - Security/Exec approvals: 强制规范化 wrapper 执行计划（`buildEnforcedShellCommand`），对所有 allowlist 命中的命令统一应用，失败时快速关闭（不再 fallback），并在 allowlist 分析中检查 `policyBlocked` 和使用 `effectiveArgv`，确保执行计划一致性。
+  - Security/Browser SSRF: 添加 `dangerouslyAllowPrivateNetwork` 作为 `SsrFPolicy` 的规范配置键（`allowPrivateNetwork` 保留为向后兼容别名）；Gemini 引用 URL 重定向解析通过 SSRF 保护路径，采用可信网络模式。
+  - Security/Docs: 完善 Gateway/Node 信任边界文档，明确 exec approvals 是操作员护栏而非多租户授权边界。
 - **v2026.2.17**：同步上游核心稳定性更新
 
 ### 📝 文档更新

@@ -5,6 +5,7 @@ import { formatCliCommand } from "../../cli/command-format.js";
 import { wrapWebContent } from "../../security/external-content.js";
 import type { AnyAgentTool } from "./common.js";
 import { jsonResult, readNumberParam, readStringParam } from "./common.js";
+import { fetchWithSsrFGuard } from "../../infra/net/fetch-guard.js";
 import {
   CacheEntry,
   DEFAULT_CACHE_TTL_MINUTES,
@@ -517,9 +518,37 @@ export function createWebSearchTool(options?: {
   };
 }
 
+/**
+ * Resolves a redirect URL using SSRF-guarded HEAD requests.
+ * Uses trusted-network model (private/internal allowed) to match gateway operator trust assumptions.
+ * Falls back to the original URL on any error.
+ */
+async function resolveRedirectUrl(url: string): Promise<string> {
+  try {
+    const result = await fetchWithSsrFGuard({
+      url,
+      timeoutMs: 5000,
+      init: { method: "HEAD" },
+      policy: { dangerouslyAllowPrivateNetwork: true },
+    });
+    await result.release();
+    const finalUrl = result.finalUrl;
+    if (
+      typeof finalUrl === "string" &&
+      (finalUrl.startsWith("https://") || finalUrl.startsWith("http://"))
+    ) {
+      return finalUrl;
+    }
+    return url;
+  } catch {
+    return url;
+  }
+}
+
 export const __testing = {
   inferPerplexityBaseUrlFromApiKey,
   resolvePerplexityBaseUrl,
   normalizeFreshness,
   normalizeBraveLang,
+  resolveRedirectUrl,
 } as const;

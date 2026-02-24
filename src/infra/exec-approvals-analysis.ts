@@ -23,6 +23,10 @@ export type CommandResolution = {
   rawExecutable: string;
   resolvedPath?: string;
   executableName: string;
+  /** Set true when policy blocks this execution (e.g. env wrapper in semantic env mode). */
+  policyBlocked?: boolean;
+  /** Canonical argv after wrapper stripping/normalization (e.g. env -i stripped). */
+  effectiveArgv?: string[];
 };
 
 function isExecutableFile(filePath: string): boolean {
@@ -777,6 +781,41 @@ function renderQuotedArgv(argv: string[]): string {
 }
 
 /**
+ * Resolves the canonical execution argv for a segment, respecting policyBlocked and effectiveArgv.
+ * Returns null when the segment is blocked or has no usable argv.
+ */
+function resolvePlannedSegmentArgv(segment: ExecCommandSegment): string[] | null {
+  if (segment.resolution?.policyBlocked === true) {
+    return null;
+  }
+  const baseArgv =
+    segment.resolution?.effectiveArgv && segment.resolution.effectiveArgv.length > 0
+      ? segment.resolution.effectiveArgv
+      : segment.argv;
+  if (baseArgv.length === 0) {
+    return null;
+  }
+  const argv = [...baseArgv];
+  const resolvedExecutable = segment.resolution?.resolvedPath?.trim() ?? "";
+  if (resolvedExecutable) {
+    argv[0] = resolvedExecutable;
+  }
+  return argv;
+}
+
+/**
+ * Renders a safeBin segment's argv as a single-quoted shell string using the canonical
+ * execution plan. Returns null when the segment is blocked or has no usable argv.
+ */
+function renderSafeBinSegmentArgv(segment: ExecCommandSegment): string | null {
+  const argv = resolvePlannedSegmentArgv(segment);
+  if (!argv || argv.length === 0) {
+    return null;
+  }
+  return renderQuotedArgv(argv);
+}
+
+/**
  * Rebuilds a shell command and selectively single-quotes argv tokens for segments that
  * must be treated as literal (safeBins hardening) while preserving the rest of the
  * shell syntax (pipes + chaining).
@@ -814,7 +853,68 @@ export function buildSafeBinsShellCommand(params: {
         return { ok: false, reason: "segment mapping failed" };
       }
       const needsLiteral = by === "safeBins";
-      rendered.push(needsLiteral ? renderQuotedArgv(seg.argv) : raw.trim());
+      if (!needsLiteral) {
+        rendered.push(raw.trim());
+      } else {
+        const renderedSeg = renderSafeBinSegmentArgv(seg);
+        if (!renderedSeg) {
+          return { ok: false, reason: "segment execution plan unavailable" };
+        }
+        rendered.push(renderedSeg);
+      }
+      segIndex += 1;
+    }
+
+    out += rendered.join(" | ");
+    if (part.opToNext) {
+      out += ` ${part.opToNext} `;
+    }
+  }
+
+  if (segIndex !== params.segments.length) {
+    return { ok: false, reason: "segment count mismatch" };
+  }
+
+  return { ok: true, command: out };
+}
+
+/**
+ * Builds a shell command using the canonical execution plan for each segment,
+ * enforcing resolved paths and effective argv for all allowlist-satisfied segments.
+ * Fails closed (returns ok:false) if any segment's execution plan is unavailable.
+ */
+export function buildEnforcedShellCommand(params: {
+  command: string;
+  segments: ExecCommandSegment[];
+  platform?: string | null;
+}): { ok: boolean; command?: string; reason?: string } {
+  const platform = params.platform ?? null;
+  if (isWindowsPlatform(platform)) {
+    return { ok: false, reason: "unsupported platform" };
+  }
+
+  const chain = splitCommandChainWithOperators(params.command.trim());
+  const chainParts: ShellChainPart[] = chain ?? [{ part: params.command.trim(), opToNext: null }];
+  let segIndex = 0;
+  let out = "";
+
+  for (const part of chainParts) {
+    const pipelineSplit = splitShellPipeline(part.part);
+    if (!pipelineSplit.ok) {
+      return { ok: false, reason: pipelineSplit.reason ?? "unable to parse pipeline" };
+    }
+
+    const rendered: string[] = [];
+    for (const _raw of pipelineSplit.segments) {
+      const seg = params.segments[segIndex];
+      if (!seg) {
+        return { ok: false, reason: "segment mapping failed" };
+      }
+      const renderedSeg = renderSafeBinSegmentArgv(seg);
+      if (!renderedSeg) {
+        return { ok: false, reason: "segment execution plan unavailable" };
+      }
+      rendered.push(renderedSeg);
       segIndex += 1;
     }
 

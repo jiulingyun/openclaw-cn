@@ -55,3 +55,12 @@ Run locally:
 pip install detect-secrets==1.5.0
 detect-secrets scan --baseline .secrets.baseline
 ```
+
+## Gateway and Node trust concept
+
+Clawdbot separates routing from execution, but both remain inside the same operator trust boundary:
+
+- **Gateway** is the control plane. If a caller passes Gateway auth, they are treated as a trusted operator for that Gateway.
+- **Node** is an execution extension of the Gateway. Pairing a node grants operator-level remote capability on that node.
+- **Exec approvals** (allowlist/ask UI) are operator guardrails to reduce accidental command execution, not a multi-tenant authorization boundary.
+- For untrusted-user isolation, split by trust boundary: separate gateways and separate OS users/hosts per boundary.

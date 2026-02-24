@@ -115,6 +115,12 @@ When approvals are required, the exec tool returns immediately with
 the Gateway emits system events (`Exec finished` / `Exec denied`). If the command is still
 running after `tools.exec.approvalRunningNoticeMs`, a single `Exec running` notice is emitted.
 
+Exec approvals are operator guardrails (allowlist + ask) that reduce accidental command execution.
+They are not a multi-tenant authorization boundary. Gateway and node are the same operator trust
+domain: a caller authenticated to the Gateway is trusted at Gateway scope; after pairing, node
+actions are trusted operator actions on that node. For hostile-user isolation, use separate
+gateways and separate OS users/hosts per trust boundary.
+
 ## Allowlist + safe bins
 
 Allowlist enforcement matches **resolved binary paths only** (no basename matches). When

@@ -11,6 +11,7 @@ read_when:
 Openclaw 可以运行一个**独立的 Chrome/Brave/Edge 浏览器配置文件**，由 AI 助手控制。这个浏览器与您的日常浏览器完全隔离。
 
 **简单理解：**
+
 - 这是一个**专门给 AI 用的浏览器**，不会影响您的个人浏览器
 - AI 可以**打开网页、点击、输入、截图**
 - 默认配置文件名为 `clawd`（橙色标识）
@@ -47,9 +48,9 @@ openclaw-cn browser snapshot
 
 ## 配置文件类型
 
-| 配置文件 | 说明 |
-|------|------|
-| `clawd` | 独立管理的浏览器（无需扩展） |
+| 配置文件 | 说明                                         |
+| -------- | -------------------------------------------- |
+| `clawd`  | 独立管理的浏览器（无需扩展）                 |
 | `chrome` | 通过扩展连接您的**系统浏览器**（需安装扩展） |
 
 如果您希望默认使用独立浏览器，设置 `browser.defaultProfile: "clawd"`。
@@ -63,11 +64,11 @@ openclaw-cn browser snapshot
 ```json5
 {
   browser: {
-    enabled: true,           // 启用浏览器控制
+    enabled: true, // 启用浏览器控制
     defaultProfile: "clawd", // 默认使用独立浏览器
-    headless: false,         // 显示浏览器窗口（调试时建议开启）
-    color: "#FF4500"         // 浏览器 UI 颜色标识
-  }
+    headless: false, // 显示浏览器窗口（调试时建议开启）
+    color: "#FF4500", // 浏览器 UI 颜色标识
+  },
 }
 ```
 
@@ -82,27 +83,27 @@ openclaw-cn browser snapshot
     defaultProfile: "clawd",
     color: "#FF4500",
     headless: false,
-    noSandbox: false,       // Linux 可能需要设为 true
-    attachOnly: false,      // 仅附加到已运行的浏览器
+    noSandbox: false, // Linux 可能需要设为 true
+    attachOnly: false, // 仅附加到已运行的浏览器
     executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
     profiles: {
       clawd: { cdpPort: 18800, color: "#FF4500" },
-      work: { cdpPort: 18801, color: "#0066CC" }
-    }
-  }
+      work: { cdpPort: 18801, color: "#0066CC" },
+    },
+  },
 }
 ```
 
 ### 配置字段说明
 
-| 字段 | 说明 | 默认值 |
-|------|------|--------|
-| `enabled` | 启用浏览器控制 | `true` |
-| `defaultProfile` | 默认配置文件 | `chrome` |
-| `headless` | 无头模式（不显示窗口） | `false` |
-| `noSandbox` | 禁用沙箱（Linux 可能需要） | `false` |
-| `executablePath` | 浏览器可执行文件路径 | 自动检测 |
-| `color` | UI 颜色标识 | `#FF4500` |
+| 字段             | 说明                       | 默认值    |
+| ---------------- | -------------------------- | --------- |
+| `enabled`        | 启用浏览器控制             | `true`    |
+| `defaultProfile` | 默认配置文件               | `chrome`  |
+| `headless`       | 无头模式（不显示窗口）     | `false`   |
+| `noSandbox`      | 禁用沙箱（Linux 可能需要） | `false`   |
+| `executablePath` | 浏览器可执行文件路径       | 自动检测  |
+| `color`          | UI 颜色标识                | `#FF4500` |
 
 ---
 
@@ -140,13 +141,14 @@ openclaw-cn config set browser.executablePath "/usr/bin/google-chrome"
 
 Openclaw 支持多个命名的浏览器配置文件：
 
-| 类型 | 说明 |
-|------|------|
+| 类型         | 说明                                 |
+| ------------ | ------------------------------------ |
 | **独立管理** | 专用浏览器实例，有独立的用户数据目录 |
-| **远程 CDP** | 连接到其他机器上的浏览器 |
-| **扩展中继** | 通过 Chrome 扩展控制现有标签页 |
+| **远程 CDP** | 连接到其他机器上的浏览器             |
+| **扩展中继** | 通过 Chrome 扩展控制现有标签页       |
 
 **默认配置文件：**
+
 - `clawd` - 独立管理的浏览器（自动创建）
 - `chrome` - Chrome 扩展中继（内置）
 
@@ -168,6 +170,7 @@ Openclaw 还可以通过 Chrome 扩展控制您**现有的 Chrome 标签页**（
 **快速设置：**
 
 1. 安装扩展：
+
 ```bash
 openclaw-cn browser extension install
 ```
@@ -195,6 +198,7 @@ openclaw-cn browser extension install
 ## 浏览器选择
 
 本地启动时，Openclaw 按以下顺序选择：
+
 1. Chrome
 2. Brave
 3. Edge
@@ -202,6 +206,7 @@ openclaw-cn browser extension install
 5. Chrome Canary
 
 各平台搜索位置：
+
 - **macOS**：`/Applications` 和 `~/Applications`
 - **Linux**：`google-chrome`、`brave`、`microsoft-edge`、`chromium` 等
 - **Windows**：常见安装位置
@@ -455,12 +460,13 @@ openclaw-cn browser set device "iPhone 14"  # 设备模拟
 
 Openclaw 支持两种快照模式：
 
-| 模式 | 命令 | 引用格式 | 适用场景 |
-|------|------|----------|----------|
-| AI 快照 | `snapshot` | `12`（数字） | 默认，AI 助手使用 |
-| 角色快照 | `snapshot --interactive` | `e12` | 交互元素列表 |
+| 模式     | 命令                     | 引用格式     | 适用场景          |
+| -------- | ------------------------ | ------------ | ----------------- |
+| AI 快照  | `snapshot`               | `12`（数字） | 默认，AI 助手使用 |
+| 角色快照 | `snapshot --interactive` | `e12`        | 交互元素列表      |
 
 **使用流程：**
+
 1. 获取快照：`openclaw-cn browser snapshot`
 2. 找到目标元素的 ref
 3. 执行操作：`openclaw-cn browser click 12`
@@ -491,6 +497,23 @@ Openclaw 支持两种快照模式：
 - 浏览器配置文件可能包含登录会话，请妥善保管
 - 登录和反机器人检测说明请参考 [浏览器登录](/tools/browser-login)
 - 控制 URL 应保持本地访问，除非您有意暴露
+- 浏览器导航/打开标签页在导航前受 SSRF 保护，并在导航后对最终 `http(s)` URL 进行尽力复查。
+- `browser.ssrfPolicy.dangerouslyAllowPrivateNetwork` 默认为 `true`（可信网络模式）。设为 `false` 可启用严格公网模式。
+- `browser.ssrfPolicy.allowPrivateNetwork` 作为向后兼容别名继续支持。
+
+Strict-mode 示例（默认阻止私有/内网目标）：
+
+```json5
+{
+  browser: {
+    ssrfPolicy: {
+      dangerouslyAllowPrivateNetwork: false,
+      hostnameAllowlist: ["*.example.com", "example.com"],
+      allowedHostnames: ["localhost"], // 可选精确放行
+    },
+  },
+}
+```
 
 ---
 
