@@ -7,6 +7,21 @@ const DEFAULT_MAX_BUFFER_BYTES = 2 * 1024 * 1024;
 let lastAppliedKeys: string[] = [];
 let cachedShellPath: string | null | undefined;
 
+// Keys that can influence shell startup-file execution (rc/profile/env sourcing).
+// Strip them from the env passed to the login-shell exec to prevent attacker-controlled
+// startup files from running before the `env -0` body executes.
+const SHELL_STARTUP_BLOCKED_KEYS = new Set(["BASH_ENV", "ENV", "ZDOTDIR", "SHELLOPTS", "PS4"]);
+
+function stripShellStartupKeys(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const result: NodeJS.ProcessEnv = { ...env };
+  for (const key of Object.keys(result)) {
+    if (SHELL_STARTUP_BLOCKED_KEYS.has(key.toUpperCase())) {
+      delete result[key];
+    }
+  }
+  return result;
+}
+
 function resolveShell(env: NodeJS.ProcessEnv): string {
   const shell = env.SHELL?.trim();
   return shell && shell.length > 0 ? shell : "/bin/sh";
@@ -62,6 +77,7 @@ export function loadShellEnvFallback(opts: ShellEnvFallbackOptions): ShellEnvFal
       : DEFAULT_TIMEOUT_MS;
 
   const shell = resolveShell(opts.env);
+  const execEnv = stripShellStartupKeys(opts.env);
 
   let stdout: Buffer;
   try {
@@ -69,7 +85,7 @@ export function loadShellEnvFallback(opts: ShellEnvFallbackOptions): ShellEnvFal
       encoding: "buffer",
       timeout: timeoutMs,
       maxBuffer: DEFAULT_MAX_BUFFER_BYTES,
-      env: opts.env,
+      env: execEnv,
       stdio: ["ignore", "pipe", "pipe"],
     });
   } catch (err) {
@@ -127,6 +143,7 @@ export function getShellPathFromLoginShell(opts: {
       ? Math.max(0, opts.timeoutMs)
       : DEFAULT_TIMEOUT_MS;
   const shell = resolveShell(opts.env);
+  const execEnv = stripShellStartupKeys(opts.env);
 
   let stdout: Buffer;
   try {
@@ -134,7 +151,7 @@ export function getShellPathFromLoginShell(opts: {
       encoding: "buffer",
       timeout: timeoutMs,
       maxBuffer: DEFAULT_MAX_BUFFER_BYTES,
-      env: opts.env,
+      env: execEnv,
       stdio: ["ignore", "pipe", "pipe"],
     });
   } catch {

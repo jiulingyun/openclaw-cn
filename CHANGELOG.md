@@ -7,7 +7,15 @@ Docs: https://docs.clawd.bot
 > 🆕 **重要功能**：新增 GLM-5 模型支持，完善 Z.AI Provider 集成
 > 🐛 **关键修复**：修复 Context 显示、压缩功能、浏览器控制等核心问题
 > 🔧 **开发体验**：改进 macOS pre-commit hook 兼容性，修复 CI/CD 发布流程
+> 🔒 **安全加固**：同步上游 v2026.2.21→v2026.2.23 安全补丁（security-part8）
 > 📡 **上游同步**：同步上游 v2026.2.17更新
+
+### 🔒 安全修复（上游 v2026.2.21→v2026.2.23）
+
+- Security/Exec env: 在 shell-env 回退路径的 exec 调用中剥离危险的 shell 启动文件变量（`BASH_ENV`、`ENV`、`ZDOTDIR`、`SHELLOPTS`、`PS4`），防止通过构造的启动文件变量注入执行。（上游 9363c320d8ff）
+- Security/Exec env: 在 node host 和 macOS companion 路径的 host exec env 清理器中屏蔽 `SHELLOPTS`/`PS4`；对 shell-wrapper 调用（`bash|sh|zsh ... -c/-lc`），将请求级 env 覆盖限制为仅允许 `TERM`、`LANG`、`LC_*`、`COLORTERM`、`NO_COLOR`、`FORCE_COLOR`，防止 xtrace 提示命令替换绕过 allowlist。感谢 @tdjackey 报告。（上游 e80c803fa887）
+- Security/Docs: 明确 Workspace Memory 信任边界——`MEMORY.md` 和 `memory/*.md` 是受信任的本地 operator 状态，不构成安全边界。（上游 b13fc7eccdc7）
+- Security/Hooks transforms: 在 webhook transform 模块路径解析中通过 realpath 强制执行符号链接安全的容器化检查（含 `hooks.transformsDir` 和 `hooks.mappings[].transform.module`），同时保留根内符号链接支持；添加逃逸和允许情形的回归测试。感谢 @aether-ai-agent 报告。（上游 f4dd0577b055）
 
 ### ✨ 新增功能
 

@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -335,6 +336,33 @@ function resolveContainedPath(baseDir: string, target: string, label: string): s
   if (relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
     throw new Error(`${label} module path must be within ${base}: ${target}`);
   }
+  // Resolve symlinks on existing path ancestors to prevent symlink escape.
+  // Walk up to find the deepest existing ancestor, realpath it, then check containment.
+  let existingAncestor = resolved;
+  while (existingAncestor !== path.dirname(existingAncestor)) {
+    try {
+      fs.lstatSync(existingAncestor);
+      break;
+    } catch {
+      existingAncestor = path.dirname(existingAncestor);
+    }
+  }
+  try {
+    const realAncestor = fs.realpathSync(existingAncestor);
+    const realBase = fs.realpathSync(base);
+    const realResolved = path.join(realAncestor, resolved.slice(existingAncestor.length));
+    const realRelative = path.relative(realBase, realResolved);
+    if (
+      realRelative === ".." ||
+      realRelative.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(realRelative)
+    ) {
+      throw new Error(`${label} module path must be within ${base}: ${target}`);
+    }
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("must be within")) throw err;
+    // If realpath fails (e.g. base doesn't exist yet), fall through
+  }
   return resolved;
 }
 
@@ -347,7 +375,29 @@ function resolveOptionalContainedPath(
   if (!trimmed) {
     return path.resolve(baseDir);
   }
-  return resolveContainedPath(baseDir, trimmed, label);
+  // For the transformsDir itself, check that the resolved dir is within base using realpath.
+  const base = path.resolve(baseDir);
+  const resolvedDir = resolvePath(base, trimmed);
+  const relative = path.relative(base, resolvedDir);
+  if (relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new Error(`${label} must be within ${base}: ${target}`);
+  }
+  try {
+    const realDir = fs.realpathSync(resolvedDir);
+    const realBase = fs.realpathSync(base);
+    const realRelative = path.relative(realBase, realDir);
+    if (
+      realRelative === ".." ||
+      realRelative.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(realRelative)
+    ) {
+      throw new Error(`${label} must be within ${base}: ${target}`);
+    }
+  } catch (err) {
+    if (err instanceof Error && err.message.includes(`${label} must be within`)) throw err;
+    // If realpath fails (dir doesn't exist), fall through to use resolvedDir
+  }
+  return resolvedDir;
 }
 
 function normalizeMatchPath(raw?: string): string | undefined {

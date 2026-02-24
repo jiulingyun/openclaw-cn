@@ -72,4 +72,35 @@ describe("shell env fallback", () => {
     expect(env.DISCORD_BOT_TOKEN).toBe("discord");
     expect(exec2).not.toHaveBeenCalled();
   });
+
+  it("strips shell startup keys from exec env to prevent startup-file injection", () => {
+    const env: NodeJS.ProcessEnv = {
+      BASH_ENV: "/tmp/evil-startup.sh",
+      ENV: "/tmp/evil-env.sh",
+      ZDOTDIR: "/tmp/evil-zdotdir",
+      SHELLOPTS: "xtrace",
+      PS4: "$(touch /tmp/pwned)",
+      OPENAI_API_KEY: "",
+    };
+    const capturedEnvs: NodeJS.ProcessEnv[] = [];
+    const exec = vi.fn((_, __, opts) => {
+      capturedEnvs.push({ ...(opts as { env: NodeJS.ProcessEnv }).env });
+      return Buffer.from("OPENAI_API_KEY=from-shell\0");
+    });
+
+    loadShellEnvFallback({
+      enabled: true,
+      env,
+      expectedKeys: ["OPENAI_API_KEY"],
+      exec: exec as unknown as Parameters<typeof loadShellEnvFallback>[0]["exec"],
+    });
+
+    expect(exec).toHaveBeenCalledTimes(1);
+    const passedEnv = capturedEnvs[0] ?? {};
+    expect(passedEnv.BASH_ENV).toBeUndefined();
+    expect(passedEnv.ENV).toBeUndefined();
+    expect(passedEnv.ZDOTDIR).toBeUndefined();
+    expect(passedEnv.SHELLOPTS).toBeUndefined();
+    expect(passedEnv.PS4).toBeUndefined();
+  });
 });

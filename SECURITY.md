@@ -55,3 +55,13 @@ Run locally:
 pip install detect-secrets==1.5.0
 detect-secrets scan --baseline .secrets.baseline
 ```
+
+## Workspace Memory Trust Boundary
+
+`MEMORY.md` and `memory/*.md` are plain workspace files and are treated as trusted local operator state.
+
+- If someone can edit workspace memory files, they already crossed the trusted operator boundary.
+- Memory search indexing/recall over those files is expected behavior, not a sandbox/security boundary.
+- Example report pattern considered out of scope: "attacker writes malicious content into `memory/*.md`, then `memory_search` returns it."
+- Reports that require write access to trusted local state (`~/.openclaw`, workspace files like `MEMORY.md` / `memory/*.md`) are considered out of scope.
+- If you need isolation between mutually untrusted users, split by OS user or host and run separate gateways.

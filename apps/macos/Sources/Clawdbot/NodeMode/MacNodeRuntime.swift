@@ -448,7 +448,8 @@ actor MacNodeRuntime {
             ? params.sessionKey!.trimmingCharacters(in: .whitespacesAndNewlines)
             : self.mainSessionKey
         let runId = UUID().uuidString
-        let env = Self.sanitizedEnv(params.env)
+        let shellWrapper = Self.isShellWrapper(argv: command)
+        let env = Self.sanitizedEnv(params.env, shellWrapper: shellWrapper)
         let resolution = ExecCommandResolution.resolve(
             command: command,
             rawCommand: params.rawCommand,
@@ -865,6 +866,8 @@ extension MacNodeRuntime {
         "PERL5LIB",
         "PERL5OPT",
         "RUBYOPT",
+        "SHELLOPTS",
+        "PS4",
     ]
 
     private static let blockedEnvPrefixes: [String] = [
@@ -872,10 +875,46 @@ extension MacNodeRuntime {
         "LD_",
     ]
 
-    private static func sanitizedEnv(_ overrides: [String: String]?) -> [String: String]? {
+    // For shell-wrapper invocations (bash/sh/zsh ... -c/-lc), restrict request-scoped env
+    // overrides to a small explicit allowlist to prevent xtrace/prompt injection bypasses.
+    private static let shellWrapperBins: Set<String> = ["bash", "sh", "zsh"]
+    private static let shellWrapperAllowedOverrideKeys: Set<String> = [
+        "TERM",
+        "LANG",
+        "LC_ALL",
+        "LC_CTYPE",
+        "LC_MESSAGES",
+        "COLORTERM",
+        "NO_COLOR",
+        "FORCE_COLOR",
+    ]
+
+    private static func isShellWrapper(argv: [String]) -> Bool {
+        guard let bin = argv.first?.trimmingCharacters(in: .whitespacesAndNewlines), !bin.isEmpty else {
+            return false
+        }
+        let base = URL(fileURLWithPath: bin).lastPathComponent
+        guard self.shellWrapperBins.contains(base) else { return false }
+        // Match any flag arg that contains 'c' (e.g. -c, -lc, -ilc)
+        return argv.dropFirst().contains { arg in
+            let re = try? NSRegularExpression(pattern: "^-[a-z]*c[a-z]*$")
+            return re?.firstMatch(in: arg, range: NSRange(arg.startIndex..., in: arg)) != nil
+        }
+    }
+
+    private static func sanitizedEnv(_ overrides: [String: String]?, shellWrapper: Bool = false) -> [String: String]? {
         guard let overrides else { return nil }
         var merged = ProcessInfo.processInfo.environment
-        for (rawKey, value) in overrides {
+        let effectiveOverrides: [String: String]
+        if shellWrapper {
+            effectiveOverrides = overrides.filter { (rawKey, _) in
+                let upper = rawKey.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+                return self.shellWrapperAllowedOverrideKeys.contains(upper)
+            }
+        } else {
+            effectiveOverrides = overrides
+        }
+        for (rawKey, value) in effectiveOverrides {
             let key = rawKey.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !key.isEmpty else { continue }
             let upper = key.uppercased()

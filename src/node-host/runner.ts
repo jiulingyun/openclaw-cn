@@ -166,9 +166,34 @@ const blockedEnvKeys = new Set([
   "PERL5LIB",
   "PERL5OPT",
   "RUBYOPT",
+  "SHELLOPTS",
+  "PS4",
 ]);
 
 const blockedEnvPrefixes = ["DYLD_", "LD_"];
+
+// For shell-wrapper invocations (bash/sh/zsh ... -c/-lc), restrict request-scoped env
+// overrides to a small explicit allowlist to prevent xtrace/prompt injection bypasses.
+const SHELL_WRAPPER_BINS = new Set(["bash", "sh", "zsh"]);
+const SHELL_WRAPPER_ALLOWED_OVERRIDE_KEYS = new Set([
+  "TERM",
+  "LANG",
+  "LC_ALL",
+  "LC_CTYPE",
+  "LC_MESSAGES",
+  "COLORTERM",
+  "NO_COLOR",
+  "FORCE_COLOR",
+]);
+
+export function isShellWrapperArgv(argv: string[]): boolean {
+  const bin = argv[0]?.trim();
+  if (!bin) return false;
+  const base = path.basename(bin);
+  if (!SHELL_WRAPPER_BINS.has(base)) return false;
+  // Matches -c, -lc, -cl, or any flag combo containing c (e.g. -ilc)
+  return argv.slice(1).some((arg) => /^-[a-z]*c[a-z]*$/.test(arg));
+}
 
 class SkillBinsCache {
   private bins = new Set<string>();
@@ -202,11 +227,20 @@ class SkillBinsCache {
 
 export function sanitizeEnv(
   overrides?: Record<string, string> | null,
+  shellWrapper?: boolean,
 ): Record<string, string> | undefined {
   if (!overrides) return undefined;
   const merged = { ...process.env } as Record<string, string>;
   const basePath = process.env.PATH ?? DEFAULT_NODE_PATH;
-  for (const [rawKey, value] of Object.entries(overrides)) {
+  const effectiveOverrides = shellWrapper
+    ? Object.fromEntries(
+        Object.entries(overrides).filter(([rawKey]) => {
+          const upper = rawKey.trim().toUpperCase();
+          return SHELL_WRAPPER_ALLOWED_OVERRIDE_KEYS.has(upper);
+        }),
+      )
+    : overrides;
+  for (const [rawKey, value] of Object.entries(effectiveOverrides)) {
     const key = rawKey.trim();
     if (!key) continue;
     const upper = key.toUpperCase();
@@ -826,7 +860,8 @@ async function handleInvoke(
   const autoAllowSkills = approvals.agent.autoAllowSkills;
   const sessionKey = params.sessionKey?.trim() || "node";
   const runId = params.runId?.trim() || crypto.randomUUID();
-  const env = sanitizeEnv(params.env ?? undefined);
+  const shellWrapper = isShellWrapperArgv(argv);
+  const env = sanitizeEnv(params.env ?? undefined, shellWrapper);
   const safeBins = resolveSafeBins(agentExec?.safeBins ?? cfg.tools?.exec?.safeBins);
   const bins = autoAllowSkills ? await skillBins.current() : new Set<string>();
   let analysisOk = false;

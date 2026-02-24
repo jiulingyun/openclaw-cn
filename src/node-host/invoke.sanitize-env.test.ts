@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sanitizeEnv, buildNodeInvokeResultParams } from "./runner.js";
+import { sanitizeEnv, isShellWrapperArgv, buildNodeInvokeResultParams } from "./runner.js";
 
 describe("node-host sanitizeEnv", () => {
   it("ignores PATH overrides", () => {
@@ -44,6 +44,61 @@ describe("node-host sanitizeEnv", () => {
         process.env.LD_PRELOAD = prevLdPreload;
       }
     }
+  });
+
+  it("blocks SHELLOPTS and PS4", () => {
+    delete process.env.SHELLOPTS;
+    delete process.env.PS4;
+    const env = sanitizeEnv({ SHELLOPTS: "xtrace", PS4: "$(touch /tmp/pwned)", FOO: "bar" }) ?? {};
+    expect(env.SHELLOPTS).toBeUndefined();
+    expect(env.PS4).toBeUndefined();
+    expect(env.FOO).toBe("bar");
+  });
+
+  it("restricts overrides to allowlist for shell wrapper commands", () => {
+    delete process.env.OPENCLAW_TOKEN;
+    delete process.env.LANG;
+    const env =
+      sanitizeEnv(
+        {
+          LANG: "C",
+          LC_ALL: "C",
+          OPENCLAW_TOKEN: "secret",
+          PS4: "$(touch /tmp/pwned)",
+        },
+        true,
+      ) ?? {};
+    expect(env.LANG).toBe("C");
+    expect(env.LC_ALL).toBe("C");
+    expect(env.OPENCLAW_TOKEN).toBeUndefined();
+    expect(env.PS4).toBeUndefined();
+  });
+
+  it("allows regular overrides for non-shell-wrapper commands", () => {
+    delete process.env.OPENCLAW_TOKEN;
+    const env = sanitizeEnv({ OPENCLAW_TOKEN: "secret" }, false) ?? {};
+    expect(env.OPENCLAW_TOKEN).toBe("secret");
+  });
+});
+
+describe("isShellWrapperArgv", () => {
+  it("detects bash -c as shell wrapper", () => {
+    expect(isShellWrapperArgv(["bash", "-c", "echo hi"])).toBe(true);
+    expect(isShellWrapperArgv(["/bin/bash", "-c", "echo hi"])).toBe(true);
+  });
+
+  it("detects sh -c and zsh -c as shell wrappers", () => {
+    expect(isShellWrapperArgv(["/bin/sh", "-c", "echo hi"])).toBe(true);
+    expect(isShellWrapperArgv(["zsh", "-lc", "echo hi"])).toBe(true);
+  });
+
+  it("does not treat non-shell commands as wrappers", () => {
+    expect(isShellWrapperArgv(["jq", ".foo"])).toBe(false);
+    expect(isShellWrapperArgv(["node", "script.js"])).toBe(false);
+  });
+
+  it("does not treat bare shell without -c as wrapper", () => {
+    expect(isShellWrapperArgv(["bash", "-l"])).toBe(false);
   });
 });
 
