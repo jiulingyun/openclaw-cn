@@ -37,6 +37,11 @@ Docs: https://docs.clawd.bot
 
 ### 📦 上游同步
 
+- **v2026.2.23** (security-part10)：同步上游安全加固 commits
+  - Security/Gateway control-plane: add write-rate-limit (3 per 60s) for `config.patch`, `config.apply`, `update.run`; include `connId` fallback key when device/IP are unknown
+  - Security/Audit: add `openclaw security audit` detection for dangerous node commands explicitly enabled via `gateway.nodes.allowCommands` (`gateway.nodes.allow_commands_dangerous`)
+  - Security/Hooks auth: normalize hook auth rate-limit client IP keys so IPv4 and IPv4-mapped IPv6 addresses share one throttle bucket, preventing dual-form auth-attempt budget bypasses
+  - Security/External content: sanitize injected boundary markers inside wrapped external content (fixes `replaceMarkers` not being applied in `wrapExternalContent`)
 - **v2026.2.17**：同步上游核心稳定性更新
 
 ### 📝 文档更新

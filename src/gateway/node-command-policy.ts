@@ -20,6 +20,15 @@ const LOCATION_COMMANDS = ["location.get"];
 
 const SMS_COMMANDS = ["sms.send"];
 
+// "High risk" node commands. These can be enabled by explicitly adding them to
+// `gateway.nodes.allowCommands` (and ensuring they're not blocked by denyCommands).
+export const DEFAULT_DANGEROUS_NODE_COMMANDS = [
+  "camera.snap",
+  "camera.clip",
+  "screen.record",
+  "sms.send",
+];
+
 const SYSTEM_COMMANDS = ["system.run", "system.which", "system.notify", "browser.proxy"];
 
 const PLATFORM_DEFAULTS: Record<string, string[]> = {

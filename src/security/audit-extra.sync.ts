@@ -15,7 +15,10 @@ import { resolveToolProfilePolicy } from "../agents/tool-policy.js";
 import { resolveBrowserConfig } from "../browser/config.js";
 import { formatCliCommand } from "../cli/command-format.js";
 import { resolveGatewayAuth } from "../gateway/auth.js";
-import { resolveNodeCommandAllowlist } from "../gateway/node-command-policy.js";
+import {
+  DEFAULT_DANGEROUS_NODE_COMMANDS,
+  resolveNodeCommandAllowlist,
+} from "../gateway/node-command-policy.js";
 
 export type SecurityAuditFinding = {
   checkId: string;
@@ -651,6 +654,43 @@ export function collectNodeDenyCommandPatternFindings(cfg: ClawdbotConfig): Secu
     remediation:
       `Use exact command names (for example: ${examples.join(", ")}). ` +
       "If you need broader restrictions, remove risky commands from allowCommands/default workflows.",
+  });
+
+  return findings;
+}
+
+export function collectNodeDangerousAllowCommandFindings(
+  cfg: ClawdbotConfig,
+): SecurityAuditFinding[] {
+  const findings: SecurityAuditFinding[] = [];
+  const allowRaw = cfg.gateway?.nodes?.allowCommands;
+  if (!Array.isArray(allowRaw) || allowRaw.length === 0) {
+    return findings;
+  }
+
+  const allow = new Set(allowRaw.map(normalizeNodeCommand).filter(Boolean));
+  if (allow.size === 0) {
+    return findings;
+  }
+
+  const deny = new Set((cfg.gateway?.nodes?.denyCommands ?? []).map(normalizeNodeCommand));
+  const dangerousAllowed = DEFAULT_DANGEROUS_NODE_COMMANDS.filter(
+    (cmd) => allow.has(cmd) && !deny.has(cmd),
+  );
+  if (dangerousAllowed.length === 0) {
+    return findings;
+  }
+
+  findings.push({
+    checkId: "gateway.nodes.allow_commands_dangerous",
+    severity: isGatewayRemotelyExposed(cfg) ? "critical" : "warn",
+    title: "Dangerous node commands explicitly enabled",
+    detail:
+      `gateway.nodes.allowCommands includes: ${dangerousAllowed.join(", ")}. ` +
+      "These commands can trigger high-impact device actions (camera/screen/SMS).",
+    remediation:
+      "Remove these entries from gateway.nodes.allowCommands (recommended). " +
+      "If you keep them, treat gateway auth as full operator access and keep gateway exposure local/tailnet-only.",
   });
 
   return findings;

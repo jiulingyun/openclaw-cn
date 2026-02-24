@@ -148,7 +148,10 @@ export function createHooksRequestHandler(
   const hookAuthFailures = new Map<string, HookAuthFailure>();
 
   const resolveHookClientKey = (req: IncomingMessage): string => {
-    return req.socket?.remoteAddress?.trim() || "unknown";
+    const raw = req.socket?.remoteAddress?.trim();
+    if (!raw) return "unknown";
+    // Normalize IPv4-mapped IPv6 (e.g. ::ffff:1.2.3.4 → 1.2.3.4) so both forms share one bucket.
+    return raw.startsWith("::ffff:") ? raw.slice("::ffff:".length) : raw;
   };
 
   const recordHookAuthFailure = (

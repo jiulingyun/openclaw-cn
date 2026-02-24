@@ -6,6 +6,7 @@ import JSON5 from "json5";
 // New sync collectors from upstream hardening
 export {
   collectMinimalProfileOverrideFindings,
+  collectNodeDangerousAllowCommandFindings,
   collectNodeDenyCommandPatternFindings,
   collectSandboxDockerNoopFindings,
 } from "./audit-extra.sync.js";

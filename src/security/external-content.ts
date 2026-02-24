@@ -73,7 +73,7 @@ export type ExternalContentSource =
   | "web_fetch"
   | "unknown";
 
-const EXTERNAL_SOURCE_LABELS: Record<ExternalContentSource, string> = {
+const _EXTERNAL_SOURCE_LABELS: Record<ExternalContentSource, string> = {
   email: "Email",
   webhook: "Webhook",
   api: "API",
@@ -199,7 +199,7 @@ export function wrapExternalContent(content: string, options: WrapExternalConten
     EXTERNAL_CONTENT_START,
     metadata,
     "---",
-    content,
+    replaceMarkers(content),
     EXTERNAL_CONTENT_END,
   ].join("\n");
 }
