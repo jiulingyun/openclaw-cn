@@ -1,34 +1,84 @@
 import { describe, expect, it } from "vitest";
 import { normalizeFingerprint } from "../tls/fingerprint.js";
-import { isPrivateIpAddress } from "./ssrf.js";
+import { isBlockedHostnameOrIp, isPrivateIpAddress } from "./ssrf.js";
+
+const privateIpCases = [
+  "198.18.0.1",
+  "198.19.255.254",
+  "198.51.100.42",
+  "203.0.113.10",
+  "192.0.0.8",
+  "192.0.2.1",
+  "192.88.99.1",
+  "224.0.0.1",
+  "239.255.255.255",
+  "240.0.0.1",
+  "255.255.255.255",
+  "::ffff:127.0.0.1",
+  "::ffff:198.18.0.1",
+  "64:ff9b::198.51.100.42",
+  "0:0:0:0:0:ffff:7f00:1",
+  "0000:0000:0000:0000:0000:ffff:7f00:0001",
+  "::127.0.0.1",
+  "0:0:0:0:0:0:7f00:1",
+  "[0:0:0:0:0:ffff:7f00:1]",
+  "::ffff:169.254.169.254",
+  "0:0:0:0:0:ffff:a9fe:a9fe",
+  "2002:7f00:0001::",
+  "2002:a9fe:a9fe::",
+  "2001:0000:0:0:0:0:80ff:fefe",
+  "2001:0000:0:0:0:0:3f57:fefe",
+  "2002:c612:0001::",
+  "::",
+  "::1",
+  "fe80::1%lo0",
+  "fd00::1",
+  "fec0::1",
+  "2001:db8:1234::5efe:127.0.0.1",
+];
+
+const publicIpCases = [
+  "93.184.216.34",
+  "198.17.255.255",
+  "198.20.0.1",
+  "198.51.99.1",
+  "198.51.101.1",
+  "203.0.112.1",
+  "203.0.114.1",
+  "223.255.255.255",
+  "2606:4700:4700::1111",
+  "2001:db8::1",
+  "64:ff9b::8.8.8.8",
+];
 
 describe("ssrf ip classification", () => {
-  it("treats IPv4-mapped and IPv4-compatible IPv6 loopback as private", () => {
-    expect(isPrivateIpAddress("::ffff:127.0.0.1")).toBe(true);
-    expect(isPrivateIpAddress("0:0:0:0:0:ffff:7f00:1")).toBe(true);
-    expect(isPrivateIpAddress("0000:0000:0000:0000:0000:ffff:7f00:0001")).toBe(true);
-    expect(isPrivateIpAddress("::127.0.0.1")).toBe(true);
-    expect(isPrivateIpAddress("0:0:0:0:0:0:7f00:1")).toBe(true);
-    expect(isPrivateIpAddress("[0:0:0:0:0:ffff:7f00:1]")).toBe(true);
+  it.each(privateIpCases)("classifies %s as private/special-use", (address) => {
+    expect(isPrivateIpAddress(address)).toBe(true);
   });
 
-  it("treats IPv4-mapped metadata/link-local as private", () => {
-    expect(isPrivateIpAddress("::ffff:169.254.169.254")).toBe(true);
-    expect(isPrivateIpAddress("0:0:0:0:0:ffff:a9fe:a9fe")).toBe(true);
+  it.each(publicIpCases)("classifies %s as public", (address) => {
+    expect(isPrivateIpAddress(address)).toBe(false);
+  });
+});
+
+describe("isBlockedHostnameOrIp", () => {
+  it("blocks localhost aliases and metadata hostnames", () => {
+    expect(isBlockedHostnameOrIp("localhost")).toBe(true);
+    expect(isBlockedHostnameOrIp("metadata.google.internal")).toBe(true);
   });
 
-  it("treats common IPv6 private/internal ranges as private", () => {
-    expect(isPrivateIpAddress("::")).toBe(true);
-    expect(isPrivateIpAddress("::1")).toBe(true);
-    expect(isPrivateIpAddress("fe80::1%lo0")).toBe(true);
-    expect(isPrivateIpAddress("fd00::1")).toBe(true);
-    expect(isPrivateIpAddress("fec0::1")).toBe(true);
+  it("blocks IPv4 special-use ranges but allows adjacent public ranges", () => {
+    expect(isBlockedHostnameOrIp("198.18.0.1")).toBe(true);
+    expect(isBlockedHostnameOrIp("198.20.0.1")).toBe(false);
   });
 
-  it("does not classify public IPs as private", () => {
-    expect(isPrivateIpAddress("93.184.216.34")).toBe(false);
-    expect(isPrivateIpAddress("2606:4700:4700::1111")).toBe(false);
-    expect(isPrivateIpAddress("2001:db8::1")).toBe(false);
+  it("blocks legacy IPv4 literal representations", () => {
+    expect(isBlockedHostnameOrIp("0177.0.0.1")).toBe(true);
+    expect(isBlockedHostnameOrIp("8.8.2056")).toBe(true);
+  });
+
+  it("allows public IPv6 addresses", () => {
+    expect(isBlockedHostnameOrIp("2001:db8::1")).toBe(false);
   });
 });
 
