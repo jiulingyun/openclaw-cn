@@ -361,3 +361,38 @@ describe("real-world config patterns", () => {
     });
   });
 });
+
+describe("安全性：路径穿越保护 (CWE-22)", () => {
+  function expectRejectedTraversalPaths(cases: ReadonlyArray<string>) {
+    for (const includePath of cases) {
+      const obj = { $include: includePath };
+      expect(() => resolve(obj, {}), includePath).toThrow(ConfigIncludeError);
+    }
+  }
+
+  describe("绝对路径攻击", () => {
+    it("拒绝绝对路径攻击变体", () => {
+      const cases = [
+        "/etc/passwd",
+        "/etc/shadow",
+        `${process.env.HOME}/.ssh/id_rsa`,
+        "/tmp/malicious.json",
+        "/",
+      ] as const;
+      expectRejectedTraversalPaths(cases);
+    });
+  });
+
+  describe("相对路径穿越攻击", () => {
+    it("拒绝相对路径穿越变体", () => {
+      const cases = [
+        "../../etc/passwd",
+        "../../../etc/shadow",
+        "../../../../../../../../etc/passwd",
+        "../sibling-dir/secret.json",
+        "/config/../../../etc/passwd",
+      ] as const;
+      expectRejectedTraversalPaths(cases);
+    });
+  });
+});
