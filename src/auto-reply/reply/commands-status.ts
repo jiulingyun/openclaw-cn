@@ -31,6 +31,7 @@ import type { CommandContext } from "./commands-types.js";
 import { getFollowupQueueDepth, resolveQueueSettings } from "./queue.js";
 import type { MediaUnderstandingDecision } from "../../media-understanding/types.js";
 import { resolveSubagentLabel } from "./subagents-utils.js";
+import { normalizeModelListConfig } from "../../config/model-input.js";
 
 function formatApiKeySnippet(apiKey: string): string {
   const compact = apiKey.replace(/\s+/g, "");
@@ -208,7 +209,7 @@ export async function buildStatusReply(params: {
     agent: {
       ...agentDefaults,
       model: {
-        ...agentDefaults.model,
+        ...normalizeModelListConfig(agentDefaults.model),
         primary: `${provider}/${model}`,
       },
       contextTokens,

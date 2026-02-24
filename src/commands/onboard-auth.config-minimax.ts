@@ -11,6 +11,7 @@ import {
   MINIMAX_HOSTED_MODEL_REF,
   MINIMAX_LM_STUDIO_COST,
 } from "./onboard-auth.models.js";
+import { normalizeModelListConfig } from "../config/model-input.js";
 
 export function applyMinimaxProviderConfig(cfg: ClawdbotConfig): ClawdbotConfig {
   const models = { ...cfg.agents?.defaults?.models };
@@ -137,7 +138,7 @@ export function applyMinimaxHostedConfig(
       defaults: {
         ...next.agents?.defaults,
         model: {
-          ...next.agents?.defaults?.model,
+          ...normalizeModelListConfig(next.agents?.defaults?.model),
           primary: MINIMAX_HOSTED_MODEL_REF,
         },
       },

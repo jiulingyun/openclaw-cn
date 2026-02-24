@@ -1,5 +1,6 @@
 import { logConfigUpdated } from "../../config/logging.js";
 import type { RuntimeEnv } from "../../runtime.js";
+import { resolveModelListFallbacks, resolveModelListPrimary } from "../../config/model-input.js";
 import { resolveModelTarget, updateConfig } from "./shared.js";
 
 export async function modelsSetCommand(modelRaw: string, runtime: RuntimeEnv) {
@@ -8,9 +9,7 @@ export async function modelsSetCommand(modelRaw: string, runtime: RuntimeEnv) {
     const key = `${resolved.provider}/${resolved.model}`;
     const nextModels = { ...cfg.agents?.defaults?.models };
     if (!nextModels[key]) nextModels[key] = {};
-    const existingModel = cfg.agents?.defaults?.model as
-      | { primary?: string; fallbacks?: string[] }
-      | undefined;
+    const existingFallbacks = resolveModelListFallbacks(cfg.agents?.defaults?.model);
     return {
       ...cfg,
       agents: {
@@ -18,7 +17,7 @@ export async function modelsSetCommand(modelRaw: string, runtime: RuntimeEnv) {
         defaults: {
           ...cfg.agents?.defaults,
           model: {
-            ...(existingModel?.fallbacks ? { fallbacks: existingModel.fallbacks } : undefined),
+            ...(existingFallbacks.length ? { fallbacks: existingFallbacks } : undefined),
             primary: key,
           },
           models: nextModels,
@@ -28,5 +27,7 @@ export async function modelsSetCommand(modelRaw: string, runtime: RuntimeEnv) {
   });
 
   logConfigUpdated(runtime);
-  runtime.log(`Default model: ${updated.agents?.defaults?.model?.primary ?? modelRaw}`);
+  runtime.log(
+    `Default model: ${resolveModelListPrimary(updated.agents?.defaults?.model) ?? modelRaw}`,
+  );
 }

@@ -3,6 +3,7 @@ import type { ModelDefinitionConfig } from "./types.models.js";
 import { DEFAULT_CONTEXT_TOKENS } from "../agents/defaults.js";
 import { parseModelRef } from "../agents/model-selection.js";
 import { DEFAULT_AGENT_MAX_CONCURRENT, DEFAULT_SUBAGENT_MAX_CONCURRENT } from "./agent-limits.js";
+import { resolveModelListPrimary } from "./model-input.js";
 import { resolveTalkApiKey } from "./talk.js";
 
 type WarnState = { warned: boolean };
@@ -404,7 +405,7 @@ export function applyContextPruningDefaults(cfg: ClawdbotConfig): ClawdbotConfig
       modelsMutated = true;
     }
 
-    const primary = resolvePrimaryModelRef(defaults.model?.primary ?? undefined);
+    const primary = resolvePrimaryModelRef(resolveModelListPrimary(defaults.model));
     if (primary) {
       const parsedPrimary = parseModelRef(primary, "anthropic");
       if (parsedPrimary?.provider === "anthropic") {

@@ -136,16 +136,44 @@ export function resolveAgentSkillsFilter(
   return normalized.length > 0 ? normalized : [];
 }
 
-export function resolveAgentModelPrimary(cfg: ClawdbotConfig, agentId: string): string | undefined {
-  const raw = resolveAgentConfig(cfg, agentId)?.model;
-  if (!raw) {
+function resolveModelPrimary(raw: unknown): string | undefined {
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    return trimmed || undefined;
+  }
+  if (!raw || typeof raw !== "object") {
     return undefined;
   }
-  if (typeof raw === "string") {
-    return raw.trim() || undefined;
+  const primary = (raw as { primary?: unknown }).primary;
+  if (typeof primary !== "string") {
+    return undefined;
   }
-  const primary = raw.primary?.trim();
-  return primary || undefined;
+  const trimmed = primary.trim();
+  return trimmed || undefined;
+}
+
+export function resolveAgentExplicitModelPrimary(
+  cfg: ClawdbotConfig,
+  agentId: string,
+): string | undefined {
+  const raw = resolveAgentConfig(cfg, agentId)?.model;
+  return resolveModelPrimary(raw);
+}
+
+export function resolveAgentEffectiveModelPrimary(
+  cfg: ClawdbotConfig,
+  agentId: string,
+): string | undefined {
+  return (
+    resolveAgentExplicitModelPrimary(cfg, agentId) ??
+    resolveModelPrimary(cfg.agents?.defaults?.model)
+  );
+}
+
+// Backward-compatible alias. Prefer explicit/effective helpers at new call sites.
+/** @deprecated Use resolveAgentExplicitModelPrimary or resolveAgentEffectiveModelPrimary instead. */
+export function resolveAgentModelPrimary(cfg: ClawdbotConfig, agentId: string): string | undefined {
+  return resolveAgentExplicitModelPrimary(cfg, agentId);
 }
 
 export function resolveAgentModelFallbacksOverride(

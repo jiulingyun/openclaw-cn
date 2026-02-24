@@ -38,6 +38,10 @@ export function estimateMessagesTokens(messages: AgentMessage[]): number {
   return safe.reduce((sum, message) => sum + estimateTokens(message), 0);
 }
 
+function estimateCompactionMessageTokens(message: AgentMessage): number {
+  return estimateMessagesTokens([message]);
+}
+
 function normalizeParts(parts: number, messageCount: number): number {
   if (!Number.isFinite(parts) || parts <= 1) return 1;
   return Math.min(Math.max(1, Math.floor(parts)), Math.max(1, messageCount));
@@ -58,7 +62,7 @@ export function splitMessagesByTokenShare(
   let currentTokens = 0;
 
   for (const message of messages) {
-    const messageTokens = estimateTokens(message);
+    const messageTokens = estimateCompactionMessageTokens(message);
     if (
       chunks.length < normalizedParts - 1 &&
       current.length > 0 &&
@@ -91,7 +95,7 @@ export function chunkMessagesByMaxTokens(
   let currentTokens = 0;
 
   for (const message of messages) {
-    const messageTokens = estimateTokens(message);
+    const messageTokens = estimateCompactionMessageTokens(message);
     if (currentChunk.length > 0 && currentTokens + messageTokens > maxTokens) {
       chunks.push(currentChunk);
       currentChunk = [];

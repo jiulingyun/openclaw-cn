@@ -2,7 +2,17 @@
 
 Docs: https://docs.clawd.bot
 
-## 0.1.6
+## 0.1.7
+
+> 📡 **上游同步**：同步上游 v2026.2.21→v2026.2.23 的 agents-part3 修复（P0/P1）
+
+### 🐛 Bug 修复
+
+- **Agents/Model compat**：为 Moonshot provider 补充 `supportsDeveloperRole: false` 兼容配置，避免开发者角色导致的 API 错误
+- **Agents/Models**：`agents.defaults.model` / `agents.defaults.imageModel` 配置字段现在同时接受字符串（`"provider/model"`）或对象（`{ primary, fallbacks }`）形式；无显式 model 配置的 agent 会正确回落到 `agents.defaults.model` (#24210)
+- **Agents/Compaction**：修复 token 计数时意外包含 `toolResult.details` 大负载导致分块偏差的问题
+- **Agents/Run**：移除 agent 工具调用成功后无文本回复时自动追加的合成 `✅ Done.` 消息
+- **Agents/Workspace guard**：沙箱容器工作目录路径（如 `/workspace/...` 和 `file:///workspace/...`）在 workspace-only 校验前先映射到宿主 workspace root，修复沙箱文件工具误报 `Path escapes sandbox root` 的问题 (#9560)
 
 > 🆕 **重要功能**：新增 GLM-5 模型支持，完善 Z.AI Provider 集成
 > 🐛 **关键修复**：修复 Context 显示、压缩功能、浏览器控制等核心问题

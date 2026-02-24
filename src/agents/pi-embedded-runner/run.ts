@@ -57,6 +57,7 @@ import {
   sessionLikelyHasOversizedToolResults,
 } from "./tool-result-truncation.js";
 import { describeUnknownError } from "./utils.js";
+import { resolveModelListFallbacks } from "../../config/model-input.js";
 
 type ApiKeyInfo = ResolvedProviderAuth;
 
@@ -206,7 +207,7 @@ export async function runEmbeddedPiAgent(
       const modelId = (params.model ?? DEFAULT_MODEL).trim() || DEFAULT_MODEL;
       const agentDir = params.agentDir ?? resolveClawdbotAgentDir();
       const fallbackConfigured =
-        (params.config?.agents?.defaults?.model?.fallbacks?.length ?? 0) > 0;
+        resolveModelListFallbacks(params.config?.agents?.defaults?.model).length > 0;
       await ensureOpenClawModelsJson(params.config, agentDir);
 
       const { model, error, authStorage, modelRegistry } = resolveModel(

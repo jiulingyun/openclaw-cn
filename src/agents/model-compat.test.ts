@@ -30,6 +30,19 @@ const xiaomiModel = (): Model<Api> =>
     maxTokens: 65536,
   }) as Model<Api>;
 
+const moonshotModel = (): Model<Api> =>
+  ({
+    id: "kimi-k2.5",
+    name: "Kimi K2.5",
+    api: "openai-completions",
+    provider: "moonshot",
+    baseUrl: "https://api.moonshot.ai/v1",
+    input: ["text"],
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    contextWindow: 256000,
+    maxTokens: 8192,
+  }) as Model<Api>;
+
 describe("normalizeModelCompat", () => {
   it("forces supportsDeveloperRole off for z.ai models", () => {
     const model = baseModel();
@@ -76,6 +89,31 @@ describe("normalizeModelCompat", () => {
 
   it("does not override explicit xiaomi compat false", () => {
     const model = xiaomiModel();
+    model.compat = { supportsDeveloperRole: false };
+    const normalized = normalizeModelCompat(model);
+    expect(normalized.compat?.supportsDeveloperRole).toBe(false);
+  });
+
+  it("forces supportsDeveloperRole off for moonshot models", () => {
+    const model = moonshotModel();
+    delete (model as { compat?: unknown }).compat;
+    const normalized = normalizeModelCompat(model);
+    expect(normalized.compat?.supportsDeveloperRole).toBe(false);
+  });
+
+  it("forces supportsDeveloperRole off for moonshot.cn baseUrl", () => {
+    const model = {
+      ...moonshotModel(),
+      provider: "custom",
+      baseUrl: "https://api.moonshot.cn/v1",
+    };
+    delete (model as { compat?: unknown }).compat;
+    const normalized = normalizeModelCompat(model);
+    expect(normalized.compat?.supportsDeveloperRole).toBe(false);
+  });
+
+  it("does not override explicit moonshot compat false", () => {
+    const model = moonshotModel();
     model.compat = { supportsDeveloperRole: false };
     const normalized = normalizeModelCompat(model);
     expect(normalized.compat?.supportsDeveloperRole).toBe(false);

@@ -7,6 +7,7 @@ import {
   validateApiKeyInput,
 } from "./auth-choice.api-key.js";
 import { applyAuthProfileConfig, applyXiaomiConfig, setXiaomiApiKey } from "./onboard-auth.js";
+import { normalizeModelListConfig } from "../config/model-input.js";
 
 export async function applyAuthChoiceXiaomi(
   params: ApplyAuthChoiceParams,
@@ -165,7 +166,7 @@ export async function applyAuthChoiceXiaomi(
         defaults: {
           ...nextConfig.agents?.defaults,
           model: {
-            ...nextConfig.agents?.defaults?.model,
+            ...normalizeModelListConfig(nextConfig.agents?.defaults?.model),
             primary: `xiaomi/${modelId}`,
           },
         },

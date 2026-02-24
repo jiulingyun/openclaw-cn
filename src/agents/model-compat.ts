@@ -22,8 +22,12 @@ export function normalizeModelCompat(model: Model<Api>): Model<Api> {
   // Providers that don't support developer role (must use system role instead)
   const isZai = model.provider === "zai" || baseUrl.includes("api.z.ai");
   const isXiaomi = model.provider === "xiaomi" || baseUrl.includes("api.xiaomimimo.com");
+  const isMoonshot =
+    model.provider === "moonshot" ||
+    baseUrl.includes("api.moonshot.ai") ||
+    baseUrl.includes("api.moonshot.cn");
 
-  if (!isZai && !isXiaomi) return model;
+  if (!isZai && !isXiaomi && !isMoonshot) return model;
 
   const openaiModel = safeModel as Model<"openai-completions">;
   const compat = openaiModel.compat ?? undefined;
