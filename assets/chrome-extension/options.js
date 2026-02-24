@@ -39,17 +39,21 @@ async function checkRelayReachable(port) {
 }
 
 async function load() {
-  const stored = await chrome.storage.local.get(['relayPort'])
+  const stored = await chrome.storage.local.get(['relayPort', 'gatewayToken'])
   const port = clampPort(stored.relayPort)
   document.getElementById('port').value = String(port)
   updateRelayUrl(port)
+  const tokenEl = document.getElementById('gateway-token')
+  if (tokenEl) tokenEl.value = String(stored.gatewayToken || '')
   await checkRelayReachable(port)
 }
 
 async function save() {
   const input = document.getElementById('port')
   const port = clampPort(input.value)
-  await chrome.storage.local.set({ relayPort: port })
+  const tokenEl = document.getElementById('gateway-token')
+  const gatewayToken = tokenEl ? String(tokenEl.value || '').trim() : ''
+  await chrome.storage.local.set({ relayPort: port, gatewayToken })
   input.value = String(port)
   updateRelayUrl(port)
   await checkRelayReachable(port)

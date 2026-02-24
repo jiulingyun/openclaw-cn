@@ -107,6 +107,13 @@ async function waitForListMatch<T>(
   }
 }
 
+function waitForError(ws: WebSocket): Promise<Error> {
+  return new Promise<Error>((resolve) => {
+    ws.once("error", (err) => resolve(err instanceof Error ? err : new Error(String(err))));
+    ws.once("close", (code) => resolve(new Error(String(code))));
+  });
+}
+
 describe("chrome extension relay server", () => {
   let cdpUrl = "";
 
@@ -247,6 +254,43 @@ describe("chrome extension relay server", () => {
     cdp.close();
     ext.close();
   }, 15_000);
+
+  it("rejects a second live extension connection with 409", async () => {
+    const port = await getFreePort();
+    cdpUrl = `http://127.0.0.1:${port}`;
+    await ensureChromeExtensionRelayServer({ cdpUrl });
+
+    const ext1 = new WebSocket(`ws://127.0.0.1:${port}/extension`);
+    await waitForOpen(ext1);
+
+    const ext2 = new WebSocket(`ws://127.0.0.1:${port}/extension`);
+    const err = await waitForError(ext2);
+    expect(err.message).toContain("409");
+
+    ext1.close();
+  });
+
+  it("allows immediate reconnect when prior extension socket is closing", async () => {
+    const port = await getFreePort();
+    cdpUrl = `http://127.0.0.1:${port}`;
+    await ensureChromeExtensionRelayServer({ cdpUrl });
+
+    const ext1 = new WebSocket(`ws://127.0.0.1:${port}/extension`);
+    await waitForOpen(ext1);
+    const ext1Closed = new Promise<void>((resolve) => ext1.once("close", () => resolve()));
+
+    ext1.close();
+    const ext2 = new WebSocket(`ws://127.0.0.1:${port}/extension`);
+    await waitForOpen(ext2);
+    await ext1Closed;
+
+    const status = (await fetch(`${cdpUrl}/extension/status`).then((r) => r.json())) as {
+      connected?: boolean;
+    };
+    expect(status.connected).toBe(true);
+
+    ext2.close();
+  });
 
   it("rebroadcasts attach when a session id is reused for a new target", async () => {
     const port = await getFreePort();

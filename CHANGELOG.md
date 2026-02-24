@@ -38,6 +38,9 @@ Docs: https://docs.clawd.bot
 ### 📦 上游同步
 
 - **v2026.2.17**：同步上游核心稳定性更新
+- **Browser/Relay**：修复扩展 WebSocket 仅在 `OPEN` 状态时视为已连接，允许在 `CLOSING/CLOSED` 的旧 socket 残留时重新连接，并防止旧 socket 的 message/close 处理器清除活跃 relay 状态；包含 live-duplicate `409` 拒绝和 close 后立即重连竞态的回归测试 (#15099, jiulingyun/openclaw-cn#18698, jiulingyun/openclaw-cn#20688)
+- **Browser/Extension Relay**：重构 MV3 worker 以在 relay 断开时保留调试器附件，通过有界 backoff+jitter 自动重连，通过 `chrome.storage.session` 持久化和恢复附件标签状态，从 `target_closed` 导航断开中恢复，防止旧 socket 处理器干扰，强制执行每标签操作锁和每请求超时，并添加生命周期保活/badge 刷新钩子 (`alarms`, `webNavigation`) (#15099, jiulingyun/openclaw-cn#6175, jiulingyun/openclaw-cn#8468, jiulingyun/openclaw-cn#9807)
+- **Browser/Remote CDP**：扩展旧目标恢复逻辑，使 `ensureTabAvailable()` 现在对远程 CDP 配置文件也重用唯一可用的标签（与扩展配置文件行为一致），同时在存在多个标签时保留严格的 `tab not found` 错误；包含远程配置文件回归测试 (#15989)
 
 ### 📝 文档更新
 

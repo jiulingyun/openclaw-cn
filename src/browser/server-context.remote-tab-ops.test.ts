@@ -149,6 +149,77 @@ describe("browser server-context remote profile tab operations", () => {
     expect(second.targetId).toBe("A");
   });
 
+  it("falls back to the only tab for remote profiles when targetId is stale", async () => {
+    vi.resetModules();
+    const responses = [
+      [{ targetId: "T1", title: "Tab 1", url: "https://example.com", type: "page" }],
+      [{ targetId: "T1", title: "Tab 1", url: "https://example.com", type: "page" }],
+    ];
+    const listPagesViaPlaywright = vi.fn(async () => {
+      const next = responses.shift();
+      if (!next) {
+        throw new Error("no more responses");
+      }
+      return next;
+    });
+
+    vi.doMock("./pw-ai.js", () => ({
+      listPagesViaPlaywright,
+    }));
+
+    const fetchMock = vi.fn(async () => {
+      throw new Error("unexpected fetch");
+    });
+    // @ts-expect-error test override
+    global.fetch = fetchMock;
+
+    const { createBrowserRouteContext } = await import("./server-context.js");
+    const state = makeState("remote");
+    const ctx = createBrowserRouteContext({ getState: () => state });
+    const remote = ctx.forProfile("remote");
+
+    const chosen = await remote.ensureTabAvailable("STALE_TARGET");
+    expect(chosen.targetId).toBe("T1");
+  });
+
+  it("keeps rejecting stale targetId for remote profiles when multiple tabs exist", async () => {
+    vi.resetModules();
+    const responses = [
+      [
+        { targetId: "A", title: "A", url: "https://a.example", type: "page" },
+        { targetId: "B", title: "B", url: "https://b.example", type: "page" },
+      ],
+      [
+        { targetId: "A", title: "A", url: "https://a.example", type: "page" },
+        { targetId: "B", title: "B", url: "https://b.example", type: "page" },
+      ],
+    ];
+    const listPagesViaPlaywright = vi.fn(async () => {
+      const next = responses.shift();
+      if (!next) {
+        throw new Error("no more responses");
+      }
+      return next;
+    });
+
+    vi.doMock("./pw-ai.js", () => ({
+      listPagesViaPlaywright,
+    }));
+
+    const fetchMock = vi.fn(async () => {
+      throw new Error("unexpected fetch");
+    });
+    // @ts-expect-error test override
+    global.fetch = fetchMock;
+
+    const { createBrowserRouteContext } = await import("./server-context.js");
+    const state = makeState("remote");
+    const ctx = createBrowserRouteContext({ getState: () => state });
+    const remote = ctx.forProfile("remote");
+
+    await expect(remote.ensureTabAvailable("STALE_TARGET")).rejects.toThrow(/tab not found/i);
+  });
+
   it("uses Playwright focus for remote profiles when available", async () => {
     vi.resetModules();
     const listPagesViaPlaywright = vi.fn(async () => [

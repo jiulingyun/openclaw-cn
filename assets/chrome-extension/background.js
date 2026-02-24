@@ -1,3 +1,5 @@
+import { buildRelayWsUrl, isRetryableReconnectError, reconnectDelayMs } from './background-utils.js'
+
 const DEFAULT_PORT = 18792
 
 const BADGE = {
@@ -12,8 +14,6 @@ let relayWs = null
 /** @type {Promise<void>|null} */
 let relayConnectPromise = null
 
-let debuggerListenersInstalled = false
-
 let nextSession = 1
 
 /** @type {Map<number, {state:'connecting'|'connected', sessionId?:string, targetId?:string, attachOrder?:number}>} */
@@ -25,6 +25,14 @@ const childSessionToTab = new Map()
 
 /** @type {Map<number, {resolve:(v:any)=>void, reject:(e:Error)=>void}>} */
 const pending = new Map()
+
+// Per-tab operation locks prevent double-attach races.
+/** @type {Set<number>} */
+const tabOperationLocks = new Set()
+
+// Reconnect state for exponential backoff.
+let reconnectAttempt = 0
+let reconnectTimer = null
 
 function nowStack() {
   try {
@@ -42,11 +50,73 @@ async function getRelayPort() {
   return n
 }
 
+async function getGatewayToken() {
+  const stored = await chrome.storage.local.get(['gatewayToken'])
+  return String(stored.gatewayToken || '').trim() || null
+}
+
 function setBadge(tabId, kind) {
   const cfg = BADGE[kind]
   void chrome.action.setBadgeText({ tabId, text: cfg.text })
   void chrome.action.setBadgeBackgroundColor({ tabId, color: cfg.color })
   void chrome.action.setBadgeTextColor({ tabId, color: '#FFFFFF' }).catch(() => {})
+}
+
+// Persist attached tab state to survive MV3 service worker restarts.
+async function persistState() {
+  try {
+    const tabEntries = []
+    for (const [tabId, tab] of tabs.entries()) {
+      if (tab.state === 'connected' && tab.sessionId && tab.targetId) {
+        tabEntries.push({ tabId, sessionId: tab.sessionId, targetId: tab.targetId, attachOrder: tab.attachOrder })
+      }
+    }
+    await chrome.storage.session.set({
+      persistedTabs: tabEntries,
+      nextSession,
+    })
+  } catch {
+    // chrome.storage.session may not be available in all contexts.
+  }
+}
+
+// Rehydrate tab state on service worker startup. Fast path — just restores
+// maps and badges. Relay reconnect happens separately in background.
+async function rehydrateState() {
+  try {
+    const stored = await chrome.storage.session.get(['persistedTabs', 'nextSession'])
+    if (stored.nextSession) {
+      nextSession = Math.max(nextSession, stored.nextSession)
+    }
+    const entries = stored.persistedTabs || []
+    // Phase 1: optimistically restore state and badges.
+    for (const entry of entries) {
+      tabs.set(entry.tabId, {
+        state: 'connected',
+        sessionId: entry.sessionId,
+        targetId: entry.targetId,
+        attachOrder: entry.attachOrder,
+      })
+      tabBySession.set(entry.sessionId, entry.tabId)
+      setBadge(entry.tabId, 'on')
+    }
+    // Phase 2: validate asynchronously, remove dead tabs.
+    for (const entry of entries) {
+      try {
+        await chrome.tabs.get(entry.tabId)
+        await chrome.debugger.sendCommand({ tabId: entry.tabId }, 'Runtime.evaluate', {
+          expression: '1', // lightweight probe to verify the debugger attachment is still active
+          returnByValue: true,
+        })
+      } catch {
+        tabs.delete(entry.tabId)
+        tabBySession.delete(entry.sessionId)
+        setBadge(entry.tabId, 'off')
+      }
+    }
+  } catch {
+    // Ignore rehydration errors.
+  }
 }
 
 async function ensureRelayConnection() {
@@ -55,8 +125,9 @@ async function ensureRelayConnection() {
 
   relayConnectPromise = (async () => {
     const port = await getRelayPort()
+    const gatewayToken = await getGatewayToken()
     const httpBase = `http://127.0.0.1:${port}`
-    const wsUrl = `ws://127.0.0.1:${port}/extension`
+    const wsUrl = buildRelayWsUrl(port, gatewayToken)
 
     // Fast preflight: is the relay server up?
     try {
@@ -84,14 +155,19 @@ async function ensureRelayConnection() {
       }
     })
 
-    ws.onmessage = (event) => void onRelayMessage(String(event.data || ''))
-    ws.onclose = () => onRelayClosed('closed')
-    ws.onerror = () => onRelayClosed('error')
-
-    if (!debuggerListenersInstalled) {
-      debuggerListenersInstalled = true
-      chrome.debugger.onEvent.addListener(onDebuggerEvent)
-      chrome.debugger.onDetach.addListener(onDebuggerDetach)
+    // Bind permanent handlers. Guard against stale socket: if this WS was
+    // replaced before its close fires, the handler is a no-op.
+    ws.onmessage = (event) => {
+      if (ws !== relayWs) return
+      void onRelayMessage(String(event.data || ''))
+    }
+    ws.onclose = () => {
+      if (ws !== relayWs) return
+      onRelayClosed('closed')
+    }
+    ws.onerror = () => {
+      if (ws !== relayWs) return
+      onRelayClosed('error')
     }
   })()
 
@@ -120,6 +196,21 @@ function onRelayClosed(reason) {
   tabs.clear()
   tabBySession.clear()
   childSessionToTab.clear()
+
+  // Schedule auto-reconnect with bounded backoff.
+  if (reconnectTimer) return
+  const delay = reconnectDelayMs(reconnectAttempt++)
+  reconnectTimer = setTimeout(async () => {
+    reconnectTimer = null
+    try {
+      await ensureRelayConnection()
+      reconnectAttempt = 0
+    } catch (err) {
+      if (!isRetryableReconnectError(err)) {
+        reconnectAttempt = 0
+      }
+    }
+  }, delay)
 }
 
 function sendToRelay(payload) {
@@ -243,6 +334,7 @@ async function attachTab(tabId, opts = {}) {
   }
 
   setBadge(tabId, 'on')
+  void persistState()
   return { sessionId, targetId }
 }
 
@@ -436,3 +528,10 @@ chrome.runtime.onInstalled.addListener(() => {
   // Useful: first-time instructions.
   void chrome.runtime.openOptionsPage()
 })
+
+// Register debugger listeners once at startup (not on each reconnect).
+chrome.debugger.onEvent.addListener(onDebuggerEvent)
+chrome.debugger.onDetach.addListener(onDebuggerDetach)
+
+// Rehydrate persisted tab state on service worker startup.
+void rehydrateState()

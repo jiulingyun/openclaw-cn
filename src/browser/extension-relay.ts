@@ -163,6 +163,7 @@ export async function ensureChromeExtensionRelayServer(opts: {
   let extensionWs: WebSocket | null = null;
   const cdpClients = new Set<WebSocket>();
   const connectedTargets = new Map<string, ConnectedTarget>();
+  const extensionConnected = () => extensionWs?.readyState === WebSocket.OPEN;
 
   const pendingExtension = new Map<
     number,
@@ -305,7 +306,7 @@ export async function ensureChromeExtensionRelayServer(opts: {
 
     if (path === "/extension/status") {
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ connected: Boolean(extensionWs) }));
+      res.end(JSON.stringify({ connected: extensionConnected() }));
       return;
     }
 
@@ -322,7 +323,7 @@ export async function ensureChromeExtensionRelayServer(opts: {
         "Protocol-Version": "1.3",
       };
       // Only advertise the WS URL if a real extension is connected.
-      if (extensionWs) payload.webSocketDebuggerUrl = cdpWsUrl;
+      if (extensionConnected()) payload.webSocketDebuggerUrl = cdpWsUrl;
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify(payload));
       return;
@@ -410,7 +411,7 @@ export async function ensureChromeExtensionRelayServer(opts: {
     }
 
     if (pathname === "/extension") {
-      if (extensionWs) {
+      if (extensionConnected()) {
         rejectUpgrade(socket, 409, "Extension already connected");
         return;
       }
@@ -529,6 +530,7 @@ export async function ensureChromeExtensionRelayServer(opts: {
     });
 
     ws.on("close", () => {
+      if (ws !== extensionWs) return;
       clearInterval(ping);
       extensionWs = null;
       for (const [, pending] of pendingExtension) {
