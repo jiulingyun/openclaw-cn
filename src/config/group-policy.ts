@@ -19,6 +19,85 @@ export type ChannelGroupPolicy = {
 
 type ChannelGroups = Record<string, ChannelGroupConfig>;
 
+type ToolsBySenderKeyField = "id" | "e164" | "username" | "name";
+
+const TOOLS_BY_SENDER_KEY_FIELDS = new Set<ToolsBySenderKeyField>([
+  "id",
+  "e164",
+  "username",
+  "name",
+]);
+
+function parseToolsBySenderKey(
+  key: string,
+): { field: ToolsBySenderKeyField; value: string } | null {
+  const separatorIndex = key.indexOf(":");
+  if (separatorIndex <= 0) {
+    return null;
+  }
+  const fieldRaw = key.slice(0, separatorIndex).trim().toLowerCase();
+  if (!TOOLS_BY_SENDER_KEY_FIELDS.has(fieldRaw as ToolsBySenderKeyField)) {
+    return null;
+  }
+  const value = key.slice(separatorIndex + 1);
+  if (!value) {
+    return null;
+  }
+  return { field: fieldRaw as ToolsBySenderKeyField, value };
+}
+
+/**
+ * Resolve a per-sender tool policy from a toolsBySender map.
+ *
+ * Keys should use explicit type prefixes (`id:`, `e164:`, `username:`, `name:`).
+ * Legacy unprefixed keys are still accepted and matched as `id:` only (deprecated).
+ * Use `"*"` as a wildcard fallback.
+ */
+export function resolveToolsBySender(params: {
+  toolsBySender: Record<string, GroupToolPolicyConfig>;
+  senderId?: string;
+  senderE164?: string;
+  senderUsername?: string;
+  senderName?: string;
+}): GroupToolPolicyConfig | undefined {
+  const { toolsBySender, senderId, senderE164, senderUsername, senderName } = params;
+  for (const [key, policy] of Object.entries(toolsBySender)) {
+    if (key === "*") continue;
+    const explicit = parseToolsBySenderKey(key);
+    if (explicit) {
+      // Typed key: match only against the named field
+      let fieldValue: string | undefined;
+      switch (explicit.field) {
+        case "id":
+          fieldValue = senderId;
+          break;
+        case "e164":
+          fieldValue = senderE164;
+          break;
+        case "username":
+          fieldValue = senderUsername;
+          break;
+        case "name":
+          fieldValue = senderName;
+          break;
+      }
+      if (fieldValue !== undefined && fieldValue === explicit.value) {
+        return policy;
+      }
+    } else {
+      // Legacy untyped key: deprecated — match as senderId only
+      process.emitWarning(
+        `toolsBySender key "${key}" is untyped; use "id:${key}" for explicit ID matching. Untyped keys will be removed in a future release.`,
+        "DeprecationWarning",
+      );
+      if (senderId !== undefined && senderId === key) {
+        return policy;
+      }
+    }
+  }
+  return toolsBySender["*"];
+}
+
 function resolveChannelGroups(
   cfg: ClawdbotConfig,
   channel: GroupPolicyChannel,

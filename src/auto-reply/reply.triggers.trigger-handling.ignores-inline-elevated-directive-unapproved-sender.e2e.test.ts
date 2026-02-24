@@ -148,7 +148,7 @@ describe("trigger handling", () => {
             workspace: join(home, "clawd"),
           },
         },
-        tools: { elevated: { allowFrom: { discord: ["steipete"] } } },
+        tools: { elevated: { allowFrom: { discord: ["123"] } } },
         session: { store: join(home, "sessions.json") },
       };
 
