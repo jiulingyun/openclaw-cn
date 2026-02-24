@@ -1095,7 +1095,7 @@ describe("security audit", () => {
     }
   });
 
-  it("flags plugins with dangerous code patterns (deep audit)", async () => {
+  it("does not scan plugin code safety findings when deep audit is disabled", async () => {
     const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-audit-scanner-"));
     const pluginDir = path.join(tmpDir, "extensions", "evil-plugin");
     await fs.mkdir(path.join(pluginDir, ".hidden"), { recursive: true });
@@ -1121,19 +1121,7 @@ describe("security audit", () => {
     });
     expect(nonDeepRes.findings.some((f) => f.checkId === "plugins.code_safety")).toBe(false);
 
-    const deepRes = await runSecurityAudit({
-      config: cfg,
-      includeFilesystem: true,
-      includeChannelSecurity: false,
-      deep: true,
-      stateDir: tmpDir,
-    });
-
-    expect(
-      deepRes.findings.some(
-        (f) => f.checkId === "plugins.code_safety" && f.severity === "critical",
-      ),
-    ).toBe(true);
+    // Deep-mode positive coverage lives in the detailed plugin+skills code-safety test below.
 
     await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => undefined);
   });

@@ -129,6 +129,59 @@ function resolveExecAsk(value?: string): ExecAsk {
   return value === "off" || value === "on-miss" || value === "always" ? value : "on-miss";
 }
 
+// Known dispatch wrappers that modify scheduling/env but delegate to an inner command.
+// When allow-always persists an allowlist entry for these, persist the inner command path
+// instead of the wrapper path to prevent wrapper-path approval bypasses (security hardening).
+const DISPATCH_WRAPPERS = new Set(["env", "nice", "nohup", "stdbuf", "timeout"]);
+
+// Options that take a value argument for each known dispatch wrapper.
+const DISPATCH_WRAPPER_VALUE_OPTIONS: Record<string, Set<string>> = {
+  nice: new Set(["-n", "--adjustment", "--priority"]),
+  stdbuf: new Set(["-i", "--input", "-o", "--output", "-e", "--error"]),
+  timeout: new Set(["-k", "--kill-after", "-s", "--signal"]),
+  env: new Set([]),
+};
+
+function isAbsolutePath(p: string): boolean {
+  return p.startsWith("/") || /^[A-Za-z]:\\/i.test(p);
+}
+
+function resolveAllowAlwaysPattern(segment: ExecCommandSegment): string | null {
+  const rawExe = segment.resolution?.executableName ?? path.basename(segment.argv[0] ?? "");
+  const baseName = path.basename(rawExe).toLowerCase().replace(/\.exe$/i, "");
+  if (!DISPATCH_WRAPPERS.has(baseName)) {
+    return segment.resolution?.resolvedPath ?? null;
+  }
+  // For known dispatch wrappers, find the inner command by skipping wrapper-specific options.
+  // Fail closed (return null) if we can't safely determine the inner command.
+  const argv = segment.argv;
+  const valueOpts = DISPATCH_WRAPPER_VALUE_OPTIONS[baseName] ?? new Set<string>();
+  for (let i = 1; i < argv.length; i += 1) {
+    const token = argv[i];
+    if (!token) continue;
+    if (token === "--") {
+      // Inner command explicitly follows after --
+      const inner = argv[i + 1];
+      // Only accept absolute paths to avoid allowlist pollution
+      return inner && isAbsolutePath(inner) ? inner : null;
+    }
+    if (!token.startsWith("-")) {
+      // Only accept absolute paths to avoid allowlist pollution
+      return isAbsolutePath(token) ? token : null;
+    }
+    // Skip the value for options known to take one (short form: -X value, long form: --x=value)
+    if (!token.includes("=")) {
+      const shortFlag = token.length === 2 ? token : null;
+      const longMatch = token.match(/^(--[a-zA-Z_-]+)$/);
+      const flagKey = shortFlag ?? longMatch?.[1];
+      if (flagKey && valueOpts.has(flagKey)) {
+        i += 1; // skip the value argument
+      }
+    }
+  }
+  return null; // fail closed: could not safely determine inner command
+}
+
 type ExecEventPayload = {
   sessionKey: string;
   runId: string;
@@ -1009,7 +1062,7 @@ async function handleInvoke(
   if (approvalDecision === "allow-always" && security === "allowlist") {
     if (analysisOk) {
       for (const segment of segments) {
-        const pattern = segment.resolution?.resolvedPath ?? "";
+        const pattern = resolveAllowAlwaysPattern(segment);
         if (pattern) addAllowlistEntry(approvals.file, agentId, pattern);
       }
     }

@@ -11,7 +11,7 @@ import { ParentBasedSampler, TraceIdRatioBasedSampler } from "@opentelemetry/sdk
 import { SemanticResourceAttributes } from "@opentelemetry/semantic-conventions";
 
 import type { ClawdbotPluginService, DiagnosticEventPayload } from "openclaw-cn/plugin-sdk";
-import { onDiagnosticEvent, registerLogTransport } from "openclaw-cn/plugin-sdk";
+import { onDiagnosticEvent, redactSensitiveText, registerLogTransport } from "openclaw-cn/plugin-sdk";
 
 const DEFAULT_SERVICE_NAME = "clawdbot";
 
@@ -30,6 +30,14 @@ function resolveSampleRate(value: number | undefined): number | undefined {
   if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
   if (value < 0 || value > 1) return undefined;
   return value;
+}
+
+function redactOtelAttributes(attributes: Record<string, string | number | boolean>) {
+  const redactedAttributes: Record<string, string | number | boolean> = {};
+  for (const [key, value] of Object.entries(attributes)) {
+    redactedAttributes[key] = typeof value === "string" ? redactSensitiveText(value) : value;
+  }
+  return redactedAttributes;
 }
 
 export function createDiagnosticsOtelService(): ClawdbotPluginService {
@@ -290,11 +298,12 @@ export function createDiagnosticsOtelService(): ClawdbotPluginService {
             attributes["clawdbot.code.location"] = meta.path.filePathWithLine;
           }
 
+          // OTLP can leave the host boundary, so redact string fields before export.
           otelLogger.emit({
-            body: message,
+            body: redactSensitiveText(message),
             severityText: logLevelName,
             severityNumber,
-            attributes,
+            attributes: redactOtelAttributes(attributes),
             timestamp: meta?.date ?? new Date(),
           });
         });
@@ -397,15 +406,16 @@ export function createDiagnosticsOtelService(): ClawdbotPluginService {
         };
         webhookErrorCounter.add(1, attrs);
         if (!tracesEnabled) return;
+        const redactedError = redactSensitiveText(evt.error);
         const spanAttrs: Record<string, string | number> = {
           ...attrs,
-          "clawdbot.error": evt.error,
+          "clawdbot.error": redactedError,
         };
         if (evt.chatId !== undefined) spanAttrs["clawdbot.chatId"] = String(evt.chatId);
         const span = tracer.startSpan("clawdbot.webhook.error", {
           attributes: spanAttrs,
         });
-        span.setStatus({ code: SpanStatusCode.ERROR, message: evt.error });
+        span.setStatus({ code: SpanStatusCode.ERROR, message: redactedError });
         span.end();
       };
 
@@ -439,10 +449,13 @@ export function createDiagnosticsOtelService(): ClawdbotPluginService {
         if (evt.sessionId) spanAttrs["clawdbot.sessionId"] = evt.sessionId;
         if (evt.chatId !== undefined) spanAttrs["clawdbot.chatId"] = String(evt.chatId);
         if (evt.messageId !== undefined) spanAttrs["clawdbot.messageId"] = String(evt.messageId);
-        if (evt.reason) spanAttrs["clawdbot.reason"] = evt.reason;
+        if (evt.reason) spanAttrs["clawdbot.reason"] = redactSensitiveText(evt.reason);
         const span = spanWithDuration("clawdbot.message.processed", spanAttrs, evt.durationMs);
         if (evt.outcome === "error") {
-          span.setStatus({ code: SpanStatusCode.ERROR, message: evt.error });
+          span.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: evt.error ? redactSensitiveText(evt.error) : undefined,
+          });
         }
         span.end();
       };
@@ -470,7 +483,7 @@ export function createDiagnosticsOtelService(): ClawdbotPluginService {
         evt: Extract<DiagnosticEventPayload, { type: "session.state" }>,
       ) => {
         const attrs: Record<string, string> = { "clawdbot.state": evt.state };
-        if (evt.reason) attrs["clawdbot.reason"] = evt.reason;
+        if (evt.reason) attrs["clawdbot.reason"] = redactSensitiveText(evt.reason);
         sessionStateCounter.add(1, attrs);
       };
 

@@ -217,4 +217,91 @@ describe("diagnostics-otel service", () => {
 
     await service.stop?.();
   });
+
+  test("redacts sensitive data from log messages before export", async () => {
+    const registeredTransports: Array<(logObj: Record<string, unknown>) => void> = [];
+    const stopTransport = vi.fn();
+    registerLogTransportMock.mockImplementation((transport) => {
+      registeredTransports.push(transport);
+      return stopTransport;
+    });
+
+    const service = createDiagnosticsOtelService();
+    await service.start({
+      config: {
+        diagnostics: {
+          enabled: true,
+          otel: {
+            enabled: true,
+            endpoint: "http://otel-collector:4318",
+            protocol: "http/protobuf",
+            logs: true,
+          },
+        },
+      },
+      logger: {
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+        debug: vi.fn(),
+      },
+    });
+    expect(registeredTransports).toHaveLength(1);
+    registeredTransports[0]?.({
+      0: "Using API key sk-1234567890abcdef1234567890abcdef",
+      _meta: { logLevelName: "INFO", date: new Date() },
+    });
+
+    expect(logEmit).toHaveBeenCalled();
+    const emitCall = logEmit.mock.calls[0]?.[0];
+    expect(emitCall?.body).not.toContain("sk-1234567890abcdef1234567890abcdef");
+    expect(emitCall?.body).toContain("sk-123");
+    expect(emitCall?.body).toContain("…");
+    await service.stop?.();
+  });
+
+  test("redacts sensitive data from log attributes before export", async () => {
+    const registeredTransports: Array<(logObj: Record<string, unknown>) => void> = [];
+    const stopTransport = vi.fn();
+    registerLogTransportMock.mockImplementation((transport) => {
+      registeredTransports.push(transport);
+      return stopTransport;
+    });
+
+    const service = createDiagnosticsOtelService();
+    await service.start({
+      config: {
+        diagnostics: {
+          enabled: true,
+          otel: {
+            enabled: true,
+            endpoint: "http://otel-collector:4318",
+            protocol: "http/protobuf",
+            logs: true,
+          },
+        },
+      },
+      logger: {
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+        debug: vi.fn(),
+      },
+    });
+    expect(registeredTransports).toHaveLength(1);
+    registeredTransports[0]?.({
+      0: '{"token":"ghp_abcdefghijklmnopqrstuvwxyz123456"}',
+      1: "auth configured",
+      _meta: { logLevelName: "DEBUG", date: new Date() },
+    });
+
+    expect(logEmit).toHaveBeenCalled();
+    const emitCall = logEmit.mock.calls[0]?.[0];
+    expect(emitCall?.body).toBe("auth configured");
+    expect(emitCall?.attributes?.["clawdbot.token"]).toBeDefined();
+    expect(String(emitCall?.attributes?.["clawdbot.token"] ?? "")).not.toContain(
+      "ghp_abcdefghijklmnopqrstuvwxyz123456",
+    );
+    await service.stop?.();
+  });
 });
