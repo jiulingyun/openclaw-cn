@@ -1,6 +1,7 @@
 # Repository Guidelines
 - Repo: https://github.com/clawdbot/clawdbot
 - GitHub issues/comments/PR comments: use literal multiline strings or `-F - <<'EOF'` (or $'...') for real newlines; never embed "\\n".
+- 安全公告分析：在进行分类/严重性判断之前，请先阅读 `SECURITY.md`，以对齐 OpenClaw 的信任模型和设计边界。
 
 ## Project Structure & Module Organization
 - Source code: `src/` (CLI wiring in `src/cli`, commands in `src/commands`, web provider in `src/provider-web.ts`, infra in `src/infra`, media pipeline in `src/media`).
