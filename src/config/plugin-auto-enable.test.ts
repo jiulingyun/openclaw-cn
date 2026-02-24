@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { applyPluginAutoEnable } from "./plugin-auto-enable.js";
 
 describe("applyPluginAutoEnable", () => {
-  it("enables configured channel plugins and updates allowlist", () => {
+  it("auto-enables built-in channels and appends to existing allowlist", () => {
     const result = applyPluginAutoEnable({
       config: {
         channels: { slack: { botToken: "x" } },
@@ -11,9 +11,22 @@ describe("applyPluginAutoEnable", () => {
       env: {},
     });
 
-    expect(result.config.plugins?.entries?.slack?.enabled).toBe(true);
+    expect(result.config.channels?.slack?.enabled).toBe(true);
+    expect(result.config.plugins?.entries?.slack).toBeUndefined();
     expect(result.config.plugins?.allow).toEqual(["telegram", "slack"]);
     expect(result.changes.join("\n")).toContain("Slack configured, not enabled yet.");
+  });
+
+  it("does not create plugins.allow when allowlist is unset", () => {
+    const result = applyPluginAutoEnable({
+      config: {
+        channels: { slack: { botToken: "x" } },
+      },
+      env: {},
+    });
+
+    expect(result.config.channels?.slack?.enabled).toBe(true);
+    expect(result.config.plugins?.allow).toBeUndefined();
   });
 
   it("respects explicit disable", () => {
@@ -26,6 +39,19 @@ describe("applyPluginAutoEnable", () => {
     });
 
     expect(result.config.plugins?.entries?.slack?.enabled).toBe(false);
+    expect(result.changes).toEqual([]);
+  });
+
+  it("respects built-in channel explicit disable via channels.<id>.enabled", () => {
+    const result = applyPluginAutoEnable({
+      config: {
+        channels: { slack: { botToken: "x", enabled: false } },
+      },
+      env: {},
+    });
+
+    expect(result.config.channels?.slack?.enabled).toBe(false);
+    expect(result.config.plugins?.entries?.slack).toBeUndefined();
     expect(result.changes).toEqual([]);
   });
 
@@ -72,10 +98,11 @@ describe("applyPluginAutoEnable", () => {
         env: {},
       });
 
+      // bluebubbles is a plugin channel: enable state lives in plugins.entries
       expect(result.config.plugins?.entries?.bluebubbles?.enabled).toBe(true);
+      // imessage is a built-in channel: enable state lives in channels, not plugins.entries
       expect(result.config.plugins?.entries?.imessage?.enabled).toBeUndefined();
       expect(result.changes.join("\n")).toContain("bluebubbles configured, not enabled yet.");
-      expect(result.changes.join("\n")).not.toContain("iMessage configured, not enabled yet.");
     });
 
     it("keeps imessage enabled if already explicitly enabled (non-destructive)", () => {
@@ -107,7 +134,7 @@ describe("applyPluginAutoEnable", () => {
       });
 
       expect(result.config.plugins?.entries?.bluebubbles?.enabled).toBe(false);
-      expect(result.config.plugins?.entries?.imessage?.enabled).toBe(true);
+      expect(result.config.channels?.imessage?.enabled).toBe(true);
       expect(result.changes.join("\n")).toContain("iMessage configured, not enabled yet.");
     });
 
@@ -124,7 +151,7 @@ describe("applyPluginAutoEnable", () => {
       });
 
       expect(result.config.plugins?.entries?.bluebubbles?.enabled).toBeUndefined();
-      expect(result.config.plugins?.entries?.imessage?.enabled).toBe(true);
+      expect(result.config.channels?.imessage?.enabled).toBe(true);
     });
 
     it("enables imessage normally when only imessage is configured", () => {
@@ -135,7 +162,7 @@ describe("applyPluginAutoEnable", () => {
         env: {},
       });
 
-      expect(result.config.plugins?.entries?.imessage?.enabled).toBe(true);
+      expect(result.config.channels?.imessage?.enabled).toBe(true);
       expect(result.changes.join("\n")).toContain("iMessage configured, not enabled yet.");
     });
   });

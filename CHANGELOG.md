@@ -19,6 +19,10 @@ Docs: https://docs.clawd.bot
 
 ### 🐛 Bug 修复
 
+- **Config/写入不可变性**：修复 `config set/unset` 在写入时意外修改已加载配置对象的问题，现在操作前会深度克隆配置，并正确传递环境变量快照，避免 TOCTOU 问题。(upstream f208518cb9e5)
+- **Config/群组策略**：修复 `groupPolicy: "allowlist"` 未设置 `groups` 时应禁止所有群组（fail closed），以及 `groupPolicy: "disabled"` 应强制屏蔽所有群组的问题；同时支持账户级别 `groupPolicy` 覆盖。(upstream 0932adf361b1)
+- **Config/内置频道启用**：修复内置频道（telegram/whatsapp/discord 等）的启用状态现写入 `channels.<id>.enabled`（而非 `plugins.entries.<id>`），避免 `plugins.entries.telegram: plugin not found` 验证错误。(upstream 8839162b97b4)
+- **Config/内置频道允许列表**：当 `plugins.allow` 已配置时，自动启用内置频道也会将其加入允许列表，避免被限制性插件允许列表阻止。(upstream 40680432b489)
 - **Context 显示修复**：修复 `/status` 命令显示 `Context: ?/200k` 的问题，现在会显示实际 token 使用量（如 `Context: 1.5k/200k (1%)`）
   - 启用 `includeTranscriptUsage` 标志，从 session transcript 文件读取实际使用量
 - **压缩功能修复**：修复 `/compact` 命令失败的问题（`systemPromptOverride is not a function`）

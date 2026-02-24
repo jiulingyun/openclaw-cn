@@ -1,7 +1,7 @@
 import JSON5 from "json5";
 import type { Command } from "commander";
 
-import { readConfigFileSnapshot, writeConfigFile } from "../config/config.js";
+import { readConfigFileSnapshotForWrite, writeConfigFile } from "../config/config.js";
 import { danger, info } from "../globals.js";
 import { defaultRuntime } from "../runtime.js";
 import { formatDocsLink } from "../terminal/links.js";
@@ -167,15 +167,15 @@ function unsetAtPath(root: Record<string, unknown>, path: PathSegment[]): boolea
 }
 
 async function loadValidConfig() {
-  const snapshot = await readConfigFileSnapshot();
-  if (snapshot.valid) return snapshot;
+  const { snapshot, writeOptions } = await readConfigFileSnapshotForWrite();
+  if (snapshot.valid) return { snapshot, writeOptions };
   defaultRuntime.error(`Config invalid at ${shortenHomePath(snapshot.path)}.`);
   for (const issue of snapshot.issues) {
     defaultRuntime.error(`- ${issue.path || "<root>"}: ${issue.message}`);
   }
   defaultRuntime.error(`Run \`${formatCliCommand("openclaw-cn doctor")}\` to repair, then retry.`);
   defaultRuntime.exit(1);
-  return snapshot;
+  return { snapshot, writeOptions };
 }
 
 export function registerConfigCli(program: Command) {
@@ -229,7 +229,7 @@ export function registerConfigCli(program: Command) {
         if (parsedPath.length === 0) {
           throw new Error("Path is empty.");
         }
-        const snapshot = await loadValidConfig();
+        const { snapshot } = await loadValidConfig();
         const res = getAtPath(snapshot.config, parsedPath);
         if (!res.found) {
           defaultRuntime.error(danger(`Config path not found: ${path}`));
@@ -266,10 +266,10 @@ export function registerConfigCli(program: Command) {
         const parsedPath = parsePath(path);
         if (parsedPath.length === 0) throw new Error("Path is empty.");
         const parsedValue = parseValue(value, opts);
-        const snapshot = await loadValidConfig();
-        const next = snapshot.config as Record<string, unknown>;
+        const { snapshot, writeOptions } = await loadValidConfig();
+        const next = structuredClone(snapshot.config) as Record<string, unknown>;
         setAtPath(next, parsedPath, parsedValue);
-        await writeConfigFile(next);
+        await writeConfigFile(next, writeOptions);
         defaultRuntime.log(info(`Updated ${path}. Restart the gateway to apply.`));
       } catch (err) {
         defaultRuntime.error(danger(String(err)));
@@ -285,15 +285,15 @@ export function registerConfigCli(program: Command) {
       try {
         const parsedPath = parsePath(path);
         if (parsedPath.length === 0) throw new Error("Path is empty.");
-        const snapshot = await loadValidConfig();
-        const next = snapshot.config as Record<string, unknown>;
+        const { snapshot, writeOptions } = await loadValidConfig();
+        const next = structuredClone(snapshot.config) as Record<string, unknown>;
         const removed = unsetAtPath(next, parsedPath);
         if (!removed) {
           defaultRuntime.error(danger(`Config path not found: ${path}`));
           defaultRuntime.exit(1);
           return;
         }
-        await writeConfigFile(next);
+        await writeConfigFile(next, writeOptions);
         defaultRuntime.log(info(`Removed ${path}. Restart the gateway to apply.`));
       } catch (err) {
         defaultRuntime.error(danger(String(err)));

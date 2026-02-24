@@ -1,4 +1,5 @@
 import type { ClawdbotConfig } from "../config/config.js";
+import { normalizeChatChannelId } from "../channels/registry.js";
 
 export type PluginEnableResult = {
   config: ClawdbotConfig;
@@ -24,6 +25,29 @@ export function enablePluginInConfig(cfg: ClawdbotConfig, pluginId: string): Plu
   }
   if (cfg.plugins?.deny?.includes(pluginId)) {
     return { config: cfg, enabled: false, reason: "blocked by denylist" };
+  }
+
+  const resolvedId = pluginId;
+  const builtInChannelId = normalizeChatChannelId(resolvedId);
+  if (builtInChannelId) {
+    const channels = cfg.channels as Record<string, unknown> | undefined;
+    const existing = channels?.[builtInChannelId];
+    const existingRecord =
+      existing && typeof existing === "object" && !Array.isArray(existing)
+        ? (existing as Record<string, unknown>)
+        : {};
+    let next: ClawdbotConfig = {
+      ...cfg,
+      channels: {
+        ...cfg.channels,
+        [builtInChannelId]: {
+          ...existingRecord,
+          enabled: true,
+        },
+      },
+    };
+    next = ensureAllowlisted(next, resolvedId);
+    return { config: next, enabled: true };
   }
 
   const entries = {

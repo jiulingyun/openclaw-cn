@@ -246,8 +246,10 @@ function resolveConfiguredPlugins(
   const configuredChannels = cfg.channels as Record<string, unknown> | undefined;
   if (configuredChannels && typeof configuredChannels === "object") {
     for (const key of Object.keys(configuredChannels)) {
-      if (key === "defaults") continue;
-      channelIds.add(key);
+      if (key === "defaults" || key === "modelByChannel") {
+        continue;
+      }
+      channelIds.add(normalizeChatChannelId(key) ?? key);
     }
   }
   for (const channelId of channelIds) {
@@ -271,6 +273,19 @@ function resolveConfiguredPlugins(
 }
 
 function isPluginExplicitlyDisabled(cfg: ClawdbotConfig, pluginId: string): boolean {
+  const builtInChannelId = normalizeChatChannelId(pluginId);
+  if (builtInChannelId) {
+    const channels = cfg.channels as Record<string, unknown> | undefined;
+    const channelConfig = channels?.[builtInChannelId];
+    if (
+      channelConfig &&
+      typeof channelConfig === "object" &&
+      !Array.isArray(channelConfig) &&
+      (channelConfig as { enabled?: unknown }).enabled === false
+    ) {
+      return true;
+    }
+  }
   const entry = cfg.plugins?.entries?.[pluginId];
   return entry?.enabled === false;
 }
@@ -336,6 +351,29 @@ function enablePluginEntry(cfg: ClawdbotConfig, pluginId: string): ClawdbotConfi
   };
 }
 
+function registerPluginEntry(cfg: ClawdbotConfig, pluginId: string): ClawdbotConfig {
+  const builtInChannelId = normalizeChatChannelId(pluginId);
+  if (builtInChannelId) {
+    const channels = cfg.channels as Record<string, unknown> | undefined;
+    const existing = channels?.[builtInChannelId];
+    const existingRecord =
+      existing && typeof existing === "object" && !Array.isArray(existing)
+        ? (existing as Record<string, unknown>)
+        : {};
+    return {
+      ...cfg,
+      channels: {
+        ...cfg.channels,
+        [builtInChannelId]: {
+          ...existingRecord,
+          enabled: true,
+        },
+      },
+    };
+  }
+  return enablePluginEntry(cfg, pluginId);
+}
+
 function formatAutoEnableChange(entry: PluginEnableChange): string {
   let reason = entry.reason.trim();
   const channelId = normalizeChatChannelId(entry.pluginId);
@@ -367,12 +405,27 @@ export function applyPluginAutoEnable(params: {
     if (isPluginDenied(next, entry.pluginId)) continue;
     if (isPluginExplicitlyDisabled(next, entry.pluginId)) continue;
     if (shouldSkipPreferredPluginAutoEnable(next, entry, configured)) continue;
+    const builtInChannelId = normalizeChatChannelId(entry.pluginId);
     const allow = next.plugins?.allow;
     const allowMissing = Array.isArray(allow) && !allow.includes(entry.pluginId);
-    const alreadyEnabled = next.plugins?.entries?.[entry.pluginId]?.enabled === true;
+    const alreadyEnabled =
+      builtInChannelId != null
+        ? (() => {
+            const channels = next.channels as Record<string, unknown> | undefined;
+            const channelConfig = channels?.[builtInChannelId];
+            return (
+              channelConfig &&
+              typeof channelConfig === "object" &&
+              !Array.isArray(channelConfig) &&
+              (channelConfig as { enabled?: unknown }).enabled === true
+            );
+          })()
+        : next.plugins?.entries?.[entry.pluginId]?.enabled === true;
     if (alreadyEnabled && !allowMissing) continue;
-    next = enablePluginEntry(next, entry.pluginId);
-    next = ensureAllowlisted(next, entry.pluginId);
+    next = registerPluginEntry(next, entry.pluginId);
+    if (allowMissing || !builtInChannelId) {
+      next = ensureAllowlisted(next, entry.pluginId);
+    }
     changes.push(formatAutoEnableChange(entry));
   }
 
