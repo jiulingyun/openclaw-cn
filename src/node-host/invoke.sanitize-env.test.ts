@@ -45,6 +45,33 @@ describe("node-host sanitizeEnv", () => {
       }
     }
   });
+
+  it("blocks dangerous override-only env keys", () => {
+    const prevHome = process.env.HOME;
+    const prevZdotdir = process.env.ZDOTDIR;
+    try {
+      process.env.HOME = "/Users/trusted";
+      process.env.ZDOTDIR = "/Users/trusted/.zdot";
+      const env =
+        sanitizeEnv({
+          HOME: "/tmp/evil-home",
+          ZDOTDIR: "/tmp/evil-zdotdir",
+        }) ?? {};
+      expect(env.HOME).toBe("/Users/trusted");
+      expect(env.ZDOTDIR).toBe("/Users/trusted/.zdot");
+    } finally {
+      if (prevHome === undefined) {
+        delete process.env.HOME;
+      } else {
+        process.env.HOME = prevHome;
+      }
+      if (prevZdotdir === undefined) {
+        delete process.env.ZDOTDIR;
+      } else {
+        process.env.ZDOTDIR = prevZdotdir;
+      }
+    }
+  });
 });
 
 describe("buildNodeInvokeResultParams", () => {

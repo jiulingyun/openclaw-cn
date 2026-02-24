@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { Readable } from "node:stream";
 
 export type UrbitSseLogger = {
@@ -47,7 +48,7 @@ export class UrbitSSEClient {
     this.url = url;
     this.cookie = cookie.split(";")[0];
     this.ship = options.ship?.replace(/^~/, "") ?? this.resolveShipFromUrl(url);
-    this.channelId = `${Math.floor(Date.now() / 1000)}-${Math.random().toString(36).substring(2, 8)}`;
+    this.channelId = `${Math.floor(Date.now() / 1000)}-${crypto.randomBytes(4).toString("hex")}`;
     this.channelUrl = `${url}/~/channel/${this.channelId}`;
     this.onReconnect = options.onReconnect ?? null;
     this.autoReconnect = options.autoReconnect !== false;
@@ -319,7 +320,7 @@ export class UrbitSSEClient {
     await new Promise((resolve) => setTimeout(resolve, delay));
 
     try {
-      this.channelId = `${Math.floor(Date.now() / 1000)}-${Math.random().toString(36).substring(2, 8)}`;
+      this.channelId = `${Math.floor(Date.now() / 1000)}-${crypto.randomBytes(4).toString("hex")}`;
       this.channelUrl = `${this.url}/~/channel/${this.channelId}`;
 
       if (this.onReconnect) {

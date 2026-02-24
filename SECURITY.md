@@ -13,6 +13,17 @@ For threat model + hardening guidance (including `clawdbot security audit --deep
 
 - `https://docs.clawd.bot/gateway/security`
 
+### Gateway Control UI
+
+Clawdbot's web interface (Gateway Control UI + HTTP endpoints) is intended for **local or tailnet use**.
+- Recommended: keep the Gateway **loopback-only** (`127.0.0.1` / `::1`).
+  - Config: `gateway.bind="loopback"` (default).
+  - CLI: `clawdbot gateway run --bind loopback`.
+- `gateway.controlUi.dangerouslyDisableDeviceAuth` is intended for localhost-only break-glass use.
+  - Clawdbot keeps deployment flexibility by design and does not hard-forbid non-local setups.
+  - Non-local and other risky configurations are surfaced by `clawdbot security audit` as dangerous findings.
+  - This operator-selected tradeoff is by design and not, by itself, a security vulnerability.
+
 ## Runtime Requirements
 
 ### Node.js Version

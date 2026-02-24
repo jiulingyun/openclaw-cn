@@ -7,7 +7,14 @@ Docs: https://docs.clawd.bot
 > 🆕 **重要功能**：新增 GLM-5 模型支持，完善 Z.AI Provider 集成
 > 🐛 **关键修复**：修复 Context 显示、压缩功能、浏览器控制等核心问题
 > 🔧 **开发体验**：改进 macOS pre-commit hook 兼容性，修复 CI/CD 发布流程
-> 📡 **上游同步**：同步上游 v2026.2.17更新
+> 📡 **上游同步**：同步上游 v2026.2.23安全更新
+
+### 🔐 安全更新 (v2026.2.21→v2026.2.23)
+
+- **Security/Token**: 将 tlon 扩展的频道 ID 生成从 `Math.random()` 改为 `crypto.randomBytes`，新增集中式 `secure-random` 工具模块。
+- **Security/Gateway**: 启动时若检测到不安全/危险配置标志（包括 `gateway.controlUi.dangerouslyDisableDeviceAuth=true`），现会发出安全警告并提示运行 `clawdbot security audit`。
+- **Security/Env**: 阻止通过请求范围注入 `HOME` 和 `ZDOTDIR` 环境变量覆盖，防止 shell 启动文件在允许列表评估的命令体之前被执行。
+- **Security/Hooks**: 统一 Hook 认证速率限制逻辑，提取为共享模块 `auth-rate-limit.ts`；新增 Hook 模块加载工具 `module-loader.ts`。
 
 ### ✨ 新增功能
 

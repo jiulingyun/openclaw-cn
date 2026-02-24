@@ -168,6 +168,9 @@ const blockedEnvKeys = new Set([
   "RUBYOPT",
 ]);
 
+/** Keys that are safe in base env but must not be overridden by request-scoped env. */
+const blockedOverrideEnvKeys = new Set(["HOME", "ZDOTDIR"]);
+
 const blockedEnvPrefixes = ["DYLD_", "LD_"];
 
 class SkillBinsCache {
@@ -224,6 +227,7 @@ export function sanitizeEnv(
       continue;
     }
     if (blockedEnvKeys.has(upper)) continue;
+    if (blockedOverrideEnvKeys.has(upper)) continue;
     if (blockedEnvPrefixes.some((prefix) => upper.startsWith(prefix))) continue;
     merged[key] = value;
   }

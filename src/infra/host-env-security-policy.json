@@ -1,0 +1,19 @@
+{
+  "blockedKeys": [
+    "NODE_OPTIONS",
+    "PYTHONHOME",
+    "PYTHONPATH",
+    "PERL5LIB",
+    "PERL5OPT",
+    "RUBYOPT",
+    "RUBY_OPT",
+    "BASH_ENV",
+    "ENV",
+    "CDPATH",
+    "POSIXLY_CORRECT",
+    "IFS",
+    "SSLKEYLOGFILE"
+  ],
+  "blockedOverrideKeys": ["HOME", "ZDOTDIR"],
+  "blockedPrefixes": ["DYLD_", "LD_", "BASH_FUNC_"]
+}
