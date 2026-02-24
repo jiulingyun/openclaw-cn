@@ -19,6 +19,9 @@ Docs: https://docs.clawd.bot
 
 ### 🐛 Bug 修复
 
+- **Security/BlueBubbles**: make parsed chat allowlist checks fail closed when `allowFrom` is empty, restoring expected `pairing`/`allowlist` DM gating for BlueBubbles and blocking unauthorized DM/reaction processing when no allowlist entries are configured. Thanks @tdjackey for reporting.
+- **Security/iMessage**: make allowlist checks fail closed when `allowFrom` is empty (same fix as BlueBubbles). Thanks @tdjackey for reporting.
+- **Security/Discord**: add `openclaw security audit` warnings for name/tag-based Discord allowlist entries (DM allowlists, guild/channel `users`, and pairing-store entries), highlighting slug-collision risk while keeping name-based matching supported. Thanks @tdjackey for reporting.
 - **Context 显示修复**：修复 `/status` 命令显示 `Context: ?/200k` 的问题，现在会显示实际 token 使用量（如 `Context: 1.5k/200k (1%)`）
   - 启用 `includeTranscriptUsage` 标志，从 session transcript 文件读取实际使用量
 - **压缩功能修复**：修复 `/compact` 命令失败的问题（`systemPromptOverride is not a function`）

@@ -614,6 +614,74 @@ async function collectChannelSecurityFindings(params: {
           });
         }
       }
+
+      const discordNameBasedAllowEntries = new Set<string>();
+      const storeAllowFromDiscord = await readChannelAllowFromStore("discord").catch(() => []);
+
+      const addDiscordNameBased = (values: unknown, source: string): void => {
+        if (!Array.isArray(values)) return;
+        for (const value of values) {
+          const text = String(value).trim();
+          if (!text || text === "*") continue;
+          // Strip Discord mention syntax <@id> or <@!id>
+          const maybeId = text.replace(/^<@!?/, "").replace(/>$/, "");
+          if (/^\d+$/.test(maybeId)) continue;
+          const idPrefixes = ["discord:", "user:", "pk:"] as const;
+          const prefixed = idPrefixes.find((p) => text.startsWith(p));
+          if (prefixed) {
+            const candidate = text.slice(prefixed.length);
+            if (candidate) continue;
+          }
+          discordNameBasedAllowEntries.add(`${source}:${text}`);
+        }
+      };
+
+      addDiscordNameBased(discordCfg.allowFrom, "channels.discord.allowFrom");
+      addDiscordNameBased(
+        (discordCfg.dm as { allowFrom?: unknown } | undefined)?.allowFrom,
+        "channels.discord.dm.allowFrom",
+      );
+      addDiscordNameBased(
+        storeAllowFromDiscord,
+        "~/.openclaw/credentials/discord-allowFrom.json",
+      );
+
+      const discordGuildEntries = (discordCfg.guilds as Record<string, unknown> | undefined) ?? {};
+      for (const [guildKey, guildValue] of Object.entries(discordGuildEntries)) {
+        if (!guildValue || typeof guildValue !== "object") continue;
+        const guild = guildValue as Record<string, unknown>;
+        addDiscordNameBased(guild.users, `channels.discord.guilds.${guildKey}.users`);
+        const channels = guild.channels;
+        if (!channels || typeof channels !== "object") continue;
+        for (const [channelKey, channelValue] of Object.entries(
+          channels as Record<string, unknown>,
+        )) {
+          if (!channelValue || typeof channelValue !== "object") continue;
+          const channel = channelValue as Record<string, unknown>;
+          addDiscordNameBased(
+            channel.users,
+            `channels.discord.guilds.${guildKey}.channels.${channelKey}.users`,
+          );
+        }
+      }
+
+      if (discordNameBasedAllowEntries.size > 0) {
+        const examples = Array.from(discordNameBasedAllowEntries).slice(0, 5);
+        const more =
+          discordNameBasedAllowEntries.size > examples.length
+            ? ` (+${discordNameBasedAllowEntries.size - examples.length} more)`
+            : "";
+        findings.push({
+          checkId: "channels.discord.allowFrom.name_based_entries",
+          severity: "warn",
+          title: "Discord allowlist contains name or tag entries",
+          detail:
+            "Discord name/tag allowlist matching uses normalized slugs and can collide across users. " +
+            `Found: ${examples.join(", ")}${more}.`,
+          remediation:
+            "Prefer stable Discord IDs (or <@id>/user:<id>/pk:<id>) in channels.discord.allowFrom and channels.discord.guilds.*.users.",
+        });
+      }
     }
 
     if (plugin.id === "slack") {
