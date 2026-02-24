@@ -7,6 +7,15 @@ If you believe you've found a security issue in Clawdbot, please report it priva
 - Email: `steipete@gmail.com`
 - What to include: reproduction steps, impact assessment, and (if possible) a minimal PoC.
 
+## 部署假设
+
+OpenClaw 安全指导假设：
+
+- 运行 OpenClaw 的主机处于受信任的操作系统/管理员边界内。
+- 任何能够修改 `~/.openclaw` 状态/配置（包括 `openclaw.json`）的人都被视为受信任的操作员。
+- 由互不信任的人共享的单个 Gateway 是**不推荐的设置**。请为每个信任边界使用独立的 Gateway（或至少使用独立的操作系统用户/主机）。
+- 经过身份验证的 Gateway 调用者被视为受信任的操作员。会话标识符（例如 `sessionKey`）是路由控制，而非每用户授权边界。
+
 ## Operational Guidance
 
 For threat model + hardening guidance (including `clawdbot security audit --deep` and `--fix`), see:
