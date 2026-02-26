@@ -43,6 +43,7 @@ export type SkillStatusEntry = {
   homepage?: string;
   always: boolean;
   disabled: boolean;
+  security?: { securityInfo?: string };
   blockedByAllowlist: boolean;
   eligible: boolean;
   requirements: {
@@ -181,6 +182,7 @@ function buildSkillStatus(
   const skillKey = resolveSkillKey(entry);
   const skillConfig = resolveSkillConfig(config, skillKey);
   const disabled = skillConfig?.enabled === false;
+  const securityInfo = (skillConfig as { security?: { securityInfo?: string } })?.security?.securityInfo;
   const allowBundled = resolveBundledAllowlist(config);
   const blockedByAllowlist = !isBundledSkillAllowed(entry, allowBundled);
   const always = entry.metadata?.always === true;
@@ -232,6 +234,7 @@ function buildSkillStatus(
     homepage,
     always,
     disabled,
+    security: { securityInfo: securityInfo },
     blockedByAllowlist,
     eligible,
     requirements: required,

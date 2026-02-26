@@ -1,7 +1,20 @@
 import { resolveAgentWorkspaceDir, resolveDefaultAgentId } from "../agents/agent-scope.js";
 import { migrateWorkspaceIfNeeded } from "../agents/workspace.js";
 import { initSubagentRegistry } from "../agents/subagent-registry.js";
-import { registerSkillsChangeListener } from "../agents/skills/refresh.js";
+
+import {
+  registerSkillsChangeListener,
+  type SkillsChangeEvent,
+  ensureSkillsWatcher,
+} from "../agents/skills/refresh.js";
+import { getGlobalHookRunner } from "../plugins/hook-runner-global.js";
+import { loadSkillsFromDir, type Skill } from "@mariozechner/pi-coding-agent";
+import fs from "node:fs";
+import path from "node:path";
+import type { RequestFrame } from "./protocol/index.js";
+import type { GatewayRequestContext } from "./server-methods/types.js";
+import { CONFIG_DIR, resolveUserPath } from "../utils.js";
+import { skillsHandlers } from "./server-methods/skills.js";
 import type { CanvasHostServer } from "../canvas-host/server.js";
 import { type ChannelId, listChannelPlugins } from "../channels/plugins/index.js";
 import { createDefaultDeps } from "../cli/deps.js";
@@ -369,6 +382,168 @@ export async function startGatewayServer(
 
   setSkillsRemoteRegistry(nodeRegistry);
   void primeRemoteSkillsCache();
+  // Ensure skills watcher is running for all agent workspaces
+  {
+    logHooks.info(`ensure skills watcher is running for all agent workspaces`);
+    const cfg = loadConfig();
+    const agentList = cfg.agents?.list ?? [];
+    const agentIds = agentList
+      .map((e) => (e && typeof e === "object" && typeof e.id === "string" ? e.id : null))
+      .filter((v): v is string => Boolean(v));
+    const workspaces = new Set<string>();
+    for (const id of agentIds) {
+      workspaces.add(resolveAgentWorkspaceDir(cfg, id));
+    }
+    workspaces.add(resolveAgentWorkspaceDir(cfg, resolveDefaultAgentId(cfg)));
+    for (const dir of workspaces) {
+      ensureSkillsWatcher({ workspaceDir: dir, config: cfg });
+    }
+  }
+
+  async function handleSkillsChangeForSecurityHook(event: SkillsChangeEvent): Promise<void> {
+    const runner = getGlobalHookRunner();
+    const hasHooks = runner?.hasHooks("before_skills_load") ?? false;
+    if (!hasHooks) {
+      return;
+    }
+    if (
+      !event.changedPath ||
+      event.changedPath?.trim() === "" ||
+      !fs.existsSync(event.changedPath)
+    ) {
+      logHooks.info(`watched skills file removed: ${event.changedPath}`);
+      return;
+    }
+    logHooks.info(`watched skills file changed: ${event?.changedPath}`);
+    const cfg = loadConfig();
+    const skillsRootPath = new Set<string>();
+    if (event.workspaceDir?.trim()) {
+      skillsRootPath.add(path.join(event.workspaceDir, "skills"));
+    }
+    skillsRootPath.add(path.join(CONFIG_DIR, "skills"));
+    const extraSkillsDirs = cfg?.skills?.load?.extraDirs ?? [];
+    const extraSkillsDirsPath = extraSkillsDirs
+      .map((d) => (typeof d === "string" ? d.trim() : ""))
+      .filter(Boolean)
+      .map((dir) => resolveUserPath(dir));
+    for (const d of extraSkillsDirsPath) {
+      if (d.trim()) {
+        skillsRootPath.add(d);
+      }
+    }
+    logHooks.info(`skillsRootPath path is ${JSON.stringify(Array.from(skillsRootPath))}`);
+    const p = path.resolve(event.changedPath);
+    let skillsFileDir: string | null = null;
+    let skillsPackageDirName: string | null = null;
+    let skillsName: string | null = null;
+    let matchedRoot: string | null = null;
+    for (const root of skillsRootPath) {
+      const r = path.resolve(root);
+      if (p === r || p.startsWith(r + path.sep)) {
+        if (!matchedRoot || r.length > matchedRoot.length) {
+          matchedRoot = r;
+        }
+      }
+    }
+    if (matchedRoot) {
+      const rel = path.relative(matchedRoot, p);
+      const segs = rel.split(path.sep).filter(Boolean);
+      if (segs.length >= 1) {
+        skillsPackageDirName = segs[0];
+        skillsFileDir = path.join(matchedRoot, skillsPackageDirName);
+      }
+    }
+    if (skillsFileDir) {
+      try {
+        const workspaceSkillsRoot = path.join(event.workspaceDir ?? "", "skills");
+        const configSkillsRoot = path.join(CONFIG_DIR, "skills");
+        const root = matchedRoot ?? path.dirname(skillsFileDir);
+        const sourceLabel =
+          root === workspaceSkillsRoot
+            ? "openclaw-workspace"
+            : root === configSkillsRoot
+              ? "openclaw-managed"
+              : extraSkillsDirsPath.includes(root)
+                ? "openclaw-extra"
+                : "not-support";
+        logHooks.info(`skills file dir is ${skillsFileDir} and source is ${sourceLabel}`);
+        const loaded = loadSkillsFromDir({ dir: skillsFileDir, source: sourceLabel });
+        let skills: Skill[] = [];
+        if (Array.isArray(loaded)) {
+          skills = loaded;
+        } else if (
+          loaded &&
+          typeof loaded === "object" &&
+          "skills" in loaded &&
+          Array.isArray((loaded as { skills?: unknown }).skills)
+        ) {
+          skills = (loaded as { skills: Skill[] }).skills;
+        }
+        const target = path.resolve(skillsFileDir);
+        const matchedSkills = skills.find((s) => {
+          const base = path.resolve((s as { baseDir?: string }).baseDir ?? "");
+          return base === target;
+        });
+        if (matchedSkills?.name) {
+          skillsName = matchedSkills.name;
+        }
+      } catch { }
+      logHooks.info(`skills name is ${skillsName}, skills package dir name is ${skillsPackageDirName}`);
+      if (!skillsName && skillsPackageDirName) {
+        skillsName = skillsPackageDirName;
+      }
+    }
+
+    if (skillsFileDir && skillsName) {
+      const loadSkill = { skillsName: skillsName, skillsFileDir: skillsFileDir };
+      runner
+        ?.runBeforeSkillsLoad({ loadSkill }, { workspaceDir: event.workspaceDir ?? "" })
+        .then((hookResult) => {
+          logHooks.info(`skills hook security scan result blocked is ${hookResult?.blocked}`);
+          const securityInfo = `${hookResult?.securityInfo}("severity":${hookResult?.severity}, "riskScore":${hookResult?.riskScore})`;
+          const req: RequestFrame = {
+            type: "req",
+            id: `internal-${skillsName}-disable`,
+            method: "skills.update",
+          };
+          const ctx = {} as GatewayRequestContext;
+          void skillsHandlers["skills.update"]({
+            req,
+            params: {
+              skillKey: skillsName,
+              enabled: hookResult?.blocked === false,
+              securityInfo: hookResult?.blocked === true ? securityInfo : "",
+              securityBlocked: hookResult?.blocked === true,
+            },
+            client: null,
+            isWebchatConnect: () => false,
+            respond: (ok, error) => {
+              if (!ok) {
+                logHooks.error(
+                  `[skills.update] skillsName: "${skillsName}" , failed: ${JSON.stringify(
+                    error ?? {},
+                  )}}`,
+                );
+              }
+            },
+            context: ctx,
+          });
+          broadcast(
+            "skills",
+            {
+              kind: "skills_security_scan",
+              name: skillsName,
+              enabled: hookResult?.blocked === false,
+              blocked: hookResult?.blocked === true,
+              reason: securityInfo,
+            },
+            { dropIfSlow: true },
+          );
+        })
+        .catch(() => { });
+    }
+  }
+
   // Debounce skills-triggered node probes to avoid feedback loops and rapid-fire invokes.
   // Skills changes can happen in bursts (e.g., file watcher events), and each probe
   // takes time to complete. A 30-second delay ensures we batch changes together.
@@ -381,6 +556,7 @@ export async function startGatewayServer(
       skillsRefreshTimer = null;
       const latest = loadConfig();
       void refreshRemoteBinsForConnectedNodes(latest);
+      void handleSkillsChangeForSecurityHook(event);
     }, skillsRefreshDelayMs);
   });
 

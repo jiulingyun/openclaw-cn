@@ -3,6 +3,10 @@ export type SkillConfig = {
   apiKey?: string;
   env?: Record<string, string>;
   config?: Record<string, unknown>;
+  security?: {
+    securityInfo?: string;
+    securityBlocked?: boolean;
+  };
 };
 
 export type SkillsLoadConfig = {

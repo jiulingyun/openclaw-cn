@@ -141,6 +141,9 @@ function renderSkill(skill: SkillStatusEntry, props: SkillsProps) {
   if (skill.blockedByAllowlist) {
     reasons.push("被白名单阻止");
   }
+  if (skill.security?.securityInfo) {
+    reasons.push(skill.security.securityInfo);
+  }
   return html`
     <div class="list-item">
       <div class="list-main">

@@ -552,6 +552,13 @@ export const ClawdbotSchema = z
                 apiKey: z.string().optional(),
                 env: z.record(z.string(), z.string()).optional(),
                 config: z.record(z.string(), z.unknown()).optional(),
+                security: z
+                  .object({
+                    securityInfo: z.string().optional(),
+                    securityBlocked: z.boolean().optional(),
+                  })
+                  .strict()
+                  .optional(),
               })
               .strict(),
           )
