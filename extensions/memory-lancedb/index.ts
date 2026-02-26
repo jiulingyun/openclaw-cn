@@ -11,6 +11,7 @@ import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 import { Type } from "@sinclair/typebox";
 import { randomUUID } from "node:crypto";
 import OpenAI from "openai";
+import { pipeline } from "@huggingface/transformers";
 import {
   DEFAULT_CAPTURE_MAX_CHARS,
   MEMORY_CATEGORIES,
@@ -358,10 +359,120 @@ class DoubaoEmbeddings {
   }
 }
 
+export class LocalEmbedding {
+  private pipelinePromise: Promise<unknown> | null = null;
+  constructor(
+    private readonly modelDir: string,
+    private readonly dimensions: number,
+  ) {}
+  private async getPipeline(): Promise<unknown> {
+    if (!this.pipelinePromise) {
+      this.pipelinePromise = pipeline("feature-extraction", this.modelDir);
+    }
+    return this.pipelinePromise;
+  }
+  async embed(text: string): Promise<number[]> {
+    if (!text) {
+      throw new Error("memory-lancedb: cannot embed empty text");
+    }
+    let pipe: unknown;
+    try {
+      pipe = await this.getPipeline();
+    } catch (err) {
+      throw new Error(
+        `memory-lancedb: failed to initialize local embedding pipeline: ${String(err)}`,
+      );
+    }
+    if (typeof pipe !== "function") {
+      throw new Error("memory-lancedb: invalid local embedding pipeline instance");
+    }
+    let output: unknown;
+    try {
+      // BGE-small-zh v1.5 (default) and other BGE variants: CLS pooling + L2 归一化.
+      // We always pass a single-element batch so that output dims are [1, D] (e.g. [1, 512] for bge-small-zh-v1.5).
+      // oxlint-disable-next-line typescript/no-explicit-any
+      output = await (pipe as any)([text], { pooling: "cls", normalize: true });
+    } catch (err) {
+      throw new Error(`memory-lancedb: local embedding pipeline failed: ${String(err)}`);
+    }
+    const embedding = this.extractEmbedding(output);
+    if (embedding.length !== this.dimensions) {
+      throw new Error(
+        `memory-lancedb: local embedding dimension mismatch (expected ${this.dimensions}, got ${embedding.length})`,
+      );
+    }
+    // Values should already be normalized when `normalize: true`, but re-normalize defensively.
+    const norm = Math.sqrt(embedding.reduce((sum, value) => sum + value * value, 0)) || 1;
+    return embedding.map((value) => value / norm);
+  }
+  // oxlint-disable-next-line typescript/no-explicit-any
+  private extractEmbedding(output: any): number[] {
+    if (!output) {
+      throw new Error("memory-lancedb: empty output from local embedding pipeline");
+    }
+    // Prefer Transformers.js Tensor#tolist if available.
+    if (typeof output.tolist === "function") {
+      const list = output.tolist() as unknown;
+      if (!Array.isArray(list) || list.length === 0 || !Array.isArray((list as unknown[])[0])) {
+        throw new Error("memory-lancedb: unexpected tensor shape from local embeddings (tolist())");
+      }
+      const firstRow = (list as unknown[])[0] as unknown[];
+      return firstRow.map((value, idx) => {
+        const num = typeof value === "number" ? value : Number(value);
+        if (!Number.isFinite(num)) {
+          throw new Error(
+            `memory-lancedb: local embedding contained non-finite value at index ${idx}: ${String(value)}`,
+          );
+        }
+        return num;
+      });
+    }
+    // Fallback: unwrap common { data } / nested-array shapes.
+    let current: unknown = output;
+    if (current && typeof current === "object" && "data" in (current as Record<string, unknown>)) {
+      current = (current as { data: unknown }).data;
+    }
+    while (
+      Array.isArray(current) &&
+      current.length > 0 &&
+      Array.isArray((current as unknown[])[0])
+    ) {
+      const arr = current as unknown[];
+      current = arr[arr.length - 1];
+    }
+    if (!Array.isArray(current)) {
+      throw new Error(
+        "memory-lancedb: unexpected feature-extraction output shape for local embeddings",
+      );
+    }
+    const embedding = (current as unknown[]).map((value, idx) => {
+      const num = typeof value === "number" ? value : Number(value);
+      if (!Number.isFinite(num)) {
+        throw new Error(
+          `memory-lancedb: local embedding contained non-finite value at index ${idx}: ${String(value)}`,
+        );
+      }
+      return num;
+    });
+    return embedding;
+  }
+}
+
 function createEmbeddings(
   cfg: MemoryConfig["embedding"],
   api: OpenClawPluginApi,
 ): { embed(text: string): Promise<number[]> } {
+  if (cfg.provider === "local") {
+    const modelName = cfg.model ?? "bge-small-zh-v1.5";
+    const dims = vectorDimsForModel(modelName);
+    const modelDir =
+      cfg.localModelDir && cfg.localModelDir.trim().length > 0
+        ? api.resolvePath(cfg.localModelDir)
+        : api.resolvePath("extensions/memory-lancedb/models/bge-small-zh-v1.5");
+    api.logger.warn(`memory-lancedb: used local embedding (${modelName}) via Transformers.js`);
+    return new LocalEmbedding(modelDir, dims);
+  }
+
   if (cfg.provider === "doubao") {
     api.logger.warn(`memory-lancedb: used doubao embedding.`);
     return new DoubaoEmbeddings(cfg.apiKey, cfg.model!, cfg.url, cfg.retry);

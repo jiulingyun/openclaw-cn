@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 export type MemoryConfig = {
   embedding: {
-    provider: "openai" | "doubao";
+    provider: "openai" | "doubao" | "local";
     model?: string;
     apiKey: string;
     url?: string;
@@ -25,12 +25,14 @@ export type MemoryCategory = (typeof MEMORY_CATEGORIES)[number];
 
 const DEFAULT_MODEL = "text-embedding-3-small";
 const DEFAULT_DOUBAO_MODEL = "doubao-embedding-vision-251215";
+const DEFAULT_LOCAL_MODEL = "bge-small-zh-v1.5";
 const DEFAULT_DB_PATH = join(homedir(), ".openclaw", "memory", "lancedb");
 
 const EMBEDDING_DIMENSIONS: Record<string, number> = {
   "text-embedding-3-small": 1536,
   "text-embedding-3-large": 3072,
   "doubao-embedding-vision-251215": 2048,
+  "bge-small-zh-v1.5": 512,
 };
 
 function assertAllowedKeys(value: Record<string, unknown>, allowed: string[], label: string) {
@@ -67,6 +69,9 @@ function resolveEmbeddingProvider(
   if (provider === "doubao") {
     return "doubao";
   }
+  if (provider === "local") {
+    return "local";
+  }
   throw new Error(`Unsupported embedding provider: ${JSON.stringify(provider)}`);
 }
 
@@ -74,7 +79,12 @@ function resolveEmbeddingModel(
   embedding: Record<string, unknown>,
   provider: MemoryConfig["embedding"]["provider"],
 ): string {
-  const defaultModel = provider === "doubao" ? DEFAULT_DOUBAO_MODEL : DEFAULT_MODEL;
+  const defaultModel =
+    provider === "doubao"
+      ? DEFAULT_DOUBAO_MODEL
+      : provider === "local"
+        ? DEFAULT_LOCAL_MODEL
+        : DEFAULT_MODEL;
   const model = typeof embedding.model === "string" ? embedding.model : defaultModel;
   vectorDimsForModel(model);
   return model;
@@ -89,19 +99,35 @@ export const memoryConfigSchema = {
     assertAllowedKeys(cfg, ["embedding", "dbPath", "autoCapture", "autoRecall"], "memory config");
 
     const embedding = cfg.embedding as Record<string, unknown> | undefined;
-    if (!embedding || typeof embedding.apiKey !== "string") {
-      throw new Error("embedding.apiKey is required");
+    if (!embedding || typeof embedding !== "object" || Array.isArray(embedding)) {
+      throw new Error("embedding config required");
     }
     assertAllowedKeys(
       embedding,
-      ["apiKey", "model", "provider", "url", "retry"],
+      ["apiKey", "model", "provider", "url", "retry", "localModelDir"],
       "embedding config",
     );
 
     const provider = resolveEmbeddingProvider(embedding);
     const model = resolveEmbeddingModel(embedding, provider);
-    const apiKey = resolveEnvVars(embedding.apiKey);
+    let apiKey: string;
+    if (provider === "local") {
+      const rawKey = embedding.apiKey;
+      if (rawKey !== undefined && typeof rawKey !== "string") {
+        throw new Error("embedding.apiKey must be a string when provided");
+      }
+      apiKey = rawKey ? resolveEnvVars(rawKey) : "";
+    } else {
+      if (typeof embedding.apiKey !== "string") {
+        throw new Error("embedding.apiKey is required");
+      }
+      apiKey = resolveEnvVars(embedding.apiKey);
+    }
     const url = typeof embedding.url === "string" ? embedding.url : undefined;
+    const localModelDir =
+      typeof embedding.localModelDir === "string" && embedding.localModelDir.trim().length > 0
+        ? embedding.localModelDir
+        : undefined;
 
     // Parse retry config with defaults
     let retry: MemoryConfig["embedding"]["retry"] | undefined;
@@ -128,6 +154,7 @@ export const memoryConfigSchema = {
         apiKey,
         ...(url ? { url } : {}),
         ...(retry ? { retry } : {}),
+        ...(localModelDir ? { localModelDir } : {}),
       },
       dbPath: typeof cfg.dbPath === "string" ? cfg.dbPath : DEFAULT_DB_PATH,
       autoCapture: cfg.autoCapture === true,
@@ -139,17 +166,17 @@ export const memoryConfigSchema = {
       label: "Embedding API Key",
       sensitive: true,
       placeholder: "sk-proj-...",
-      help: "API key for embeddings (OpenAI or Doubao). You can also use ${OPENAI_API_KEY} or ${LAS_API_KEY}.",
+      help: "API key for embeddings (OpenAI or Doubao). Not required when using local embeddings.",
     },
     "embedding.model": {
       label: "Embedding Model",
       placeholder: DEFAULT_MODEL,
-      help: "Embedding model to use (e.g. text-embedding-3-small, doubao-embedding-vision-251215)",
+      help: "Embedding model to use (e.g. text-embedding-3-small, doubao-embedding-vision-251215, bge-small-zh-v1.5)",
     },
     "embedding.provider": {
       label: "Embedding Provider",
       placeholder: "openai",
-      help: "Embedding provider: 'openai' (default) or 'doubao'.",
+      help: "Embedding provider: 'openai' (default), 'doubao', or 'local' for on-device embeddings.",
     },
     "embedding.retry.maxRetries": {
       label: "Max Retries",
@@ -174,6 +201,12 @@ export const memoryConfigSchema = {
       placeholder: "30000",
       advanced: true,
       help: "Request timeout in milliseconds",
+    },
+    "embedding.localModelDir": {
+      label: "Local Model Directory",
+      placeholder: "extensions/memory-lancedb/models/bge-small-zh-v1.5",
+      help: "Filesystem path to the local embedding model when provider is 'local'. If omitted, the default extensions/memory-lancedb/models/bge-small-zh-v1.5 path is used (bge-m3 remains supported for legacy configs).",
+      advanced: true,
     },
     dbPath: {
       label: "Database Path",
