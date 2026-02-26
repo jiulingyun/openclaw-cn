@@ -2,6 +2,8 @@ import {
   createReplyPrefixContext,
   createTypingCallbacks,
   logTypingFailure,
+  isSilentReplyText,
+  SILENT_REPLY_TOKEN,
   type OpenClawConfig as ClawdbotConfig,
   type ReplyPayload,
   type RuntimeEnv,
@@ -81,11 +83,18 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
   let lastPartial = "";
   let partialUpdateQueue: Promise<void> = Promise.resolve();
   let streamingStartPromise: Promise<void> | null = null;
+  let streamingClosed = false; // Double protection: block partial updates after streaming is closed
 
   const startStreaming = () => {
+    // Guard: If there's already an active streaming session, reuse it instead of creating new one.
+    // This prevents multiple FeishuStreamingSession instances from being created for the same message.
+    if (streaming && streaming.isActive()) {
+      return;
+    }
     if (!streamingEnabled || streamingStartPromise || streaming) {
       return;
     }
+    streamingClosed = false; // Reset flag when starting new streaming session
     streamingStartPromise = (async () => {
       const creds =
         account.appId && account.appSecret
@@ -113,16 +122,23 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
     }
     await partialUpdateQueue;
     if (streaming?.isActive()) {
-      let text = streamText;
-      if (mentionTargets?.length) {
+      // Filter out NO_REPLY token — if the model replied with NO_REPLY (silent reply),
+      // we must NOT display it in the streaming card. Close with empty content instead.
+      // Pass empty string explicitly to override any pendingText cached inside the session.
+      const isSilent = isSilentReplyText(streamText, SILENT_REPLY_TOKEN);
+      let text = isSilent ? "" : streamText;
+      if (text && mentionTargets?.length) {
         text = buildMentionedCardContent(mentionTargets, text);
       }
-      await streaming.close(text);
+      await streaming.close(isSilent ? "" : text || undefined);
     }
+    // Deep disconnect state to avoid concurrent queue overlapping
     streaming = null;
     streamingStartPromise = null;
     streamText = "";
     lastPartial = "";
+    partialUpdateQueue = Promise.resolve();
+    streamingClosed = true; // Set flag to block any pending partial updates
   };
 
   const { dispatcher, replyOptions, markDispatchIdle } =
@@ -138,7 +154,12 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
       },
       deliver: async (payload: ReplyPayload, info) => {
         const text = payload.text ?? "";
-        if (!text.trim()) {
+        if (!text.trim() || isSilentReplyText(text, SILENT_REPLY_TOKEN)) {
+          // Double guard against sending NO/NO_REPLY as final or chunk text
+          if (info?.kind === "final" && streaming?.isActive()) {
+            streamText = ""; // treat as empty
+            await closeStreaming();
+          }
           return;
         }
 
@@ -215,7 +236,33 @@ export function createFeishuReplyDispatcher(params: CreateFeishuReplyDispatcherP
       onModelSelected: prefixContext.onModelSelected,
       onPartialReply: streamingEnabled
         ? (payload: ReplyPayload) => {
+            // Double protection: block partial updates after streaming is closed
+            if (streamingClosed) {
+              return;
+            }
             if (!payload.text || payload.text === lastPartial) {
+              return;
+            }
+            // Do NOT stream NO_REPLY token — it is a silent reply signal, not user-visible text.
+            // When we detect NO_REPLY in the stream, we must also clear any partial content
+            // already written to the card (e.g. "N", "NO" were written before full "NO_REPLY" arrived).
+            if (isSilentReplyText(payload.text, SILENT_REPLY_TOKEN)) {
+              // Clear streamText so closeStreaming also sees empty content.
+              streamText = "";
+              lastPartial = payload.text;
+              // Actively clear the card content to erase any partial "NO" already displayed.
+              partialUpdateQueue = partialUpdateQueue.then(async () => {
+                if (streamingStartPromise) {
+                  await streamingStartPromise;
+                }
+                if (streaming?.isActive()) {
+                  try {
+                    await streaming.update("");
+                  } catch {
+                    // ignore errors clearing the card
+                  }
+                }
+              });
               return;
             }
             lastPartial = payload.text;

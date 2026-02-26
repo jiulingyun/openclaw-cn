@@ -9,13 +9,7 @@ export declare const FeishuConfigSchema: z.ZodObject<{
     verificationToken: z.ZodOptional<z.ZodString>;
     domain: z.ZodOptional<z.ZodString>;
     botName: z.ZodOptional<z.ZodString>;
-    markdown: z.ZodOptional<z.ZodObject<{
-        tables: z.ZodOptional<z.ZodEnum<{
-            off: "off";
-            bullets: "bullets";
-            code: "code";
-        }>>;
-    }, z.core.$strict>>;
+    markdown: any;
     dmPolicy: z.ZodOptional<z.ZodEnum<{
         disabled: "disabled";
         pairing: "pairing";
@@ -66,16 +60,8 @@ export declare const FeishuConfigSchema: z.ZodObject<{
         enabled: z.ZodOptional<z.ZodBoolean>;
         requireMention: z.ZodOptional<z.ZodBoolean>;
         allowFrom: z.ZodOptional<z.ZodArray<z.ZodUnion<readonly [z.ZodString, z.ZodNumber]>>>;
-        tools: z.ZodOptional<z.ZodObject<{
-            allow: z.ZodOptional<z.ZodArray<z.ZodString>>;
-            alsoAllow: z.ZodOptional<z.ZodArray<z.ZodString>>;
-            deny: z.ZodOptional<z.ZodArray<z.ZodString>>;
-        }, z.core.$strict>>;
-        toolsBySender: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodOptional<z.ZodObject<{
-            allow: z.ZodOptional<z.ZodArray<z.ZodString>>;
-            alsoAllow: z.ZodOptional<z.ZodArray<z.ZodString>>;
-            deny: z.ZodOptional<z.ZodArray<z.ZodString>>;
-        }, z.core.$strict>>>>;
+        tools: any;
+        toolsBySender: z.ZodOptional<z.ZodRecord<z.ZodString, any>>;
         systemPrompt: z.ZodOptional<z.ZodString>;
         skills: z.ZodOptional<z.ZodArray<z.ZodString>>;
         topicSessionMode: z.ZodOptional<z.ZodEnum<{
@@ -95,13 +81,7 @@ export declare const FeishuConfigSchema: z.ZodObject<{
         verificationToken: z.ZodOptional<z.ZodString>;
         domain: z.ZodOptional<z.ZodString>;
         botName: z.ZodOptional<z.ZodString>;
-        markdown: z.ZodOptional<z.ZodObject<{
-            tables: z.ZodOptional<z.ZodEnum<{
-                off: "off";
-                bullets: "bullets";
-                code: "code";
-            }>>;
-        }, z.core.$strict>>;
+        markdown: any;
         dmPolicy: z.ZodOptional<z.ZodEnum<{
             disabled: "disabled";
             pairing: "pairing";
@@ -152,16 +132,8 @@ export declare const FeishuConfigSchema: z.ZodObject<{
             enabled: z.ZodOptional<z.ZodBoolean>;
             requireMention: z.ZodOptional<z.ZodBoolean>;
             allowFrom: z.ZodOptional<z.ZodArray<z.ZodUnion<readonly [z.ZodString, z.ZodNumber]>>>;
-            tools: z.ZodOptional<z.ZodObject<{
-                allow: z.ZodOptional<z.ZodArray<z.ZodString>>;
-                alsoAllow: z.ZodOptional<z.ZodArray<z.ZodString>>;
-                deny: z.ZodOptional<z.ZodArray<z.ZodString>>;
-            }, z.core.$strict>>;
-            toolsBySender: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodOptional<z.ZodObject<{
-                allow: z.ZodOptional<z.ZodArray<z.ZodString>>;
-                alsoAllow: z.ZodOptional<z.ZodArray<z.ZodString>>;
-                deny: z.ZodOptional<z.ZodArray<z.ZodString>>;
-            }, z.core.$strict>>>>;
+            tools: any;
+            toolsBySender: z.ZodOptional<z.ZodRecord<z.ZodString, any>>;
             systemPrompt: z.ZodOptional<z.ZodString>;
             skills: z.ZodOptional<z.ZodArray<z.ZodString>>;
             topicSessionMode: z.ZodOptional<z.ZodEnum<{

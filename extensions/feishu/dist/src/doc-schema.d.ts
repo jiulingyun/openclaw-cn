@@ -14,6 +14,8 @@ export declare const FeishuDocSchema: import("@sinclair/typebox").TUnion<[import
     action: import("@sinclair/typebox").TLiteral<"create">;
     title: import("@sinclair/typebox").TString;
     folder_token: import("@sinclair/typebox").TOptional<import("@sinclair/typebox").TString>;
+    content: import("@sinclair/typebox").TOptional<import("@sinclair/typebox").TString>;
+    sender_open_id: import("@sinclair/typebox").TOptional<import("@sinclair/typebox").TString>;
 }>, import("@sinclair/typebox").TObject<{
     action: import("@sinclair/typebox").TLiteral<"list_blocks">;
     doc_token: import("@sinclair/typebox").TString;

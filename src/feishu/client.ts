@@ -7,7 +7,7 @@ const logger = getChildLogger({ module: "feishu-client" });
 const DEFAULT_ACCOUNT_ID = "default";
 
 /** Convert config domain string to SDK Domain enum. */
-export function toLarkDomain(domain?: FeishuDomain | string): Lark.Domain | undefined {
+export function toLarkDomain(domain?: string): Lark.Domain | undefined {
   if (!domain || domain === "feishu") return Lark.Domain.Feishu;
   if (domain === "lark") return Lark.Domain.Lark;
   return undefined;

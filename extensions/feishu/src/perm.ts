@@ -68,7 +68,7 @@ async function listMembers(client: Lark.Client, token: string, type: string) {
   };
 }
 
-async function addMember(
+export async function addMember(
   client: Lark.Client,
   token: string,
   type: string,

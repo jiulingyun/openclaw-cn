@@ -69,26 +69,129 @@ function cleanBlocksForInsert(blocks) {
     return { cleaned, skipped };
 }
 // ============ Core Functions ============
-async function convertMarkdown(client, markdown) {
-    const res = await client.docx.document.convert({
-        data: { content_type: "markdown", content: markdown },
-    });
-    if (res.code !== 0) {
-        throw new Error(res.msg);
+/**
+ * Convert Markdown to Feishu docx blocks locally (no API call required).
+ * Supports: headings (H1-H6), bullet lists, ordered lists, code blocks,
+ * blockquotes, horizontal rules, and paragraphs.
+ */
+function markdownToBlocks(markdown) {
+    const lines = markdown.split("\n");
+    const blocks = [];
+    let i = 0;
+    function makeTextElement(text) {
+        // Strip inline markdown: bold, italic, inline code, links
+        const cleaned = text
+            .replace(/\*\*([^*]+)\*\*/g, "$1")
+            .replace(/\*([^*]+)\*/g, "$1")
+            .replace(/`([^`]+)`/g, "$1")
+            .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+        return { content: cleaned };
     }
-    return {
-        blocks: res.data?.blocks ?? [],
-        firstLevelBlockIds: res.data?.first_level_block_ids ?? [],
-    };
+    function makeTextBlock(blockType, text) {
+        // Feishu API block_type → field name mapping
+        // See: https://open.feishu.cn/document/server-docs/docs/content
+        const typeKey = {
+            2: "text",
+            3: "heading1",
+            4: "heading2",
+            5: "heading3",
+            6: "heading4",
+            7: "heading5",
+            8: "heading6",
+            12: "bullet",
+            13: "ordered",
+            15: "quote",
+        };
+        const key = typeKey[blockType] ?? "text";
+        // Note: do NOT pass style:{} for heading blocks - it causes field_validation_failed
+        return {
+            block_type: blockType,
+            [key]: { elements: [{ text_run: makeTextElement(text) }] },
+        };
+    }
+    while (i < lines.length) {
+        const line = lines[i];
+        // Code block
+        if (line.startsWith("```")) {
+            const lang = line.slice(3).trim() || "plaintext";
+            const codeLines = [];
+            i++;
+            while (i < lines.length && !lines[i].startsWith("```")) {
+                codeLines.push(lines[i]);
+                i++;
+            }
+            blocks.push({
+                block_type: 14,
+                code: {
+                    elements: [{ text_run: { content: codeLines.join("\n") } }],
+                    style: {
+                        language: lang === "plaintext"
+                            ? 1
+                            : lang === "python"
+                                ? 49
+                                : lang === "javascript"
+                                    ? 22
+                                    : lang === "typescript"
+                                        ? 35
+                                        : lang === "java"
+                                            ? 21
+                                            : lang === "go"
+                                                ? 17
+                                                : lang === "shell" || lang === "bash"
+                                                    ? 60
+                                                    : 1,
+                    },
+                },
+            });
+            i++;
+            continue;
+        }
+        // Horizontal rule
+        if (/^[-*_]{3,}$/.test(line.trim())) {
+            blocks.push({ block_type: 22, divider: {} });
+            i++;
+            continue;
+        }
+        // Blockquote
+        if (line.startsWith("> ")) {
+            blocks.push(makeTextBlock(15, line.slice(2)));
+            i++;
+            continue;
+        }
+        // Headings
+        const headingMatch = line.match(/^(#{1,6})\s+(.+)/);
+        if (headingMatch) {
+            const level = Math.min(headingMatch[1].length, 6);
+            const blockType = level + 2; // H1=3, H2=4, ..., H6=8
+            blocks.push(makeTextBlock(blockType, headingMatch[2]));
+            i++;
+            continue;
+        }
+        // Unordered list
+        if (/^[-*+]\s+/.test(line)) {
+            blocks.push(makeTextBlock(12, line.replace(/^[-*+]\s+/, "")));
+            i++;
+            continue;
+        }
+        // Ordered list
+        if (/^\d+\.\s+/.test(line)) {
+            blocks.push(makeTextBlock(13, line.replace(/^\d+\.\s+/, "")));
+            i++;
+            continue;
+        }
+        // Empty line → skip
+        if (line.trim() === "") {
+            i++;
+            continue;
+        }
+        // Regular paragraph
+        blocks.push(makeTextBlock(2, line));
+        i++;
+    }
+    return blocks;
 }
-function sortBlocksByFirstLevel(blocks, firstLevelIds) {
-    if (!firstLevelIds || firstLevelIds.length === 0)
-        return blocks;
-    const sorted = firstLevelIds.map((id) => blocks.find((b) => b.block_id === id)).filter(Boolean);
-    const sortedIds = new Set(firstLevelIds);
-    const remaining = blocks.filter((b) => !sortedIds.has(b.block_id));
-    return [...sorted, ...remaining];
-}
+// Feishu documentBlockChildren.create API limit: max 50 blocks per request.
+const FEISHU_BLOCK_BATCH_SIZE = 50;
 /* eslint-disable @typescript-eslint/no-explicit-any -- SDK block types */
 async function insertBlocks(client, docToken, blocks, parentBlockId) {
     /* eslint-enable @typescript-eslint/no-explicit-any */
@@ -97,14 +200,39 @@ async function insertBlocks(client, docToken, blocks, parentBlockId) {
     if (cleaned.length === 0) {
         return { children: [], skipped };
     }
-    const res = await client.docx.documentBlockChildren.create({
-        path: { document_id: docToken, block_id: blockId },
-        data: { children: cleaned },
-    });
-    if (res.code !== 0) {
-        throw new Error(res.msg);
+    // Batch into chunks of FEISHU_BLOCK_BATCH_SIZE to respect API limit.
+    const allChildren = [];
+    for (let offset = 0; offset < cleaned.length; offset += FEISHU_BLOCK_BATCH_SIZE) {
+        const batch = cleaned.slice(offset, offset + FEISHU_BLOCK_BATCH_SIZE);
+        let res;
+        try {
+            res = await client.docx.documentBlockChildren.create({
+                path: { document_id: docToken, block_id: blockId },
+                data: {
+                    children: batch,
+                    // Insert at end for each batch (index-based: after last inserted block)
+                    ...(offset > 0 ? { index: offset } : {}),
+                },
+            });
+        }
+        catch (err) {
+            if (err.isAxiosError && err.response?.data) {
+                throw new Error(`Feishu API Error (${err.message}): ${JSON.stringify(err.response.data)}` +
+                    `\nBatch [${offset}..${offset + batch.length}], first block: ${batch[0] ? JSON.stringify(batch[0], null, 2) : "(empty)"}`);
+            }
+            throw err;
+        }
+        if (res.code !== 0) {
+            const errDetail = res;
+            const violations = errDetail.field_violations ?? errDetail.error?.field_violations ?? [];
+            const firstBlock = batch[0] ? JSON.stringify(batch[0], null, 2) : "(empty)";
+            throw new Error(`insertBlocks failed (code=${res.code}): ${res.msg}` +
+                `\nfield_violations: ${JSON.stringify(violations)}` +
+                `\nbatch [${offset}..${offset + batch.length}], first block: ${firstBlock}`);
+        }
+        allChildren.push(...(res.data?.children ?? []));
     }
-    return { children: res.data?.children ?? [], skipped };
+    return { children: allChildren, skipped };
 }
 async function clearDocumentContent(client, docToken) {
     const existing = await client.docx.documentBlock.list({
@@ -233,12 +361,11 @@ async function createDoc(client, title, folderToken) {
 }
 async function writeDoc(client, docToken, markdown) {
     const deleted = await clearDocumentContent(client, docToken);
-    const { blocks, firstLevelBlockIds } = await convertMarkdown(client, markdown);
+    const blocks = markdownToBlocks(markdown);
     if (blocks.length === 0) {
         return { success: true, blocks_deleted: deleted, blocks_added: 0, images_processed: 0 };
     }
-    const sortedBlocks = sortBlocksByFirstLevel(blocks, firstLevelBlockIds);
-    const { children: inserted, skipped } = await insertBlocks(client, docToken, sortedBlocks);
+    const { children: inserted, skipped } = await insertBlocks(client, docToken, blocks);
     const imagesProcessed = await processImages(client, docToken, markdown, inserted);
     return {
         success: true,
@@ -251,12 +378,11 @@ async function writeDoc(client, docToken, markdown) {
     };
 }
 async function appendDoc(client, docToken, markdown) {
-    const { blocks, firstLevelBlockIds } = await convertMarkdown(client, markdown);
+    const blocks = markdownToBlocks(markdown);
     if (blocks.length === 0) {
         throw new Error("Content is empty");
     }
-    const sortedBlocks = sortBlocksByFirstLevel(blocks, firstLevelBlockIds);
-    const { children: inserted, skipped } = await insertBlocks(client, docToken, sortedBlocks);
+    const { children: inserted, skipped } = await insertBlocks(client, docToken, blocks);
     const imagesProcessed = await processImages(client, docToken, markdown, inserted);
     return {
         success: true,
@@ -355,6 +481,9 @@ async function listAppScopes(client) {
     };
 }
 // ============ Tool Registration ============
+import { addMember } from "./perm.js";
+// ...
+// ============ Tool Registration ============
 export function registerFeishuDocTools(api) {
     if (!api.config) {
         api.logger.debug?.("feishu_doc: No config available, skipping doc tools");
@@ -377,7 +506,9 @@ export function registerFeishuDocTools(api) {
         api.registerTool({
             name: "feishu_doc",
             label: "Feishu Doc",
-            description: "Feishu document operations. Actions: read, write, append, create, list_blocks, get_block, update_block, delete_block",
+            description: "Feishu document operations. Actions: read, write, append, create, list_blocks, get_block, update_block, delete_block. " +
+                "To create a doc with content and grant the requester access in one step, use action=create with title, content (markdown), and sender_open_id (the user's open_id, starts with ou_). " +
+                "Example workflow: user asks to write a Feishu doc → call feishu_doc with action=create, title=..., content=..., sender_open_id=<user's open_id from SenderId context>.",
             parameters: FeishuDocSchema,
             async execute(_toolCallId, params) {
                 const p = params;
@@ -390,8 +521,47 @@ export function registerFeishuDocTools(api) {
                             return json(await writeDoc(client, p.doc_token, p.content));
                         case "append":
                             return json(await appendDoc(client, p.doc_token, p.content));
-                        case "create":
-                            return json(await createDoc(client, p.title, p.folder_token));
+                        case "create": {
+                            const result = await createDoc(client, p.title, p.folder_token);
+                            // Auto-permission: Grant full_access to sender if sender_open_id is provided
+                            const senderId = p.sender_open_id;
+                            if (result.document_id && senderId) {
+                                let memberType = "userid";
+                                if (senderId.startsWith("ou_"))
+                                    memberType = "openid";
+                                else if (senderId.startsWith("on_"))
+                                    memberType = "unionid";
+                                else if (senderId.includes("@"))
+                                    memberType = "email";
+                                try {
+                                    await addMember(client, result.document_id, "docx", memberType, senderId, "full_access");
+                                    result.permission_granted = true;
+                                    result.permission_granted_to = senderId;
+                                }
+                                catch (permErr) {
+                                    api.logger.warn?.(`feishu_doc: Failed to grant permission to ${senderId}: ${permErr}`);
+                                    result.permission_error = String(permErr);
+                                }
+                            }
+                            // Write content if provided
+                            const initialContent = p.content;
+                            if (result.document_id && initialContent) {
+                                try {
+                                    await writeDoc(client, result.document_id, initialContent);
+                                    result.content_written = true;
+                                }
+                                catch (writeErr) {
+                                    api.logger.warn?.(`feishu_doc: Failed to write initial content: ${writeErr}`);
+                                    // Provide clear guidance to agent: document exists, use 'write' action to retry
+                                    result.content_written = false;
+                                    result.content_write_instruction =
+                                        `Document was created successfully (doc_token: ${result.document_id}). ` +
+                                            `Content write failed. Use action='write' with doc_token='${result.document_id}' to retry writing the content. ` +
+                                            `DO NOT create a new document.`;
+                                }
+                            }
+                            return json(result);
+                        }
                         case "list_blocks":
                             return json(await listBlocks(client, p.doc_token));
                         case "get_block":

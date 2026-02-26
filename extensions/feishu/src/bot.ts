@@ -11,7 +11,7 @@ import type { DynamicAgentCreationConfig } from "./types.js";
 import { resolveFeishuAccount } from "./accounts.js";
 import { createFeishuClient } from "./client.js";
 import { maybeCreateDynamicAgent } from "./dynamic-agent.js";
-import { downloadImageFeishu, downloadMessageResourceFeishu } from "./media.js";
+import { downloadMessageResourceFeishu } from "./media.js";
 import { extractMentionTargets, extractMessageBody, isMentionForwardRequest } from "./mention.js";
 import {
   resolveFeishuGroupConfig,
@@ -22,19 +22,91 @@ import {
 import { createFeishuReplyDispatcher } from "./reply-dispatcher.js";
 import { getFeishuRuntime } from "./runtime.js";
 import { getMessageFeishu, sendMessageFeishu } from "./send.js";
+import { addTypingIndicator, removeTypingIndicator, type TypingIndicatorState } from "./typing.js";
 
 // --- Message deduplication ---
 // Prevent duplicate processing when WebSocket reconnects or Feishu redelivers messages.
+// Uses SQLite for persistence across gateway restarts (falls back to in-memory if unavailable).
 const DEDUP_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const DEDUP_MAX_SIZE = 1_000;
 const DEDUP_CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // cleanup every 5 minutes
+
+// --- SQLite persistent dedup backend ---
+let _dedupDb: import("better-sqlite3").Database | null = null;
+let _dedupDbInitFailed = false;
+let _lastDbCleanupTime = Date.now();
+
+function getDedupDb(): import("better-sqlite3").Database | null {
+  if (_dedupDbInitFailed) return null;
+  if (_dedupDb) return _dedupDb;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Database = require("better-sqlite3") as typeof import("better-sqlite3");
+    const os = require("os") as typeof import("os");
+    const path = require("path") as typeof import("path");
+    const fs = require("fs") as typeof import("fs");
+    const dbDir = path.join(os.homedir(), ".openclaw");
+    fs.mkdirSync(dbDir, { recursive: true });
+    const db = new Database(path.join(dbDir, "feishu-dedup.db"));
+    db.pragma("journal_mode = WAL");
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS processed_messages (
+        message_id TEXT PRIMARY KEY,
+        processed_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_processed_at ON processed_messages(processed_at);
+    `);
+    _dedupDb = db;
+    return db;
+  } catch {
+    _dedupDbInitFailed = true;
+    return null;
+  }
+}
+
+// --- In-memory fallback ---
 const processedMessageIds = new Map<string, number>(); // messageId -> timestamp
 let lastCleanupTime = Date.now();
 
 function tryRecordMessage(messageId: string): boolean {
   const now = Date.now();
+  const db = getDedupDb();
 
-  // Throttled cleanup: evict expired entries at most once per interval
+  if (db) {
+    // SQLite path: persistent across restarts
+    try {
+      // Throttled cleanup of expired rows
+      if (now - _lastDbCleanupTime > DEDUP_CLEANUP_INTERVAL_MS) {
+        db.prepare("DELETE FROM processed_messages WHERE processed_at < ?").run(now - DEDUP_TTL_MS);
+        // Keep table size bounded
+        const count = (
+          db.prepare("SELECT COUNT(*) as c FROM processed_messages").get() as { c: number }
+        ).c;
+        if (count > DEDUP_MAX_SIZE) {
+          db.prepare(
+            "DELETE FROM processed_messages WHERE message_id IN (SELECT message_id FROM processed_messages ORDER BY processed_at ASC LIMIT ?)",
+          ).run(count - DEDUP_MAX_SIZE);
+        }
+        _lastDbCleanupTime = now;
+      }
+
+      // Check if already processed (within TTL)
+      const existing = db
+        .prepare("SELECT processed_at FROM processed_messages WHERE message_id = ?")
+        .get(messageId) as { processed_at: number } | undefined;
+      if (existing && now - existing.processed_at < DEDUP_TTL_MS) return false;
+
+      // Insert or replace (handles expired entries)
+      db.prepare(
+        "INSERT OR REPLACE INTO processed_messages (message_id, processed_at) VALUES (?, ?)",
+      ).run(messageId, now);
+      return true;
+    } catch {
+      // Fall through to in-memory on error
+    }
+  }
+
+  // In-memory fallback path
   if (now - lastCleanupTime > DEDUP_CLEANUP_INTERVAL_MS) {
     for (const [id, ts] of processedMessageIds) {
       if (now - ts > DEDUP_TTL_MS) processedMessageIds.delete(id);
@@ -44,7 +116,6 @@ function tryRecordMessage(messageId: string): boolean {
 
   if (processedMessageIds.has(messageId)) return false;
 
-  // Evict oldest entries if cache is full
   if (processedMessageIds.size >= DEDUP_MAX_SIZE) {
     const first = processedMessageIds.keys().next().value!;
     processedMessageIds.delete(first);
@@ -750,7 +821,7 @@ export async function handleFeishuMessage(params: {
 
     // Dynamic agent creation for DM users
     // When enabled, creates a unique agent instance with its own workspace for each DM user.
-    let effectiveCfg = cfg;
+    let _effectiveCfg = cfg;
     if (!isGroup && route.matchedBy === "default") {
       const dynamicCfg = feishuCfg?.dynamicAgentCreation as DynamicAgentCreationConfig | undefined;
       if (dynamicCfg?.enabled) {
@@ -763,7 +834,7 @@ export async function handleFeishuMessage(params: {
           log: (msg) => log(msg),
         });
         if (result.created) {
-          effectiveCfg = result.updatedCfg;
+          _effectiveCfg = result.updatedCfg;
           // Re-resolve route with updated config
           route = core.channel.routing.resolveAgentRoute({
             cfg: result.updatedCfg,
@@ -977,6 +1048,18 @@ export async function handleFeishuMessage(params: {
       accountId: account.accountId,
     });
 
+    // Provide immediate feedback by adding a typing indicator reaction
+    let typingState: TypingIndicatorState | undefined;
+    try {
+      typingState = await addTypingIndicator({
+        cfg,
+        messageId: ctx.messageId,
+        accountId: account.accountId,
+      });
+    } catch (err) {
+      log(`feishu[${account.accountId}]: failed to add typing indicator: ${String(err)}`);
+    }
+
     log(`feishu[${account.accountId}]: dispatching to agent (session=${route.sessionKey})`);
 
     const { queuedFinal, counts } = await core.channel.reply.dispatchReplyFromConfig({
@@ -999,6 +1082,17 @@ export async function handleFeishuMessage(params: {
     log(
       `feishu[${account.accountId}]: dispatch complete (queuedFinal=${queuedFinal}, replies=${counts.final})`,
     );
+
+    // If typing state was recorded, remove the reaction since agent will reply now/later
+    if (typingState) {
+      removeTypingIndicator({
+        cfg,
+        state: typingState,
+        accountId: account.accountId,
+      }).catch((err) =>
+        log(`feishu[${account.accountId}]: failed to remove typing indicator: ${String(err)}`),
+      );
+    }
   } catch (err) {
     error(`feishu[${account.accountId}]: failed to dispatch message: ${String(err)}`);
   }

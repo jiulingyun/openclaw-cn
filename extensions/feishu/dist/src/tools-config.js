@@ -9,6 +9,11 @@ export const DEFAULT_TOOLS_CONFIG = {
     drive: true,
     perm: false,
     scopes: true,
+    im: true,
+    bitable: true,
+    task: true,
+    calendar: true,
+    sheets: true,
 };
 /**
  * Resolve tools config with defaults.

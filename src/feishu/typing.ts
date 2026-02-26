@@ -30,7 +30,7 @@ export async function addTypingIndicator(
     return { messageId, reactionId };
   } catch (err) {
     // Silently fail - typing indicator is not critical
-    logger.debug(`Failed to add typing indicator: ${err}`);
+    logger.debug(`Failed to add typing indicator: ${String(err)}`);
     return { messageId, reactionId: null };
   }
 }
@@ -49,7 +49,7 @@ export async function removeTypingIndicator(
     logger.debug(`Removed typing indicator reaction: ${state.reactionId}`);
   } catch (err) {
     // Silently fail - cleanup is not critical
-    logger.debug(`Failed to remove typing indicator: ${err}`);
+    logger.debug(`Failed to remove typing indicator: ${String(err)}`);
   }
 }
 

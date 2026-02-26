@@ -97,6 +97,12 @@ export type ClawdbotConfig = {
   canvasHost?: CanvasHostConfig;
   talk?: TalkConfig;
   gateway?: GatewayConfig;
+  /** Command queue configuration. */
+  queue?: {
+    mode?: "memory" | "persistent";
+    dbPath?: string;
+    autoRecover?: boolean;
+  };
 };
 
 export type ConfigValidationIssue = {

@@ -1,6 +1,6 @@
 {
   "name": "openclaw-cn",
-  "version": "0.1.6",
+  "version": "0.1.7-fix5",
   "description": "Openclaw 中文社区版 - WhatsApp gateway CLI (Baileys web) with Pi RPC agent",
   "keywords": [],
   "license": "MIT",
@@ -177,6 +177,7 @@
     "@slack/web-api": "^7.13.0",
     "@whiskeysockets/baileys": "npm:@openclaw-cn/baileys@7.0.0-rc.9",
     "ajv": "^8.17.1",
+    "better-sqlite3": "^12.6.2",
     "body-parser": "^2.2.2",
     "chalk": "^5.6.2",
     "chokidar": "^5.0.0",
@@ -217,6 +218,7 @@
     "@lit-labs/signals": "^0.2.0",
     "@lit/context": "^1.1.6",
     "@mariozechner/mini-lit": "0.2.1",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/body-parser": "^1.19.6",
     "@types/express": "^5.0.6",
     "@types/markdown-it": "^14.1.2",

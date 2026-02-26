@@ -3,7 +3,7 @@ import { Readable } from "node:stream";
 import { getChildLogger } from "../logging.js";
 import { loadWebMedia } from "../web/media.js";
 import { mediaKindFromMime } from "../media/constants.js";
-import { containsMarkdown, markdownToFeishuPost, type FeishuPostContent } from "./format.js";
+import { containsMarkdown, markdownToFeishuPost } from "./format.js";
 
 const logger = getChildLogger({ module: "feishu-send" });
 
@@ -275,7 +275,7 @@ export async function sendMessageFeishu(
       finalContent = postContent;
       logger.debug(`Converted Markdown to Feishu post format`);
     } catch (err) {
-      logger.warn(`Failed to convert Markdown to post, falling back to text: ${err}`);
+      logger.warn(`Failed to convert Markdown to post, falling back to text: ${String(err)}`);
       // Fall back to plain text
     }
   }
@@ -316,7 +316,7 @@ export async function sendMessageFeishu(
     }
     return res.data ?? null;
   } catch (err) {
-    logger.error(`Feishu send error: ${err}`);
+    logger.error(`Feishu send error: ${String(err)}`);
     throw err;
   }
 }

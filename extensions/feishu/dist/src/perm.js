@@ -27,7 +27,7 @@ async function listMembers(client, token, type) {
         })) ?? [],
     };
 }
-async function addMember(client, token, type, memberType, memberId, perm) {
+export async function addMember(client, token, type, memberType, memberId, perm) {
     const res = await client.drive.permissionMember.create({
         path: { token },
         params: { type: type, need_notification: false },

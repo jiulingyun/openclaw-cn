@@ -117,7 +117,7 @@ export async function probeFeishu(
     result.elapsedMs = Date.now() - started;
     return result;
   } catch (err) {
-    logger.debug?.(`Feishu probe failed: ${err}`);
+    logger.debug?.(`Feishu probe failed: ${String(err)}`);
     return {
       ...result,
       error: err instanceof Error ? err.message : String(err),

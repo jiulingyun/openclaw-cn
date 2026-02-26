@@ -106,7 +106,7 @@ export async function createStreamingCard(
       elements: [
         {
           tag: "markdown",
-          content: "⏳ 正在思考...",
+          content: "⏳ Thinking...",
           element_id: "streaming_content",
         },
       ],

@@ -11,6 +11,11 @@ export const DEFAULT_TOOLS_CONFIG: Required<FeishuToolsConfig> = {
   drive: true,
   perm: false,
   scopes: true,
+  im: true,
+  bitable: true,
+  task: true,
+  calendar: true,
+  sheets: true,
 };
 
 /**

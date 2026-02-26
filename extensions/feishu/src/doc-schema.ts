@@ -21,6 +21,18 @@ export const FeishuDocSchema = Type.Union([
     action: Type.Literal("create"),
     title: Type.String({ description: "Document title" }),
     folder_token: Type.Optional(Type.String({ description: "Target folder token (optional)" })),
+    content: Type.Optional(
+      Type.String({
+        description:
+          "Markdown content to write into the document after creation. If provided, the document will be created and filled in one step.",
+      }),
+    ),
+    sender_open_id: Type.Optional(
+      Type.String({
+        description:
+          "The open_id (ou_xxx) of the user who requested document creation. When provided, the user will automatically be granted full_access permission to the new document.",
+      }),
+    ),
   }),
   Type.Object({
     action: Type.Literal("list_blocks"),

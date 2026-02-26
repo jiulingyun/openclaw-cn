@@ -165,9 +165,11 @@ export async function runEmbeddedPiAgent(
   const sessionLane = resolveSessionLane(params.sessionKey?.trim() || params.sessionId);
   const globalLane = resolveGlobalLane(params.lane);
   const enqueueGlobal =
-    params.enqueue ?? ((task, opts) => enqueueCommandInLane(globalLane, task, opts));
+    params.enqueue ??
+    ((taskType, payload, opts) => enqueueCommandInLane(globalLane, taskType, payload, opts));
   const enqueueSession =
-    params.enqueue ?? ((task, opts) => enqueueCommandInLane(sessionLane, task, opts));
+    params.enqueue ??
+    ((taskType, payload, opts) => enqueueCommandInLane(sessionLane, taskType, payload, opts));
   const channelHint = params.messageChannel ?? params.messageProvider;
   const resolvedToolResultFormat =
     params.toolResultFormat ??
@@ -179,9 +181,16 @@ export async function runEmbeddedPiAgent(
   const isProbeSession = params.sessionId?.startsWith("probe-") ?? false;
 
   // @ts-ignore -- cherry-pick upstream type mismatch
-  // @ts-ignore -- cherry-pick upstream type mismatch
-  return enqueueSession(() =>
-    enqueueGlobal(async () => {
+  return enqueueSession(
+    "EMBEDDED_PI_RUN",
+    { ...params, __dispatchedViaQueue: true },
+    { onWait: params.onWait },
+  ).then(() =>
+    enqueueGlobal(
+      "EMBEDDED_PI_RUN",
+      { ...params, __dispatchedViaQueue: true },
+      { onWait: params.onWait },
+    ).then(async () => {
       const started = Date.now();
       const workspaceResolution = resolveRunWorkspaceDir({
         workspaceDir: params.workspaceDir,

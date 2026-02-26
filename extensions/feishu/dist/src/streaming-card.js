@@ -102,14 +102,17 @@ export class FeishuStreamingSession {
         this.log?.(`Started streaming: cardId=${cardId}, messageId=${sendRes.data.message_id}`);
     }
     async update(text) {
-        if (!this.state || this.closed) {
+        // Critical: Check closed state immediately, before queue operations.
+        // This prevents updates queued before close() from executing after streaming is closed.
+        if (this.closed || !this.state) {
             return;
         }
         // Throttle: skip if updated recently, but remember pending text
         const now = Date.now();
         if (now - this.lastUpdateTime < this.updateThrottleMs) {
             this.pendingText = text;
-            return;
+            // CRITICAL FIX: Don't return early - continue to queue to ensure all updates are sent
+            // The old early return caused partial updates to be lost when throttle was active
         }
         this.pendingText = null;
         this.lastUpdateTime = now;
@@ -141,11 +144,14 @@ export class FeishuStreamingSession {
         }
         this.closed = true;
         await this.queue;
-        // Use finalText, or pending throttled text, or current text
-        const text = finalText ?? this.pendingText ?? this.state.currentText;
+        // Use finalText if explicitly provided (even empty string to suppress pendingText fallback),
+        // otherwise fall back to pending throttled text or current text.
+        const text = finalText !== undefined ? finalText : (this.pendingText ?? this.state.currentText);
         const apiBase = resolveApiBase(this.creds.domain);
-        // Only send final update if content differs from what's already displayed
-        if (text && text !== this.state.currentText) {
+        // Send final content update if:
+        // - text differs from what's already displayed, AND
+        // - either text has content, OR text is "" (explicitly clearing the card for silent replies)
+        if (text !== this.state.currentText && (text || this.state.currentText)) {
             this.state.sequence += 1;
             await fetch(`${apiBase}/cardkit/v1/cards/${this.state.cardId}/elements/content/content`, {
                 method: "PUT",

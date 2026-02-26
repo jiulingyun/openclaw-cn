@@ -59,6 +59,11 @@ export type FeishuToolsConfig = {
     drive?: boolean;
     perm?: boolean;
     scopes?: boolean;
+    im?: boolean;
+    bitable?: boolean;
+    task?: boolean;
+    calendar?: boolean;
+    sheets?: boolean;
 };
 export type DynamicAgentCreationConfig = {
     enabled?: boolean;

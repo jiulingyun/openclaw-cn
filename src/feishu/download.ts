@@ -161,7 +161,7 @@ export async function downloadPostImages(
       );
       results.push(media);
     } catch (err) {
-      logger.error(`Failed to download post image ${imageKey}: ${err}`);
+      logger.error(`Failed to download post image ${imageKey}: ${String(err)}`);
     }
   }
 
@@ -242,7 +242,7 @@ export async function resolveFeishuMedia(
       return null;
     }
   } catch (err) {
-    logger.error(`Failed to resolve Feishu media (${msgType}): ${err}`);
+    logger.error(`Failed to resolve Feishu media (${msgType}): ${String(err)}`);
   }
 
   return null;

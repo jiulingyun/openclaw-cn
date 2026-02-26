@@ -21,7 +21,7 @@ export function createFeishuBot(opts: FeishuBotOptions) {
       try {
         await processFeishuMessage(client, data, appId);
       } catch (err) {
-        logger.error(`Error processing Feishu message: ${err}`);
+        logger.error(`Error processing Feishu message: ${String(err)}`);
       }
     },
   });

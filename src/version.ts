@@ -17,6 +17,6 @@ function readVersionFromPackageJson(): string | null {
 // - Dev/npm builds: package.json.
 export const VERSION =
   (typeof __OPENCLAW_VERSION__ === "string" && __OPENCLAW_VERSION__) ||
-  process.env.OPENCLAW_BUNDLED_VERSION ||
+  process.env.OPENCLAW_BUNDED_VERSION ||
   readVersionFromPackageJson() ||
   "0.0.0";

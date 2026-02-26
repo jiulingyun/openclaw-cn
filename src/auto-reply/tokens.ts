@@ -14,5 +14,12 @@ export function isSilentReplyText(
   const prefix = new RegExp(`^\\s*${escaped}(?=$|\\W)`);
   if (prefix.test(text)) return true;
   const suffix = new RegExp(`\\b${escaped}\\b\\W*$`);
-  return suffix.test(text);
+  if (suffix.test(text)) return true;
+
+  // Enhance detection for partial trailing tokens during streaming or malformed generation
+  if (token === "NO_REPLY" && /^\s*(NO|NO_|NO_R|NO_RE|NO_REP|NO_REPL)(\s|$)/i.test(text)) {
+    return true;
+  }
+
+  return false;
 }

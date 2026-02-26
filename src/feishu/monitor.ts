@@ -46,8 +46,6 @@ export async function monitorFeishuProvider(opts: MonitorFeishuOpts = {}): Promi
     return;
   }
 
-  const log = opts.runtime?.log ?? console.log;
-
   // Fetch bot info to get bot's open_id for @mention detection
   let botOpenId: string | undefined;
   try {
@@ -57,7 +55,7 @@ export async function monitorFeishuProvider(opts: MonitorFeishuOpts = {}): Promi
       logger.info(`Feishu bot open_id: ${botOpenId}`);
     }
   } catch (err) {
-    logger.warn(`Failed to fetch bot info for @mention detection: ${err}`);
+    logger.warn(`Failed to fetch bot info for @mention detection: ${String(err)}`);
   }
 
   // Resolve Lark domain (feishu/lark)

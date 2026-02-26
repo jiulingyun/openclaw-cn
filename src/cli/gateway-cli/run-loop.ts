@@ -8,6 +8,7 @@ import {
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import {
   getActiveTaskCount,
+  markShuttingDown,
   resetAllLanes,
   waitForActiveTasks,
 } from "../../process/command-queue.js";
@@ -41,6 +42,9 @@ export async function runGatewayLoop(params: {
       return;
     }
     shuttingDown = true;
+    // Prevent in-flight tasks from being resolved as COMPLETED so they
+    // remain RUNNING and can be recovered on the next startup.
+    markShuttingDown();
     const isRestart = action === "restart";
     gatewayLog.info(`received ${signal}; ${isRestart ? "restarting" : "shutting down"}`);
 
