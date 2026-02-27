@@ -3,15 +3,26 @@
   "kind": "memory",
   "uiHints": {
     "embedding.apiKey": {
-      "label": "OpenAI API Key",
+      "label": "Embedding API Key",
       "sensitive": true,
       "placeholder": "sk-proj-...",
-      "help": "API key for OpenAI embeddings (or use ${OPENAI_API_KEY})"
+      "help": "API key for embeddings (OpenAI or Doubao). Not required when using local embeddings."
     },
     "embedding.model": {
       "label": "Embedding Model",
-      "placeholder": "text-embedding-3-small",
-      "help": "OpenAI embedding model to use"
+      "placeholder": "text-embedding-3-small or doubao-embedding-vision-251215, bge-small-zh-v1.5",
+      "help": "Embedding model to use (e.g. text-embedding-3-small or bge-small-zh-v1.5, doubao-embedding-vision-251215)"
+    },
+    "embedding.provider": {
+      "label": "Embedding Provider",
+      "placeholder": "openai",
+      "help": "Embedding provider: 'openai' (default), 'doubao', or 'local' for on-device embeddings."
+    },
+    "embedding.localModelDir": {
+      "label": "Local Model Directory",
+      "placeholder": "extensions/memory-lancedb/models/bge-small-zh-v1.5",
+      "help": "Filesystem path to the local embedding model when provider is 'local'. If omitted, the default extensions/memory-lancedb/models/bge-small-zh-v1.5 path is used.",
+      "advanced": true
     },
     "dbPath": {
       "label": "Database Path",
@@ -42,13 +53,22 @@
             "type": "string",
             "enum": [
               "text-embedding-3-small",
-              "text-embedding-3-large"
+              "text-embedding-3-large",
+              "doubao-embedding-vision-251215",
+              "bge-small-zh-v1.5"
             ]
+          },
+          "provider": {
+            "type": "string",
+            "enum": ["openai", "doubao", "local"]
+          },
+          "url": {
+            "type": "string"
+          },
+          "localModelDir": {
+            "type": "string"
           }
-        },
-        "required": [
-          "apiKey"
-        ]
+        }
       },
       "dbPath": {
         "type": "string"
@@ -60,8 +80,6 @@
         "type": "boolean"
       }
     },
-    "required": [
-      "embedding"
-    ]
+    "required": ["embedding"]
   }
 }

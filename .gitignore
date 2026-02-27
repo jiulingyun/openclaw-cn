@@ -79,3 +79,9 @@ USER.md
 
 # local tooling
 .serena/
+
+# Local embedding models (installed via TOS / external storage, never committed)
+extensions/memory-lancedb/models/bge-m3/
+!extensions/memory-lancedb/models/bge-small-zh-v1.5/.gitkeep
+!extensions/memory-lancedb/models/bge-small-zh-v1.5/README.md
+vendor/models/**
