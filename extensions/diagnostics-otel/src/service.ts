@@ -54,7 +54,7 @@ function formatError(err: unknown): string {
   }
 }
 
-export function createDiagnosticsOtelService(): OpenClawPluginService {
+export function createDiagnosticsOtelService(): ClawdbotPluginService {
   let sdk: NodeSDK | null = null;
   let logProvider: LoggerProvider | null = null;
   let stopLogTransport: (() => void) | null = null;
@@ -133,7 +133,8 @@ export function createDiagnosticsOtelService(): OpenClawPluginService {
         });
 
         try {
-          sdk.start();
+          // eslint-disable-next-line no-await-in-loop, @typescript-eslint/await-thenable
+          await sdk.start();
         } catch (err) {
           ctx.logger.error(`diagnostics-otel: failed to start SDK: ${formatError(err)}`);
           throw err;
