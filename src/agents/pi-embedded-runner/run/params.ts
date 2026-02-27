@@ -2,7 +2,7 @@ import type { ImageContent } from "@mariozechner/pi-ai";
 import type { ReasoningLevel, ThinkLevel, VerboseLevel } from "../../../auto-reply/thinking.js";
 import type { ClawdbotConfig } from "../../../config/config.js";
 import type { AgentStreamParams } from "../../../commands/agent/types.js";
-import type { enqueueCommand } from "../../../process/command-queue.js";
+
 import type { ExecElevatedDefaults, ExecToolDefaults } from "../../bash-tools.js";
 import type { BlockReplyChunking, ToolResultFormat } from "../../pi-embedded-subscribe.js";
 import type { SkillSnapshot } from "../../skills.js";
@@ -82,6 +82,7 @@ export type RunEmbeddedPiAgentParams = {
   shouldEmitToolResult?: () => boolean;
   shouldEmitToolOutput?: () => boolean;
   onPartialReply?: (payload: { text?: string; mediaUrls?: string[] }) => void | Promise<void>;
+  onWait?: (waitMs: number, queuedAhead: number) => void;
   onAssistantMessageStart?: () => void | Promise<void>;
   onBlockReply?: (payload: {
     text?: string;
@@ -98,7 +99,14 @@ export type RunEmbeddedPiAgentParams = {
   onToolResult?: (payload: { text?: string; mediaUrls?: string[] }) => void | Promise<void>;
   onAgentEvent?: (evt: { stream: string; data: Record<string, unknown> }) => void;
   lane?: string;
-  enqueue?: typeof enqueueCommand;
+  enqueue?: <T>(
+    taskType: string,
+    payload: any,
+    opts?: {
+      warnAfterMs?: number;
+      onWait?: (waitMs: number, queuedAhead: number) => void;
+    },
+  ) => Promise<T>;
   extraSystemPrompt?: string;
   streamParams?: AgentStreamParams;
   ownerNumbers?: string[];

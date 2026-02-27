@@ -1,4 +1,5 @@
 import { applyQueueDropPolicy, shouldSkipQueueItem } from "../../../utils/queue-helpers.js";
+import { getQueueMode } from "../../../process/queue-backend.js";
 import { FOLLOWUP_QUEUES, getFollowupQueue } from "./state.js";
 import type { FollowupRun, QueueDedupeMode, QueueSettings } from "./types.js";
 
@@ -47,6 +48,23 @@ export function enqueueFollowupRun(
   if (!shouldEnqueue) return false;
 
   queue.items.push(run);
+
+  // In persistent mode, persist queued items to SQLite to prevent loss on process crash
+  if (getQueueMode() === "persistent") {
+    void import("../../../process/queue-db.js").then(
+      (queueDb) => {
+        try {
+          queueDb.insertPendingFollowup(key, run);
+        } catch {
+          // Persistence failure should not block the in-memory queue
+        }
+      },
+      () => {
+        /* module load failed, ignore */
+      },
+    );
+  }
+
   return true;
 }
 

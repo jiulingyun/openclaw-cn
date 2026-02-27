@@ -54,7 +54,11 @@ vi.mock("../context-window-guard.js", () => ({
 }));
 
 vi.mock("../../process/command-queue.js", () => ({
-  enqueueCommandInLane: vi.fn((_lane: string, task: () => unknown) => task()),
+  enqueueCommandInLane: vi.fn((_lane: string, _taskType: string, _payload: any) => {
+    // 为测试这里需要简单的 mock 穿透执行或者仅做记录
+    // 对于真正的 task 我们通过直接调用真正的 handler 实现这里可以直接跳过或者简单地 resolve
+    return Promise.resolve();
+  }),
 }));
 
 vi.mock("../../utils/message-channel.js", () => ({

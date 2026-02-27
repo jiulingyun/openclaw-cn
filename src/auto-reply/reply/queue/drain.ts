@@ -1,4 +1,5 @@
 import { defaultRuntime } from "../../../runtime.js";
+import { getQueueMode } from "../../../process/queue-backend.js";
 import {
   buildCollectPrompt,
   buildQueueSummaryPrompt,
@@ -8,6 +9,29 @@ import {
 import { isRoutableChannel } from "../route-reply.js";
 import { FOLLOWUP_QUEUES } from "./state.js";
 import type { FollowupRun } from "./types.js";
+
+/**
+ * Clear persisted followup items for the specified key.
+ * Called after drain completes (all queued messages have been processed).
+ */
+function clearPersistedFollowups(key: string): void {
+  if (getQueueMode() !== "persistent") return;
+  void import("../../../process/queue-db.js").then(
+    (queueDb) => {
+      try {
+        const cleared = queueDb.clearPendingFollowupsByKey(key);
+        if (cleared > 0) {
+          defaultRuntime.log?.(`followup queue: cleared ${cleared} persisted item(s) for ${key}`);
+        }
+      } catch {
+        // best-effort
+      }
+    },
+    () => {
+      /* module load failed, ignore */
+    },
+  );
+}
 
 export function scheduleFollowupDrain(
   key: string,
@@ -23,7 +47,7 @@ export function scheduleFollowupDrain(
         await waitForQueueDebounce(queue);
         if (queue.mode === "collect") {
           // Once the batch is mixed, never collect again within this drain.
-          // Prevents “collect after shift” collapsing different targets.
+          // Prevents "collect after shift" collapsing different targets.
           //
           // Debug: `pnpm test src/auto-reply/reply/queue.collect-routing.test.ts`
           if (forceIndividualCollect) {
@@ -115,6 +139,8 @@ export function scheduleFollowupDrain(
       queue.draining = false;
       if (queue.items.length === 0 && queue.droppedCount === 0) {
         FOLLOWUP_QUEUES.delete(key);
+        // Drain complete, clear persisted records
+        clearPersistedFollowups(key);
       } else {
         scheduleFollowupDrain(key, runFollowup);
       }
