@@ -177,7 +177,6 @@
     "@slack/web-api": "^7.13.0",
     "@whiskeysockets/baileys": "npm:@openclaw-cn/baileys@7.0.0-rc.9",
     "ajv": "^8.17.1",
-    "better-sqlite3": "^12.6.2",
     "body-parser": "^2.2.2",
     "chalk": "^5.6.2",
     "chokidar": "^5.0.0",
@@ -218,7 +217,6 @@
     "@lit-labs/signals": "^0.2.0",
     "@lit/context": "^1.1.6",
     "@mariozechner/mini-lit": "0.2.1",
-    "@types/better-sqlite3": "^7.6.13",
     "@types/body-parser": "^1.19.6",
     "@types/express": "^5.0.6",
     "@types/markdown-it": "^14.1.2",
@@ -245,6 +243,8 @@
   },
   "optionalDependencies": {
     "@napi-rs/canvas": "^0.1.88",
+    "@types/better-sqlite3": "^7.6.13",
+    "better-sqlite3": "^12.6.2",
     "node-llama-cpp": "3.15.0"
   },
   "resolutions": {
