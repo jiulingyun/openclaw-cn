@@ -24,11 +24,13 @@ openclaw-cn onboard
 ```
 
 向导会引导您完成：
+
 1. 创建飞书应用并获取凭证
 2. 配置应用凭证
 3. 启动网关
 
 ✅ **完成配置后**，您可以使用以下命令检查网关状态：
+
 - `openclaw-cn gateway status` - 查看网关运行状态
 - `openclaw-cn logs --follow` - 查看实时日志
 
@@ -43,6 +45,7 @@ openclaw-cn channels add
 然后根据交互式提示选择 Feishu，输入 App ID 和 App Secret 即可。
 
 ✅ **完成配置后**，您可以使用以下命令管理网关：
+
 - `openclaw-cn gateway status` - 查看网关运行状态
 - `openclaw-cn gateway restart` - 重启网关以应用新配置
 - `openclaw-cn logs --follow` - 查看实时日志
@@ -66,6 +69,7 @@ openclaw-cn channels add
 ### 3. 获取应用凭证
 
 在应用的 **凭证与基础信息** 页面，复制：
+
 - **App ID**（格式如 `cli_xxx`）
 - **App Secret**
 
@@ -87,6 +91,7 @@ openclaw-cn channels add
       "application:application:self_manage",
       "application:bot.menu:write",
       "cardkit:card:write",
+      "contact:contact.base:readonly",
       "contact:user.employee_id:readonly",
       "corehr:file:download",
       "docs:document.content:read",
@@ -104,11 +109,7 @@ openclaw-cn channels add
       "sheets:spreadsheet",
       "wiki:wiki:readonly"
     ],
-    "user": [
-      "aily:file:read",
-      "aily:file:write",
-      "im:chat.access_event.bot_p2p_chat:read"
-    ]
+    "user": ["aily:file:read", "aily:file:write", "im:chat.access_event.bot_p2p_chat:read"]
   }
 }
 ```
@@ -120,6 +121,7 @@ openclaw-cn channels add
 ### 5. 启用机器人能力
 
 在 **应用能力** > **机器人** 页面：
+
 1. 开启机器人能力
 2. 配置机器人名称
 
@@ -128,10 +130,12 @@ openclaw-cn channels add
 ### 6. 配置事件订阅
 
 ⚠️ **重要提醒**：在配置事件订阅前，请务必确保已完成以下步骤：
+
 1. 运行 `openclaw-cn channels add` 添加了 Feishu 渠道
 2. 网关处于启动状态（可通过 `openclaw-cn gateway status` 检查状态）
 
 在 **事件订阅** 页面：
+
 1. 选择 **使用长连接接收事件**（WebSocket 模式）
 2. 添加事件：`im.message.receive_v1`（接收消息）
 
@@ -240,11 +244,13 @@ openclaw-cn pairing approve feishu <配对码>
 ### 群组访问
 
 **1. 群组策略**（`channels.feishu.groupPolicy`）：
+
 - `"open"` = 允许群组中所有人（默认）
 - `"allowlist"` = 仅允许 `groupAllowFrom` 中的用户
 - `"disabled"` = 禁用群组消息
 
 **2. @提及要求**（`channels.feishu.groups.<chat_id>.requireMention`）：
+
 - `true` = 需要 @机器人才响应（默认）
 - `false` = 无需 @也响应
 
@@ -308,6 +314,7 @@ openclaw-cn pairing approve feishu <配对码>
 群组 ID 格式为 `oc_xxx`，可以通过以下方式获取：
 
 **方法一**（推荐）：
+
 1. 启动网关并在群组中 @机器人发消息
 2. 运行 `openclaw-cn logs --follow` 查看日志中的 `chat_id`
 
@@ -319,11 +326,13 @@ openclaw-cn pairing approve feishu <配对码>
 用户 ID 格式为 `ou_xxx`，可以通过以下方式获取：
 
 **方法一**（推荐）：
+
 1. 启动网关并给机器人发消息
 2. 运行 `openclaw-cn logs --follow` 查看日志中的 `open_id`
 
 **方法二**：
 查看配对请求列表，其中包含用户的 Open ID：
+
 ```bash
 openclaw-cn pairing list feishu
 ```
@@ -332,11 +341,11 @@ openclaw-cn pairing list feishu
 
 ## 常用命令
 
-| 命令 | 说明 |
-|------|------|
+| 命令      | 说明           |
+| --------- | -------------- |
 | `/status` | 查看机器人状态 |
-| `/reset` | 重置对话会话 |
-| `/model` | 查看/切换模型 |
+| `/reset`  | 重置对话会话   |
+| `/model`  | 查看/切换模型  |
 
 > 注意：飞书目前不支持原生命令菜单，命令需要以文本形式发送。
 
@@ -344,13 +353,13 @@ openclaw-cn pairing list feishu
 
 在配置和使用飞书渠道时，您可能需要使用以下网关管理命令：
 
-| 命令 | 说明 |
-|------|------|
-| `openclaw-cn gateway status` | 查看网关运行状态 |
+| 命令                          | 说明              |
+| ----------------------------- | ----------------- |
+| `openclaw-cn gateway status`  | 查看网关运行状态  |
 | `openclaw-cn gateway install` | 安装/启动网关服务 |
-| `openclaw-cn gateway stop` | 停止网关服务 |
-| `openclaw-cn gateway restart` | 重启网关服务 |
-| `openclaw-cn logs --follow` | 实时查看日志输出 |
+| `openclaw-cn gateway stop`    | 停止网关服务      |
+| `openclaw-cn gateway restart` | 重启网关服务      |
+| `openclaw-cn logs --follow`   | 实时查看日志输出  |
 
 ---
 
@@ -467,11 +476,11 @@ openclaw-cn pairing list feishu
 
 **replyToMode 值说明**：
 
-| 值 | 行为 |
-|----|------|
-| `"off"` | 不引用原消息（私聊默认值） |
-| `"first"` | 仅在第一条回复时引用原消息 |
-| `"all"` | 所有回复都引用原消息（群聊默认值） |
+| 值        | 行为                               |
+| --------- | ---------------------------------- |
+| `"off"`   | 不引用原消息（私聊默认值）         |
+| `"first"` | 仅在第一条回复时引用原消息         |
+| `"all"`   | 所有回复都引用原消息（群聊默认值） |
 
 > **注意**：消息引用功能与流式卡片输出（`streaming: true`）不能同时使用。当启用流式输出时，回复会以卡片形式呈现，不会显示引用。
 
@@ -537,12 +546,12 @@ openclaw-cn pairing list feishu
 
 **匹配规则说明**：
 
-| 字段 | 说明 |
-|------|------|
-| `agentId` | 目标 Agent 的 ID，需要在 `agents.list` 中定义 |
-| `match.channel` | 渠道类型，这里固定为 `"feishu"` |
-| `match.peer.kind` | 对话类型：`"dm"`（私聊）或 `"group"`（群组） |
-| `match.peer.id` | 用户 Open ID（`ou_xxx`）或群组 ID（`oc_xxx`） |
+| 字段              | 说明                                          |
+| ----------------- | --------------------------------------------- |
+| `agentId`         | 目标 Agent 的 ID，需要在 `agents.list` 中定义 |
+| `match.channel`   | 渠道类型，这里固定为 `"feishu"`               |
+| `match.peer.kind` | 对话类型：`"dm"`（私聊）或 `"group"`（群组）  |
+| `match.peer.id`   | 用户 Open ID（`ou_xxx`）或群组 ID（`oc_xxx`） |
 
 **获取 ID 的方法**：参见上文 [获取群组/用户 ID](#获取群组用户-id) 章节。
 
@@ -571,13 +580,8 @@ openclaw-cn pairing list feishu
           "botName": "我的AI助手"
         }
       },
-      "allowFrom": [
-        "ou_xxxxxxxxxxxxxxxxxxxx"
-      ],
-      "groupAllowFrom": [
-        "ou_xxxxxxxxxxxxxxxxxxxx",
-        "ou_yyyyyyyyyyyyyyyyyyyy"
-      ],
+      "allowFrom": ["ou_xxxxxxxxxxxxxxxxxxxx"],
+      "groupAllowFrom": ["ou_xxxxxxxxxxxxxxxxxxxx", "ou_yyyyyyyyyyyyyyyyyyyy"],
       "groups": {
         "oc_xxxxxxxxxxxxxxxxxxxx": {
           "enabled": true,
@@ -596,6 +600,7 @@ openclaw-cn pairing list feishu
 ```
 
 **配置说明**：
+
 - `appId` / `appSecret`：替换为您在飞书开放平台获取的凭证
 - `allowFrom`：私聊白名单，填写允许私聊的用户 Open ID
 - `groupAllowFrom`：群组白名单，填写允许在群组中使用的用户 Open ID
@@ -610,34 +615,34 @@ openclaw-cn pairing list feishu
 
 主要选项：
 
-| 配置项 | 说明 | 默认值 |
-|--------|------|--------|
-| `channels.feishu.enabled` | 启用/禁用渠道 | `true` |
-| `channels.feishu.accounts.<id>.appId` | 应用 App ID | - |
-| `channels.feishu.accounts.<id>.appSecret` | 应用 App Secret | - |
-| `channels.feishu.dmPolicy` | 私聊策略 | `pairing` |
-| `channels.feishu.allowFrom` | 私聊白名单（open_id 列表） | - |
-| `channels.feishu.groupPolicy` | 群组策略 | `open` |
-| `channels.feishu.groupAllowFrom` | 群组白名单 | - |
-| `channels.feishu.groups.<chat_id>.requireMention` | 是否需要 @提及 | `true` |
-| `channels.feishu.groups.<chat_id>.enabled` | 是否启用该群组 | `true` |
-| `channels.feishu.groups.<chat_id>.replyToMode` | 群组消息引用模式 | 继承账户级 |
-| `channels.feishu.replyToMode` | 消息引用模式 | `all` |
-| `channels.feishu.textChunkLimit` | 消息分块大小 | `2000` |
-| `channels.feishu.mediaMaxMb` | 媒体大小限制 | `30` |
-| `channels.feishu.streaming` | 启用流式卡片输出 | `true` |
-| `channels.feishu.blockStreaming` | 启用块级流式 | `true` |
+| 配置项                                            | 说明                       | 默认值     |
+| ------------------------------------------------- | -------------------------- | ---------- |
+| `channels.feishu.enabled`                         | 启用/禁用渠道              | `true`     |
+| `channels.feishu.accounts.<id>.appId`             | 应用 App ID                | -          |
+| `channels.feishu.accounts.<id>.appSecret`         | 应用 App Secret            | -          |
+| `channels.feishu.dmPolicy`                        | 私聊策略                   | `pairing`  |
+| `channels.feishu.allowFrom`                       | 私聊白名单（open_id 列表） | -          |
+| `channels.feishu.groupPolicy`                     | 群组策略                   | `open`     |
+| `channels.feishu.groupAllowFrom`                  | 群组白名单                 | -          |
+| `channels.feishu.groups.<chat_id>.requireMention` | 是否需要 @提及             | `true`     |
+| `channels.feishu.groups.<chat_id>.enabled`        | 是否启用该群组             | `true`     |
+| `channels.feishu.groups.<chat_id>.replyToMode`    | 群组消息引用模式           | 继承账户级 |
+| `channels.feishu.replyToMode`                     | 消息引用模式               | `all`      |
+| `channels.feishu.textChunkLimit`                  | 消息分块大小               | `2000`     |
+| `channels.feishu.mediaMaxMb`                      | 媒体大小限制               | `30`       |
+| `channels.feishu.streaming`                       | 启用流式卡片输出           | `true`     |
+| `channels.feishu.blockStreaming`                  | 启用块级流式               | `true`     |
 
 ---
 
 ## dmPolicy 策略说明
 
-| 值 | 行为 |
-|----|------|
-| `"pairing"` | **默认**。未知用户收到配对码，管理员批准后才能对话 |
-| `"allowlist"` | 仅 `allowFrom` 列表中的用户可对话，其他静默忽略 |
-| `"open"` | 允许所有人对话（需在 allowFrom 中加 `"*"`） |
-| `"disabled"` | 完全禁止私聊 |
+| 值            | 行为                                               |
+| ------------- | -------------------------------------------------- |
+| `"pairing"`   | **默认**。未知用户收到配对码，管理员批准后才能对话 |
+| `"allowlist"` | 仅 `allowFrom` 列表中的用户可对话，其他静默忽略    |
+| `"open"`      | 允许所有人对话（需在 allowFrom 中加 `"*"`）        |
+| `"disabled"`  | 完全禁止私聊                                       |
 
 ---
 
