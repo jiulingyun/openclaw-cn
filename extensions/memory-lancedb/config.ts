@@ -7,7 +7,6 @@ export type MemoryConfig = {
     model?: string;
     apiKey: string;
     url?: string;
-    localModelDir?: string;
     retry?: {
       maxRetries: number;
       initialDelayMs: number;
@@ -139,7 +138,7 @@ export const memoryConfigSchema = {
       label: "Embedding API Key",
       sensitive: true,
       placeholder: "sk-proj-...",
-      help: "API key for embeddings (OpenAI or Doubao). You can also use ${OPENAI_API_KEY} or ${LAS_API_KEY}.",
+      help: "API key for embeddings (OpenAI or Doubao). You can also use ${OPENAI_API_KEY} or ${VOLCENGINE_API_KEY}.",
     },
     "embedding.model": {
       label: "Embedding Model",

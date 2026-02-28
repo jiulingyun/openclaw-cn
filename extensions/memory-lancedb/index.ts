@@ -197,6 +197,7 @@ class DoubaoEmbeddings {
   };
 
   constructor(
+    private readonly api: OpenClawPluginApi,
     private readonly apiKey: string,
     private readonly model: string,
     url?: string,
@@ -218,8 +219,8 @@ class DoubaoEmbeddings {
   }
 
   private buildEndpoint(url?: string): string {
-    const defaultBaseUrl = "https://operator.las.cn-beijing.volces.com";
-    let base = (url ?? defaultBaseUrl).trim();
+    const defaultUrl = "https://ark.cn-beijing.volces.com/api/v3/embeddings/multimodal";
+    let base = (url ?? defaultUrl).trim();
     if (!base.startsWith("http://") && !base.startsWith("https://")) {
       base = `https://${base}`;
     }
@@ -311,7 +312,9 @@ class DoubaoEmbeddings {
 
     for (let attempt = 0; attempt <= this.retry.maxRetries; attempt++) {
       if (attempt != 0) {
-        console.log(`Doubao embeddings: retrying attempt ${attempt} after error: ${lastError}`);
+        this.api.logger.warn(
+          `Doubao embeddings: retrying attempt ${attempt} after error: ${lastError}`,
+        );
       }
       try {
         return await this.doFetch(text);
@@ -320,14 +323,16 @@ class DoubaoEmbeddings {
 
         // Don't retry if this was the last attempt
         if (attempt >= this.retry.maxRetries) {
-          console.log(`Doubao embeddings: reached max retries ${this.retry.maxRetries}, giving up`);
+          this.api.logger.warn(
+            `Doubao embeddings: reached max retries ${this.retry.maxRetries}, giving up`,
+          );
           break;
         }
 
         // Check if error is retryable (network errors, 5xx, 429)
         const isRetryable = this.isRetryableError(lastError);
         if (!isRetryable) {
-          console.log(`Doubao embeddings: non-retryable error: ${lastError.message}`);
+          this.api.logger.warn(`Doubao embeddings: non-retryable error: ${lastError.message}`);
           throw lastError;
         }
 
@@ -364,7 +369,7 @@ function createEmbeddings(
 ): { embed(text: string): Promise<number[]> } {
   if (cfg.provider === "doubao") {
     api.logger.warn(`memory-lancedb: used doubao embedding.`);
-    return new DoubaoEmbeddings(cfg.apiKey, cfg.model!, cfg.url, cfg.retry);
+    return new DoubaoEmbeddings(api, cfg.apiKey, cfg.model!, cfg.url, cfg.retry);
   }
 
   api.logger.warn(`memory-lancedb: used openai embedding.`);
