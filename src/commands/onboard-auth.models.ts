@@ -13,6 +13,12 @@ export const MOONSHOT_DEFAULT_MODEL_ID = "kimi-k2.5";
 export const MOONSHOT_DEFAULT_MODEL_REF = `moonshot/${MOONSHOT_DEFAULT_MODEL_ID}`;
 export const MOONSHOT_DEFAULT_CONTEXT_WINDOW = 256000;
 export const MOONSHOT_DEFAULT_MAX_TOKENS = 8192;
+export const MOONSHOT_DEFAULT_COST = {
+  input: 0,
+  output: 0,
+  cacheRead: 0,
+  cacheWrite: 0,
+};
 export const KIMI_CODING_MODEL_ID = "k2p5";
 export const KIMI_CODING_MODEL_REF = `kimi-coding/${KIMI_CODING_MODEL_ID}`;
 
@@ -35,12 +41,14 @@ export const MINIMAX_LM_STUDIO_COST = {
   cacheRead: 0,
   cacheWrite: 0,
 };
-export const MOONSHOT_DEFAULT_COST = {
-  input: 0,
-  output: 0,
-  cacheRead: 0,
-  cacheWrite: 0,
-};
+
+// 新增：阿里云百炼（Coding Plan）默认配置
+// OpenAI 兼容协议：https://coding.dashscope.aliyuncs.com/v1
+// Anthropic 兼容协议：https://coding.dashscope.aliyuncs.com/apps/anthropic
+export const DASHSCOPE_CODING_PLAN_BASE_URL = "https://coding.dashscope.aliyuncs.com/v1";
+// 默认使用 Qwen 2.5 Coder 32B 模型
+export const DASHSCOPE_CODING_PLAN_DEFAULT_MODEL_ID = "qwen2.5-coder-32b-instruct";
+export const DASHSCOPE_CODING_PLAN_DEFAULT_MODEL_REF = `dashscope-coding-plan/${DASHSCOPE_CODING_PLAN_DEFAULT_MODEL_ID}`;
 
 // 新增：OpenAI兼容供应商默认配置（基础URL与模型ID）
 // 硅基流动：官方提供OpenAI兼容API，常见基地址如下
@@ -189,6 +197,19 @@ export function buildDashscopeModelDefinition(): ModelDefinitionConfig {
     reasoning: false,
     input: ["text"],
     cost: DASHSCOPE_DEFAULT_COST,
+    contextWindow: DASHSCOPE_DEFAULT_CONTEXT_WINDOW,
+    maxTokens: DASHSCOPE_DEFAULT_MAX_TOKENS,
+  };
+}
+
+// 新增：构建阿里云百炼（Coding Plan）默认模型定义
+export function buildDashscopeCodingPlanModelDefinition(): ModelDefinitionConfig {
+  return {
+    id: DASHSCOPE_CODING_PLAN_DEFAULT_MODEL_ID,
+    name: "Qwen 2.5 Coder 32B",
+    reasoning: false,
+    input: ["text"],
+    cost: DASHSCOPE_DEFAULT_COST, // 复用 DashScope 成本配置
     contextWindow: DASHSCOPE_DEFAULT_CONTEXT_WINDOW,
     maxTokens: DASHSCOPE_DEFAULT_MAX_TOKENS,
   };

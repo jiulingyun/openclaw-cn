@@ -32,6 +32,8 @@ export {
   applySiliconflowProviderConfig,
   applyDashscopeConfig,
   applyDashscopeProviderConfig,
+  applyDashscopeCodingPlanConfig,
+  applyDashscopeCodingPlanProviderConfig,
   applyDeepseekConfig,
   applyDeepseekProviderConfig,
 } from "./onboard-auth.config-core.js";
@@ -73,6 +75,7 @@ export {
 export {
   setSiliconflowApiKey,
   setDashscopeApiKey,
+  setDashscopeCodingPlanApiKey,
   setDeepseekApiKey,
 } from "./onboard-auth.credentials.js";
 export {
@@ -94,11 +97,14 @@ export {
   SILICONFLOW_BASE_URL,
   SILICONFLOW_DEFAULT_MODEL_REF,
   DASHSCOPE_BASE_URL,
+  DASHSCOPE_CODING_PLAN_BASE_URL,
   DASHSCOPE_DEFAULT_MODEL_REF,
+  DASHSCOPE_CODING_PLAN_DEFAULT_MODEL_REF,
   DEEPSEEK_BASE_URL,
   DEEPSEEK_DEFAULT_MODEL_REF,
   buildSiliconflowModelDefinition,
   buildDashscopeModelDefinition,
+  buildDashscopeCodingPlanModelDefinition,
   buildDeepseekModelDefinition,
 } from "./onboard-auth.models.js";
 

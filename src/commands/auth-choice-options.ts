@@ -150,7 +150,7 @@ const AUTH_CHOICE_GROUP_DEFS: {
     value: "dashscope",
     label: "阿里云百炼 (DashScope)",
     hint: "OpenAI兼容 · API key",
-    choices: ["dashscope-api-key"],
+    choices: ["dashscope-api-key", "dashscope-coding-plan-api-key"],
   },
   {
     value: "deepseek",
@@ -274,6 +274,11 @@ export function buildAuthChoiceOptions(params: {
   // 新增：OpenAI兼容供应商API Key选项
   options.push({ value: "siliconflow-api-key", label: "硅基流动 API key" });
   options.push({ value: "dashscope-api-key", label: "阿里云百炼 (DashScope) API key" });
+  options.push({
+    value: "dashscope-coding-plan-api-key",
+    label: "阿里云百炼 (Coding Plan)",
+    hint: "OpenAI/Anthropic 兼容协议",
+  });
   options.push({ value: "deepseek-api-key", label: "DeepSeek API key" });
   options.push({ value: "volcengine-api-key", label: "火山引擎 (ARK) API key" });
   if (params.includeSkip) {

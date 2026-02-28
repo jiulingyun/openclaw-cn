@@ -20,6 +20,7 @@ const PREFERRED_PROVIDER_BY_AUTH_CHOICE: Partial<Record<AuthChoice, string>> = {
   // 新增：OpenAI兼容供应商的API Key映射
   "siliconflow-api-key": "siliconflow",
   "dashscope-api-key": "dashscope",
+  "dashscope-coding-plan-api-key": "dashscope-coding-plan",
   "deepseek-api-key": "deepseek",
   "volcengine-api-key": "volcengine",
   "gemini-api-key": "google",

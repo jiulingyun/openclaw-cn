@@ -39,8 +39,11 @@ import {
 } from "./onboard-auth.models.js";
 import {
   buildDashscopeModelDefinition,
+  buildDashscopeCodingPlanModelDefinition,
   DASHSCOPE_BASE_URL,
   DASHSCOPE_DEFAULT_MODEL_REF,
+  DASHSCOPE_CODING_PLAN_BASE_URL,
+  DASHSCOPE_CODING_PLAN_DEFAULT_MODEL_REF,
 } from "./onboard-auth.models.js";
 import {
   buildDeepseekModelDefinition,
@@ -518,6 +521,71 @@ export function applyDashscopeConfig(cfg: ClawdbotConfig): ClawdbotConfig {
               }
             : undefined),
           primary: DASHSCOPE_DEFAULT_MODEL_REF,
+        },
+      },
+    },
+  };
+}
+
+// 新增：阿里云百炼（Coding Plan）提供商配置
+export function applyDashscopeCodingPlanProviderConfig(cfg: ClawdbotConfig): ClawdbotConfig {
+  const models = { ...cfg.agents?.defaults?.models };
+  models[DASHSCOPE_CODING_PLAN_DEFAULT_MODEL_REF] = {
+    ...models[DASHSCOPE_CODING_PLAN_DEFAULT_MODEL_REF],
+    alias: models[DASHSCOPE_CODING_PLAN_DEFAULT_MODEL_REF]?.alias ?? "Qwen 2.5 Coder",
+  };
+
+  const providers = { ...cfg.models?.providers };
+  const existingProvider = providers["dashscope-coding-plan"];
+  const existingModels = Array.isArray(existingProvider?.models) ? existingProvider.models : [];
+  const defaultModel = buildDashscopeCodingPlanModelDefinition();
+  const hasDefaultModel = existingModels.some((model) => model.id === defaultModel.id);
+  const mergedModels = hasDefaultModel ? existingModels : [...existingModels, defaultModel];
+  const { apiKey: existingApiKey, ...existingProviderRest } = (existingProvider ?? {}) as {
+    apiKey?: string;
+  };
+  const resolvedApiKey = typeof existingApiKey === "string" ? existingApiKey : undefined;
+  const normalizedApiKey = resolvedApiKey?.trim();
+  providers["dashscope-coding-plan"] = {
+    ...existingProviderRest,
+    baseUrl: DASHSCOPE_CODING_PLAN_BASE_URL,
+    api: "openai-completions",
+    ...(normalizedApiKey ? { apiKey: normalizedApiKey } : {}),
+    models: mergedModels.length > 0 ? mergedModels : [defaultModel],
+  };
+
+  return {
+    ...cfg,
+    agents: {
+      ...cfg.agents,
+      defaults: {
+        ...cfg.agents?.defaults,
+        models,
+      },
+    },
+    models: {
+      mode: cfg.models?.mode ?? "merge",
+      providers,
+    },
+  };
+}
+
+export function applyDashscopeCodingPlanConfig(cfg: ClawdbotConfig): ClawdbotConfig {
+  const next = applyDashscopeCodingPlanProviderConfig(cfg);
+  const existingModel = next.agents?.defaults?.model;
+  return {
+    ...next,
+    agents: {
+      ...next.agents,
+      defaults: {
+        ...next.agents?.defaults,
+        model: {
+          ...(existingModel && "fallbacks" in (existingModel as Record<string, unknown>)
+            ? {
+                fallbacks: (existingModel as { fallbacks?: string[] }).fallbacks,
+              }
+            : undefined),
+          primary: DASHSCOPE_CODING_PLAN_DEFAULT_MODEL_REF,
         },
       },
     },

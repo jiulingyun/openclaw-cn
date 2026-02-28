@@ -219,11 +219,25 @@ export async function setSiliconflowApiKey(key: string, agentDir?: string) {
 
 // 新增：阿里云百炼（DashScope） API Key 写入到代理目录
 export async function setDashscopeApiKey(key: string, agentDir?: string) {
+  // Write to resolved agent dir so gateway finds credentials on startup.
   upsertAuthProfile({
     profileId: "dashscope:default",
     credential: {
       type: "api_key",
       provider: "dashscope",
+      key,
+    },
+    agentDir: resolveAuthAgentDir(agentDir),
+  });
+}
+
+export async function setDashscopeCodingPlanApiKey(key: string, agentDir?: string) {
+  // Write to resolved agent dir so gateway finds credentials on startup.
+  upsertAuthProfile({
+    profileId: "dashscope-coding-plan:default",
+    credential: {
+      type: "api_key",
+      provider: "dashscope-coding-plan",
       key,
     },
     agentDir: resolveAuthAgentDir(agentDir),

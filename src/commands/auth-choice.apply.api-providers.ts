@@ -60,13 +60,17 @@ import {
   applySiliconflowProviderConfig,
   applyDashscopeConfig,
   applyDashscopeProviderConfig,
+  applyDashscopeCodingPlanConfig,
+  applyDashscopeCodingPlanProviderConfig,
   applyDeepseekConfig,
   applyDeepseekProviderConfig,
   SILICONFLOW_DEFAULT_MODEL_REF,
   DASHSCOPE_DEFAULT_MODEL_REF,
+  DASHSCOPE_CODING_PLAN_DEFAULT_MODEL_REF,
   DEEPSEEK_DEFAULT_MODEL_REF,
   setSiliconflowApiKey,
   setDashscopeApiKey,
+  setDashscopeCodingPlanApiKey,
   setDeepseekApiKey,
 } from "./onboard-auth.js";
 import { OPENCODE_ZEN_DEFAULT_MODEL } from "./opencode-zen-model-default.js";
@@ -106,6 +110,8 @@ export async function applyAuthChoiceApiProviders(
       params.opts.tokenProvider === "kimi-coding"
     ) {
       authChoice = "kimi-code-api-key";
+    } else if (params.opts.tokenProvider === "dashscope-coding-plan") {
+      authChoice = "dashscope-coding-plan-api-key";
     } else if (params.opts.tokenProvider === "google") {
       authChoice = "gemini-api-key";
     } else if (params.opts.tokenProvider === "zai") {
@@ -284,6 +290,57 @@ export async function applyAuthChoiceApiProviders(
         applyDefaultConfig: applyDashscopeConfig,
         applyProviderConfig: applyDashscopeProviderConfig,
         noteDefault: DASHSCOPE_DEFAULT_MODEL_REF,
+        noteAgentModel,
+        prompter: params.prompter,
+      });
+      nextConfig = applied.config;
+      agentModelOverride = applied.agentModelOverride ?? agentModelOverride;
+    }
+    return { config: nextConfig, agentModelOverride };
+  }
+
+  // 新增：阿里云百炼 (Coding Plan) API Key 认证与默认模型配置
+  if (authChoice === "dashscope-coding-plan-api-key") {
+    let hasCredential = false;
+    if (
+      !hasCredential &&
+      params.opts?.token &&
+      params.opts?.tokenProvider === "dashscope-coding-plan"
+    ) {
+      await setDashscopeCodingPlanApiKey(normalizeApiKeyInput(params.opts.token), params.agentDir);
+      hasCredential = true;
+    }
+    const envKey = resolveEnvApiKey("dashscope-coding-plan");
+    if (envKey && !hasCredential) {
+      const useExisting = await params.prompter.confirm({
+        message: `使用已有 DASHSCOPE_CODING_PLAN_API_KEY (${envKey.source}, ${formatApiKeyPreview(envKey.apiKey)})？`,
+        initialValue: true,
+      });
+      if (useExisting) {
+        await setDashscopeCodingPlanApiKey(envKey.apiKey, params.agentDir);
+        hasCredential = true;
+      }
+    }
+    if (!hasCredential) {
+      const key = await params.prompter.text({
+        message: "输入阿里云百炼 (Coding Plan) API key",
+        validate: validateApiKeyInput,
+      });
+      await setDashscopeCodingPlanApiKey(normalizeApiKeyInput(String(key)), params.agentDir);
+    }
+    nextConfig = applyAuthProfileConfig(nextConfig, {
+      profileId: "dashscope-coding-plan:default",
+      provider: "dashscope-coding-plan",
+      mode: "api_key",
+    });
+    {
+      const applied = await applyDefaultModelChoice({
+        config: nextConfig,
+        setDefaultModel: params.setDefaultModel,
+        defaultModel: DASHSCOPE_CODING_PLAN_DEFAULT_MODEL_REF,
+        applyDefaultConfig: applyDashscopeCodingPlanConfig,
+        applyProviderConfig: applyDashscopeCodingPlanProviderConfig,
+        noteDefault: DASHSCOPE_CODING_PLAN_DEFAULT_MODEL_REF,
         noteAgentModel,
         prompter: params.prompter,
       });

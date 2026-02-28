@@ -36,6 +36,8 @@ import {
   setVercelAiGatewayApiKey,
   setXiaomiApiKey,
   setZaiApiKey,
+  setDashscopeCodingPlanApiKey,
+  applyDashscopeCodingPlanConfig,
 } from "../../onboard-auth.js";
 import { resolveNonInteractiveApiKey } from "../api-keys.js";
 
@@ -69,6 +71,29 @@ export async function applyNonInteractiveAuthChoice(params: {
     );
     runtime.exit(1);
     return null;
+  }
+
+  if (authChoice === "dashscope-coding-plan-api-key") {
+    const resolved = await resolveNonInteractiveApiKey({
+      provider: "dashscope-coding-plan",
+      cfg: baseConfig,
+      flagValue: opts.dashscopeCodingPlanApiKey,
+      flagName: "--dashscope-coding-plan-api-key",
+      envVar: "DASHSCOPE_CODING_PLAN_API_KEY",
+      runtime,
+    });
+    if (!resolved) {
+      return null;
+    }
+    if (resolved.source !== "profile") {
+      await setDashscopeCodingPlanApiKey(resolved.key);
+    }
+    nextConfig = applyAuthProfileConfig(nextConfig, {
+      profileId: "dashscope-coding-plan:default",
+      provider: "dashscope-coding-plan",
+      mode: "api_key",
+    });
+    return applyDashscopeCodingPlanConfig(nextConfig);
   }
 
   if (authChoice === "apiKey") {

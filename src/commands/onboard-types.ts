@@ -15,6 +15,7 @@ export type AuthChoice =
   // 新增：OpenAI兼容供应商（硅基流动、阿里云百炼、DeepSeek）的API Key选择
   | "siliconflow-api-key"
   | "dashscope-api-key"
+  | "dashscope-coding-plan-api-key"
   | "deepseek-api-key"
   | "volcengine-api-key"
   | "openrouter-api-key"
@@ -135,6 +136,7 @@ export type OnboardOptions = {
   // 新增：OpenAI兼容供应商API Key（非交互模式使用）
   siliconflowApiKey?: string;
   dashscopeApiKey?: string;
+  dashscopeCodingPlanApiKey?: string;
   deepseekApiKey?: string;
   gatewayPort?: number;
   gatewayBind?: GatewayBind;
