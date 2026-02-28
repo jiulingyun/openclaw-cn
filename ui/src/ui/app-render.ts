@@ -944,16 +944,19 @@ export function renderApp(state: AppViewState) {
                   }
                   const entry = list[index] as { model?: unknown };
                   const existing = entry?.model;
+
+                  // AgentEntrySchema.model is either a string or { primary?, fallbacks? }.
+                  // Keep the shape stable: if it was an object (e.g. because fallbacks are set),
+                  // update `primary`; otherwise store the string model id.
                   if (existing && typeof existing === "object" && !Array.isArray(existing)) {
                     const fallbacks = (existing as { fallbacks?: unknown }).fallbacks;
-                    const next = {
+                    updateConfigFormValue(state as unknown as ConfigState, basePath, {
                       primary: modelId,
                       ...(Array.isArray(fallbacks) ? { fallbacks } : {}),
-                    };
-                    updateConfigFormValue(state as unknown as ConfigState, basePath, next);
-                  } else {
-                    updateConfigFormValue(state as unknown as ConfigState, basePath, modelId);
+                    });
+                    return;
                   }
+                  updateConfigFormValue(state as unknown as ConfigState, basePath, modelId);
                 },
                 onModelFallbacksChange: (agentId, fallbacks) => {
                   if (!configValue) {

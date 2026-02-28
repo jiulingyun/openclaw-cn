@@ -12,6 +12,7 @@ Docs: https://clawd.org.cn/
 ### bug修复
 
 - **OTEL 诊断导出修复**：更新 OTEL 导出协议与指标/trace 统计，完善诊断事件处理（#324，感谢 @Ronald-Kong99）
+- **Control UI 配置保存与回显修复**：修复 `config.set` 写入时的 redaction 恢复逻辑导致的保存失败，并修复代理模型下拉框不回显已保存模型的问题
 
 ## 0.1.6
 

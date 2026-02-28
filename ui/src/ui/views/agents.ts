@@ -350,11 +350,6 @@ function resolveModelLabel(model?: unknown): string {
   return "-";
 }
 
-function normalizeModelValue(label: string): string {
-  const match = label.match(/^(.+) \(\+\d+ 备选\)$/);
-  return match ? match[1] : label;
-}
-
 function resolveModelPrimary(model?: unknown): string | null {
   if (!model) {
     return null;
@@ -813,12 +808,8 @@ function renderAgentOverview(params: {
   const model = config.entry?.model
     ? resolveModelLabel(config.entry?.model)
     : resolveModelLabel(config.defaults?.model);
-  const defaultModel = resolveModelLabel(config.defaults?.model);
-  const modelPrimary =
-    resolveModelPrimary(config.entry?.model) || (model !== "-" ? normalizeModelValue(model) : null);
-  const defaultPrimary =
-    resolveModelPrimary(config.defaults?.model) ||
-    (defaultModel !== "-" ? normalizeModelValue(defaultModel) : null);
+  const modelPrimary = resolveModelPrimary(config.entry?.model);
+  const defaultPrimary = resolveModelPrimary(config.defaults?.model);
   const effectivePrimary = modelPrimary ?? defaultPrimary ?? null;
   const modelFallbacks = resolveModelFallbacks(config.entry?.model);
   const fallbackText = modelFallbacks ? modelFallbacks.join(", ") : "";
@@ -832,11 +823,7 @@ function renderAgentOverview(params: {
   const identityEmoji = resolvedEmoji || "-";
   const skillFilter = Array.isArray(config.entry?.skills) ? config.entry?.skills : null;
   const skillCount = skillFilter?.length ?? null;
-  const identityStatus = agentIdentityLoading
-    ? "加载中…"
-    : agentIdentityError
-      ? "不可用"
-      : "";
+  const identityStatus = agentIdentityLoading ? "加载中…" : agentIdentityError ? "不可用" : "";
   const isDefault = Boolean(params.defaultId && agent.id === params.defaultId);
 
   return html`
@@ -1145,9 +1132,7 @@ function renderAgentChannels(params: {
                   const status = summary.total
                     ? `${summary.connected}/${summary.total} 已连接`
                     : "无账户";
-                  const config = summary.configured
-                    ? `已配置 ${summary.configured} 个`
-                    : "未配置";
+                  const config = summary.configured ? `已配置 ${summary.configured} 个` : "未配置";
                   const enabled = summary.total ? `已启用 ${summary.enabled} 个` : "已禁用";
                   const extras = resolveChannelExtras(params.configForm, entry.id);
                   return html`
@@ -1320,9 +1305,7 @@ function renderAgentFiles(params: {
       ${
         !list
           ? html`
-              <div class="callout info" style="margin-top: 12px">
-                加载代理工作区文件以编辑核心指令。
-              </div>
+              <div class="callout info" style="margin-top: 12px">加载代理工作区文件以编辑核心指令。</div>
             `
           : html`
               <div class="agent-files-grid" style="margin-top: 16px;">
@@ -1369,9 +1352,7 @@ function renderAgentFiles(params: {
                           ${
                             activeEntry.missing
                               ? html`
-                                  <div class="callout info" style="margin-top: 10px">
-                                    此文件不存在。保存将在代理工作区中创建它。
-                                  </div>
+                                  <div class="callout info" style="margin-top: 10px">此文件不存在。保存将在代理工作区中创建它。</div>
                                 `
                               : nothing
                           }
@@ -1436,11 +1417,7 @@ function renderAgentTools(params: {
   const agentTools = config.entry?.tools ?? {};
   const globalTools = config.globalTools ?? {};
   const profile = agentTools.profile ?? globalTools.profile ?? "full";
-  const profileSource = agentTools.profile
-    ? "代理覆盖"
-    : globalTools.profile
-      ? "全局默认"
-      : "默认";
+  const profileSource = agentTools.profile ? "代理覆盖" : globalTools.profile ? "全局默认" : "默认";
   const hasAgentAllow = Array.isArray(agentTools.allow) && agentTools.allow.length > 0;
   const hasGlobalAllow = Array.isArray(globalTools.allow) && globalTools.allow.length > 0;
   const editable =
@@ -1558,9 +1535,7 @@ function renderAgentTools(params: {
       ${
         !params.configForm
           ? html`
-              <div class="callout info" style="margin-top: 12px">
-                加载网关配置以调整工具配置。
-              </div>
+              <div class="callout info" style="margin-top: 12px">加载网关配置以调整工具配置。</div>
             `
           : nothing
       }
@@ -1779,9 +1754,7 @@ function renderAgentSkills(params: {
       ${
         !params.configForm
           ? html`
-              <div class="callout info" style="margin-top: 12px">
-                加载网关配置以设置代理级技能。
-              </div>
+              <div class="callout info" style="margin-top: 12px">加载网关配置以设置代理级技能。</div>
             `
           : nothing
       }
@@ -1799,9 +1772,7 @@ function renderAgentSkills(params: {
       ${
         !reportReady && !params.loading
           ? html`
-              <div class="callout info" style="margin-top: 12px">
-                加载此代理的技能以查看工作区特定条目。
-              </div>
+              <div class="callout info" style="margin-top: 12px">加载此代理的技能以查看工作区特定条目。</div>
             `
           : nothing
       }

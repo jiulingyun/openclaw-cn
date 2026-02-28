@@ -27,6 +27,7 @@ import {
 } from "../../infra/restart-sentinel.js";
 import { scheduleGatewaySigusr1Restart } from "../../infra/restart.js";
 import { loadOpenClawPlugins } from "../../plugins/loader.js";
+import { createSubsystemLogger } from "../../logging/subsystem.js";
 import {
   ErrorCodes,
   errorShape,
@@ -37,6 +38,8 @@ import {
   validateConfigSchemaParams,
   validateConfigSetParams,
 } from "../protocol/index.js";
+
+const logConfig = createSubsystemLogger("gateway").child("config");
 
 function resolveBaseHash(params: unknown): string | null {
   const raw = (params as { baseHash?: unknown })?.baseHash;
@@ -161,7 +164,11 @@ export const configHandlers: GatewayRequestHandlers = {
     }
     respond(true, loadSchemaWithPlugins(), undefined);
   },
-  "config.set": async ({ params, respond }) => {
+  "config.set": async ({ params, respond, context }) => {
+    // eslint-disable-next-line no-console
+    console.error(`[config.set] handler invoked`);
+    // eslint-disable-next-line no-console
+    console.error(`[config.set] module: ${import.meta.url}`);
     if (!validateConfigSetParams(params)) {
       respond(
         false,
@@ -194,28 +201,69 @@ export const configHandlers: GatewayRequestHandlers = {
     // @ts-ignore -- cherry-pick upstream type mismatch
     const schemaSet = loadSchemaWithPlugins();
     // @ts-ignore -- cherry-pick upstream type mismatch
+    // restoreRedactedValues 直接返回恢复后的配置对象，不是 { ok, result } 结构
+    const restored = restoreRedactedValues(parsedRes.parsed, snapshot.config);
     // @ts-ignore -- cherry-pick upstream type mismatch
-    const restored = restoreRedactedValues(parsedRes.parsed, snapshot.config, schemaSet.uiHints);
-    // @ts-ignore -- cherry-pick upstream type mismatch
-    if (!restored.ok) {
-      // @ts-ignore -- cherry-pick upstream type mismatch
-      respond(
-        false,
-        undefined,
-        // @ts-ignore -- cherry-pick upstream type mismatch
-        errorShape(ErrorCodes.INVALID_REQUEST, restored.humanReadableMessage ?? "invalid config"),
-      );
-      return;
-    }
-    // @ts-ignore -- cherry-pick upstream type mismatch
-    const validated = validateConfigObjectWithPlugins(restored.result);
+    const validated = validateConfigObjectWithPlugins(restored);
     if (!validated.ok) {
+      // Force visibility even when subsystem filters hide gateway logs.
+      // eslint-disable-next-line no-console
+      console.error(
+        `[config.set] validateConfigObjectWithPlugins failed; issues=` +
+          JSON.stringify(Array.isArray(validated.issues) ? validated.issues.slice(0, 20) : null),
+      );
+      const issuesSummary = Array.isArray(validated.issues)
+        ? validated.issues
+            .slice(0, 5)
+            .map((issue) => {
+              if (!issue || typeof issue !== "object") {
+                return String(issue);
+              }
+              const issueObj = issue as unknown as { path?: unknown; message?: unknown };
+              const path = Array.isArray(issueObj.path) ? issueObj.path.join(".") : undefined;
+              const message = typeof issueObj.message === "string" ? issueObj.message : undefined;
+              if (path && message) {
+                return `${path}: ${message}`;
+              }
+              return JSON.stringify(issue);
+            })
+            .join("; ")
+        : "";
+
+      const msg = issuesSummary
+        ? `config.set rejected by schema validation: ${issuesSummary}`
+        : "config.set rejected by schema validation (no issues summary)";
+
+      if (issuesSummary) {
+        // Force visibility even when subsystem filters hide gateway logs.
+        // This is intentionally compact (first few issues only) and should not include secrets.
+        // eslint-disable-next-line no-console
+        console.error(`[config.set] ${msg}`);
+      } else {
+        // eslint-disable-next-line no-console
+        console.error(`[config.set] ${msg}`);
+
+        // Log via the request context's gateway logger too (subsystem: gateway), so it remains
+        // visible even if the console subsystem filter hides gateway/config.
+        context?.logGateway?.warn(msg, {
+          consoleMessage: msg,
+          issuesPreview: issuesSummary,
+        });
+
+        const logger = context?.logGateway?.child("config") ?? logConfig;
+        logger.warn(msg);
+      }
       respond(
         false,
         undefined,
-        errorShape(ErrorCodes.INVALID_REQUEST, "invalid config", {
-          details: { issues: validated.issues },
-        }),
+        errorShape(
+          ErrorCodes.INVALID_REQUEST,
+          issuesSummary ? `invalid config: ${issuesSummary}` : "invalid config",
+          {
+            details: { issues: validated.issues },
+          },
+        ),
+        issuesSummary ? { issuesPreview: issuesSummary } : undefined,
       );
       return;
     }
