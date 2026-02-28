@@ -17,6 +17,7 @@ export type MemoryConfig = {
   dbPath?: string;
   autoCapture?: boolean;
   autoRecall?: boolean;
+  storageOptions?: Record<string, string>;
 };
 
 export const MEMORY_CATEGORIES = ["preference", "fact", "decision", "entity", "other"] as const;
@@ -85,7 +86,11 @@ export const memoryConfigSchema = {
       throw new Error("memory config required");
     }
     const cfg = value as Record<string, unknown>;
-    assertAllowedKeys(cfg, ["embedding", "dbPath", "autoCapture", "autoRecall"], "memory config");
+    assertAllowedKeys(
+      cfg,
+      ["embedding", "dbPath", "autoCapture", "autoRecall", "storageOptions"],
+      "memory config",
+    );
 
     const embedding = cfg.embedding as Record<string, unknown> | undefined;
     if (!embedding || typeof embedding.apiKey !== "string") {
@@ -120,6 +125,22 @@ export const memoryConfigSchema = {
       };
     }
 
+    // Parse storageOptions (object with string values)
+    let storageOptions: Record<string, string> | undefined;
+    const storageOpts = cfg.storageOptions as Record<string, unknown> | undefined;
+    if (storageOpts !== undefined && storageOpts !== null) {
+      if (!storageOpts || typeof storageOpts !== "object" || Array.isArray(storageOpts)) {
+        throw new Error("storageOptions must be an object");
+      }
+      // Validate all values are strings
+      for (const [key, value] of Object.entries(storageOpts)) {
+        if (typeof value !== "string") {
+          throw new Error(`storageOptions.${key} must be a string`);
+        }
+      }
+      storageOptions = storageOpts as Record<string, string>;
+    }
+
     return {
       embedding: {
         provider,
@@ -131,6 +152,7 @@ export const memoryConfigSchema = {
       dbPath: typeof cfg.dbPath === "string" ? cfg.dbPath : DEFAULT_DB_PATH,
       autoCapture: cfg.autoCapture === true,
       autoRecall: cfg.autoRecall !== false,
+      ...(storageOptions ? { storageOptions } : {}),
     };
   },
   uiHints: {
@@ -178,6 +200,7 @@ export const memoryConfigSchema = {
       label: "Database Path",
       placeholder: "~/.openclaw/memory/lancedb",
       advanced: true,
+      help: "Local filesystem path or cloud storage URI (s3://, gs://) for LanceDB database",
     },
     autoCapture: {
       label: "Auto-Capture",
@@ -186,6 +209,11 @@ export const memoryConfigSchema = {
     autoRecall: {
       label: "Auto-Recall",
       help: "Automatically inject relevant memories into context",
+    },
+    storageOptions: {
+      label: "Storage Options",
+      advanced: true,
+      help: "Storage configuration options (access_key, secret_key, endpoint, etc.)",
     },
   },
 };

@@ -65,6 +65,7 @@ class MemoryDB {
   constructor(
     private readonly dbPath: string,
     private readonly vectorDim: number,
+    private readonly storageOptions?: Record<string, string>,
   ) {}
 
   private async ensureInitialized(): Promise<void> {
@@ -81,7 +82,10 @@ class MemoryDB {
 
   private async doInitialize(): Promise<void> {
     const lancedb = await loadLanceDB();
-    this.db = await lancedb.connect(this.dbPath);
+    const connectionOptions: LanceDB.ConnectionOptions = this.storageOptions
+      ? { storageOptions: this.storageOptions }
+      : {};
+    this.db = await lancedb.connect(this.dbPath, connectionOptions);
     const tables = await this.db.tableNames();
 
     if (tables.includes(TABLE_NAME)) {
@@ -489,9 +493,10 @@ const memoryPlugin = {
 
   register(api: OpenClawPluginApi) {
     const cfg = memoryConfigSchema.parse(api.pluginConfig);
-    const resolvedDbPath = api.resolvePath(cfg.dbPath!);
+    const dbPath = cfg.dbPath!;
+    const resolvedDbPath = dbPath.includes("://") ? dbPath : api.resolvePath(dbPath);
     const vectorDim = vectorDimsForModel(cfg.embedding.model!);
-    const db = new MemoryDB(resolvedDbPath, vectorDim);
+    const db = new MemoryDB(resolvedDbPath, vectorDim, cfg.storageOptions);
     const embeddings = createEmbeddings(cfg.embedding, api);
 
     api.logger.info(`memory-lancedb: plugin registered (db: ${resolvedDbPath}, lazy init)`);

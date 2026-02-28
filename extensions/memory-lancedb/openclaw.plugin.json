@@ -20,7 +20,7 @@
     },
     "dbPath": {
       "label": "Database Path",
-      "placeholder": "~/.clawdbot/memory/lancedb",
+      "placeholder": "~/.openclaw/memory/lancedb",
       "advanced": true
     },
     "autoCapture": {
@@ -30,6 +30,11 @@
     "autoRecall": {
       "label": "Auto-Recall",
       "help": "Automatically inject relevant memories into context"
+    },
+    "storageOptions": {
+      "label": "Storage Options",
+      "advanced": true,
+      "help": "Storage configuration options (access_key, secret_key, endpoint, etc.)"
     }
   },
   "configSchema": {
@@ -69,6 +74,12 @@
       },
       "autoRecall": {
         "type": "boolean"
+      },
+      "storageOptions": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "string"
+        }
       }
     },
     "required": ["embedding"]
