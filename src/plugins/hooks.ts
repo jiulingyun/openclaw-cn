@@ -238,7 +238,8 @@ export function createHookRunner(registry: PluginRegistry, options: HookRunnerOp
       event,
       ctx,
       (acc, next) => ({
-        blocked: next.blocked ?? acc?.blocked,
+        blocked:
+          acc?.blocked === true || next.blocked === true ? true : (acc?.blocked ?? next.blocked),
         securityInfo: next.securityInfo ?? acc?.securityInfo,
         riskScore: next.riskScore ?? acc?.riskScore,
         severity: next.severity ?? acc?.severity,

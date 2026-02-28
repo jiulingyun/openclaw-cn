@@ -406,11 +406,10 @@ export async function startGatewayServer(
     if (!hasHooks) {
       return;
     }
-    if (
-      !event.changedPath ||
-      event.changedPath?.trim() === "" ||
-      !fs.existsSync(event.changedPath)
-    ) {
+    if (!event.changedPath || event.changedPath?.trim() === "") {
+      return;
+    }
+    if (!fs.existsSync(event.changedPath)) {
       logHooks.info(`watched skills file removed: ${event.changedPath}`);
       return;
     }
@@ -487,8 +486,10 @@ export async function startGatewayServer(
         if (matchedSkills?.name) {
           skillsName = matchedSkills.name;
         }
-      } catch { }
-      logHooks.info(`skills name is ${skillsName}, skills package dir name is ${skillsPackageDirName}`);
+      } catch {}
+      logHooks.info(
+        `skills name is ${skillsName}, skills package dir name is ${skillsPackageDirName}`,
+      );
       if (!skillsName && skillsPackageDirName) {
         skillsName = skillsPackageDirName;
       }
@@ -499,22 +500,36 @@ export async function startGatewayServer(
       runner
         ?.runBeforeSkillsLoad({ loadSkill }, { workspaceDir: event.workspaceDir ?? "" })
         .then((hookResult) => {
+          if (!hookResult) {
+            // no hook result, skip
+            return;
+          }
           logHooks.info(`skills hook security scan result blocked is ${hookResult?.blocked}`);
-          const securityInfo = `${hookResult?.securityInfo}("severity":${hookResult?.severity}, "riskScore":${hookResult?.riskScore})`;
+          const securityInfo = `security info:${hookResult?.securityInfo}(severity:${hookResult?.severity}, risk score:${hookResult?.riskScore})`;
           const req: RequestFrame = {
             type: "req",
             id: `internal-${skillsName}-disable`,
             method: "skills.update",
           };
           const ctx = {} as GatewayRequestContext;
+          let params = {};
+          if (hookResult?.blocked === true) {
+            params = {
+              skillKey: skillsName,
+              enabled: false,
+              securityInfo: securityInfo,
+              securityBlocked: true,
+            };
+          } else {
+            params = {
+              skillKey: skillsName,
+              securityInfo: "",
+              securityBlocked: false,
+            };
+          }
           void skillsHandlers["skills.update"]({
             req,
-            params: {
-              skillKey: skillsName,
-              enabled: hookResult?.blocked === false,
-              securityInfo: hookResult?.blocked === true ? securityInfo : "",
-              securityBlocked: hookResult?.blocked === true,
-            },
+            params: params,
             client: null,
             isWebchatConnect: () => false,
             respond: (ok, error) => {
@@ -540,7 +555,7 @@ export async function startGatewayServer(
             { dropIfSlow: true },
           );
         })
-        .catch(() => { });
+        .catch(() => {});
     }
   }
 
