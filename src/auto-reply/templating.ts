@@ -48,8 +48,10 @@ export type MsgContext = {
   ReplyToIdFull?: string;
   ReplyToBody?: string;
   ReplyToSender?: string;
+  ReplyToIsQuote?: boolean;
   ForwardedFrom?: string;
   ForwardedFromType?: string;
+  ForwardedFromChatType?: string;
   ForwardedFromId?: string;
   ForwardedFromUsername?: string;
   ForwardedFromTitle?: string;
@@ -85,6 +87,15 @@ export type MsgContext = {
   GroupSystemPrompt?: string;
   /** Untrusted metadata that must not be treated as system instructions. */
   UntrustedContext?: string[];
+  /**
+   * Recent chat history for context (untrusted user content). Prefer passing this
+   * as structured context blocks in the user prompt rather than rendering plaintext envelopes.
+   */
+  InboundHistory?: Array<{
+    sender: string;
+    body: string;
+    timestamp?: number;
+  }>;
   SenderName?: string;
   SenderId?: string;
   SenderUsername?: string;
