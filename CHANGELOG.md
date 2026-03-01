@@ -57,6 +57,17 @@ Docs: https://clawd.org.cn/
 - 更新 GLM 和 Z.AI Provider 文档
 - 完善模型配置和认证说明
 
+## 0.1.5-fix.3
+
+### 🐛 Bug 修复
+
+- **图像 resize 日志优化**：将图像缩放日志改为单行格式，包含尺寸信息（upstream 414b996b0cbf）
+- **图像工具 schema 兼容性修复**：将 image tool schema 从 Anthropic 不兼容的 union 类型改为显式的 `image`（单图）和 `images`（多图）参数，保持 schema 不使用 `anyOf`/`oneOf`/`allOf` 的同时支持多图分析（upstream 391796a3fb21）
+
+### ✨ 功能改进
+
+- **图像清理尺寸可配置**：新增 `agents.defaults.imageMaxDimensionPx` 配置项，允许自定义 transcript/tool 图像下采样的最大边长（默认 1200px）（upstream b05e89e5e605）
+
 ## 0.1.5-fix.2
 
 ### 🐛 Bug 修复

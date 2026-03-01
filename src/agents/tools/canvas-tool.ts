@@ -49,7 +49,9 @@ const CanvasToolSchema = Type.Object({
   jsonlPath: Type.Optional(Type.String()),
 });
 
-export function createCanvasTool(): AnyAgentTool {
+export function createCanvasTool(_options?: {
+  config?: import("../../config/config.js").ClawdbotConfig;
+}): AnyAgentTool {
   return {
     label: "Canvas",
     name: "canvas",
