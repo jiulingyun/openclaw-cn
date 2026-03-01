@@ -414,6 +414,7 @@ export async function installLaunchAgent({
   });
   await fs.writeFile(plistPath, plist, "utf8");
 
+  await execLaunchctl(["bootout", `${domain}/${label}`]);
   await execLaunchctl(["bootout", domain, plistPath]);
   await execLaunchctl(["unload", plistPath]);
   // launchd can persist "disabled" state even after bootout + plist removal; clear it before bootstrap.
