@@ -1,4 +1,5 @@
 import type { HeartbeatRunResult } from "../../infra/heartbeat-wake.js";
+import type { CronConfig } from "../../config/types.cron.js";
 import type { CronJob, CronJobCreate, CronJobPatch, CronStoreFile } from "../types.js";
 
 export type CronEvent = {
@@ -24,6 +25,7 @@ export type CronServiceDeps = {
   log: Logger;
   storePath: string;
   cronEnabled: boolean;
+  cronConfig?: CronConfig;
   enqueueSystemEvent: (text: string, opts?: { agentId?: string }) => void;
   requestHeartbeatNow: (opts?: { reason?: string }) => void;
   runHeartbeatOnce?: (opts?: { reason?: string; agentId?: string }) => Promise<HeartbeatRunResult>;

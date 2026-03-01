@@ -23,6 +23,14 @@ const MAX_TIMER_DELAY_MS = 60_000;
  */
 const DEFAULT_JOB_TIMEOUT_MS = 10 * 60_000; // 10 minutes
 
+function resolveRunConcurrency(state: CronServiceState): number {
+  const raw = state.deps.cronConfig?.maxConcurrentRuns;
+  if (typeof raw !== "number" || !Number.isFinite(raw)) {
+    return 1;
+  }
+  return Math.max(1, Math.floor(raw));
+}
+
 /**
  * Exponential backoff delays (in ms) indexed by consecutive error count.
  * After the last entry the delay stays constant.
@@ -186,8 +194,6 @@ export async function onTimer(state: CronServiceState) {
   state.running = true;
   try {
     const dueJobs = await locked(state, async () => {
-      // @ts-ignore -- cherry-pick upstream type mismatch
-      // @ts-ignore -- cherry-pick upstream type mismatch
       await ensureLoaded(state, { forceReload: true, skipRecompute: true });
       const due = findDueJobs(state);
 
@@ -215,7 +221,7 @@ export async function onTimer(state: CronServiceState) {
       }));
     });
 
-    const results: Array<{
+    type JobResult = {
       jobId: string;
       status: "ok" | "error" | "skipped";
       error?: string;
@@ -224,9 +230,10 @@ export async function onTimer(state: CronServiceState) {
       sessionKey?: string;
       startedAt: number;
       endedAt: number;
-    }> = [];
+    };
 
-    for (const { id, job } of dueJobs) {
+    const runDueJob = async (params: { id: string; job: CronJob }): Promise<JobResult> => {
+      const { id, job } = params;
       const startedAt = state.deps.nowMs();
       job.state.runningAtMs = startedAt;
       emit(state, { jobId: job.id, action: "started", runAtMs: startedAt });
@@ -247,26 +254,46 @@ export async function onTimer(state: CronServiceState) {
             );
           }),
         ]).finally(() => clearTimeout(timeoutId!));
-        results.push({ jobId: id, ...result, startedAt, endedAt: state.deps.nowMs() });
+        return { jobId: id, ...result, startedAt, endedAt: state.deps.nowMs() };
       } catch (err) {
         state.deps.log.warn(
           { jobId: id, jobName: job.name, timeoutMs: jobTimeoutMs },
           `cron: job failed: ${String(err)}`,
         );
-        results.push({
+        return {
           jobId: id,
           status: "error",
           error: String(err),
           startedAt,
           endedAt: state.deps.nowMs(),
-        });
+        };
       }
-    }
+    };
+
+    const concurrency = Math.min(resolveRunConcurrency(state), Math.max(1, dueJobs.length));
+    const resultSlots: (JobResult | undefined)[] = Array.from({ length: dueJobs.length });
+    let cursor = 0;
+    const workers = Array.from({ length: concurrency }, async () => {
+      for (;;) {
+        const index = cursor++;
+        if (index >= dueJobs.length) {
+          return;
+        }
+        const due = dueJobs[index];
+        if (!due) {
+          return;
+        }
+        resultSlots[index] = await runDueJob(due);
+      }
+    });
+    await Promise.all(workers);
+
+    const results: JobResult[] = resultSlots.filter(
+      (entry): entry is JobResult => entry !== undefined,
+    );
 
     if (results.length > 0) {
-      // @ts-ignore -- cherry-pick upstream type mismatch
       await locked(state, async () => {
-        // @ts-ignore -- cherry-pick upstream type mismatch
         await ensureLoaded(state, { forceReload: true, skipRecompute: true });
 
         for (const result of results) {

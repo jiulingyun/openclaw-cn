@@ -63,14 +63,19 @@ async function getFileMtimeMs(path: string): Promise<number | null> {
   }
 }
 
-export async function ensureLoaded(state: CronServiceState) {
+export async function ensureLoaded(
+  state: CronServiceState,
+  opts?: { forceReload?: boolean; skipRecompute?: boolean },
+) {
   const fileMtimeMs = await getFileMtimeMs(state.deps.storePath);
 
   // Check if we need to reload:
   // - No store loaded yet
+  // - Force reload requested
   // - File modification time has changed
   // - File was modified after we last loaded (external edit)
   const needsReload =
+    opts?.forceReload ||
     !state.store ||
     (fileMtimeMs !== null &&
       // @ts-ignore -- cherry-pick upstream type mismatch
@@ -192,7 +197,9 @@ export async function ensureLoaded(state: CronServiceState) {
   state.storeFileMtimeMs = fileMtimeMs;
 
   // Recompute next runs after loading to ensure accuracy
-  recomputeNextRuns(state);
+  if (!opts?.skipRecompute) {
+    recomputeNextRuns(state);
+  }
 
   if (mutated) {
     await persist(state);
