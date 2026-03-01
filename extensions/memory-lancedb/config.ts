@@ -3,10 +3,13 @@ import { join } from "node:path";
 
 export type MemoryConfig = {
   embedding: {
-    provider: "openai" | "doubao";
+    provider: "openai" | "doubao" | "local";
     model?: string;
     apiKey: string;
     url?: string;
+    localModelPath?: string;
+    localModelCacheDir?: string;
+    dimensions?: number;
     retry?: {
       maxRetries: number;
       initialDelayMs: number;
@@ -25,12 +28,14 @@ export type MemoryCategory = (typeof MEMORY_CATEGORIES)[number];
 
 const DEFAULT_MODEL = "text-embedding-3-small";
 const DEFAULT_DOUBAO_MODEL = "doubao-embedding-vision-251215";
+const DEFAULT_LOCAL_MODEL = "bge-small-zh-v1.5";
 const DEFAULT_DB_PATH = join(homedir(), ".openclaw", "memory", "lancedb");
 
 const EMBEDDING_DIMENSIONS: Record<string, number> = {
   "text-embedding-3-small": 1536,
   "text-embedding-3-large": 3072,
   "doubao-embedding-vision-251215": 2048,
+  "bge-small-zh-v1.5": 512,
 };
 
 function assertAllowedKeys(value: Record<string, unknown>, allowed: string[], label: string) {
@@ -39,7 +44,10 @@ function assertAllowedKeys(value: Record<string, unknown>, allowed: string[], la
   throw new Error(`${label} has unknown keys: ${unknown.join(", ")}`);
 }
 
-export function vectorDimsForModel(model: string): number {
+export function vectorDimsForModel(model: string, dimensions?: number): number {
+  if (dimensions !== undefined) {
+    return dimensions;
+  }
   const dims = EMBEDDING_DIMENSIONS[model];
   if (!dims) {
     throw new Error(`Unsupported embedding model: ${model}`);
@@ -67,16 +75,25 @@ function resolveEmbeddingProvider(
   if (provider === "doubao") {
     return "doubao";
   }
+  if (provider === "local") {
+    return "local";
+  }
   throw new Error(`Unsupported embedding provider: ${JSON.stringify(provider)}`);
 }
 
 function resolveEmbeddingModel(
   embedding: Record<string, unknown>,
   provider: MemoryConfig["embedding"]["provider"],
+  dimensions?: number,
 ): string {
-  const defaultModel = provider === "doubao" ? DEFAULT_DOUBAO_MODEL : DEFAULT_MODEL;
+  const defaultModel =
+    provider === "doubao"
+      ? DEFAULT_DOUBAO_MODEL
+      : provider === "local"
+        ? DEFAULT_LOCAL_MODEL
+        : DEFAULT_MODEL;
   const model = typeof embedding.model === "string" ? embedding.model : defaultModel;
-  vectorDimsForModel(model);
+  vectorDimsForModel(model, dimensions);
   return model;
 }
 
@@ -93,20 +110,36 @@ export const memoryConfigSchema = {
     );
 
     const embedding = cfg.embedding as Record<string, unknown> | undefined;
-    if (!embedding || typeof embedding.apiKey !== "string") {
+    if (!embedding) {
+      throw new Error(`embedding not found: ${embedding}`);
+    }
+    if (embedding.provider !== "local" && typeof embedding.apiKey !== "string") {
       throw new Error("embedding.apiKey is required");
     }
     assertAllowedKeys(
       embedding,
-      ["apiKey", "model", "provider", "url", "retry"],
+      [
+        "apiKey",
+        "model",
+        "provider",
+        "url",
+        "retry",
+        "localModelPath",
+        "localModelCacheDir",
+        "dimensions",
+      ],
       "embedding config",
     );
-
     const provider = resolveEmbeddingProvider(embedding);
-    const model = resolveEmbeddingModel(embedding, provider);
-    const apiKey = resolveEnvVars(embedding.apiKey);
+    const dimensions = typeof embedding.dimensions === "number" ? embedding.dimensions : undefined;
+    const model = resolveEmbeddingModel(embedding, provider, dimensions);
+    const apiKey = provider !== "local" ? resolveEnvVars(embedding.apiKey) : "";
     const url = typeof embedding.url === "string" ? embedding.url : undefined;
 
+    const localModelPath =
+      typeof embedding.localModelPath === "string" ? embedding.localModelPath : undefined;
+    const localModelCacheDir =
+      typeof embedding.localModelCacheDir === "string" ? embedding.localModelCacheDir : undefined;
     // Parse retry config with defaults
     let retry: MemoryConfig["embedding"]["retry"] | undefined;
     const retryCfg = embedding.retry as Record<string, unknown> | undefined;
@@ -147,6 +180,9 @@ export const memoryConfigSchema = {
         model,
         apiKey,
         ...(url ? { url } : {}),
+        ...(localModelPath ? { localModelPath } : {}),
+        ...(localModelCacheDir ? { localModelCacheDir } : {}),
+        ...(dimensions ? { dimensions } : {}),
         ...(retry ? { retry } : {}),
       },
       dbPath: typeof cfg.dbPath === "string" ? cfg.dbPath : DEFAULT_DB_PATH,
@@ -170,7 +206,7 @@ export const memoryConfigSchema = {
     "embedding.provider": {
       label: "Embedding Provider",
       placeholder: "openai",
-      help: "Embedding provider: 'openai' (default) or 'doubao'.",
+      help: "Embedding provider: 'openai' (default), 'doubao', or 'local' for local models.",
     },
     "embedding.retry.maxRetries": {
       label: "Max Retries",
@@ -195,6 +231,21 @@ export const memoryConfigSchema = {
       placeholder: "30000",
       advanced: true,
       help: "Request timeout in milliseconds",
+    },
+    "embedding.localModelPath": {
+      label: "Local Model Path",
+      advanced: true,
+      help: "Path to local embedding model file (GGUF format) for 'local' provider",
+    },
+    "embedding.localModelCacheDir": {
+      label: "Local Model Cache Dir",
+      advanced: true,
+      help: "Directory for caching local model files (defaults to ~/.cache/node-llama-cpp)",
+    },
+    "embedding.dimensions": {
+      label: "Embedding Dimensions",
+      advanced: true,
+      help: "Vector dimensions for the embedding model. If not specified, will be inferred from the model name.",
     },
     dbPath: {
       label: "Database Path",

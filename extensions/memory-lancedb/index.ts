@@ -8,6 +8,7 @@
 
 import type * as LanceDB from "@lancedb/lancedb";
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
+import type { Llama, LlamaEmbeddingContext, LlamaModel } from "node-llama-cpp";
 import { Type } from "@sinclair/typebox";
 import { randomUUID } from "node:crypto";
 import OpenAI from "openai";
@@ -192,7 +193,6 @@ type FetchResponse = {
 
 class DoubaoEmbeddings {
   private readonly endpoint: string;
-  private readonly dimensions: number;
   private readonly retry: {
     maxRetries: number;
     initialDelayMs: number;
@@ -204,6 +204,7 @@ class DoubaoEmbeddings {
     private readonly api: OpenClawPluginApi,
     private readonly apiKey: string,
     private readonly model: string,
+    private readonly dimensions: number,
     url?: string,
     retry?: {
       maxRetries: number;
@@ -212,7 +213,6 @@ class DoubaoEmbeddings {
       timeoutMs: number;
     },
   ) {
-    this.dimensions = vectorDimsForModel(model);
     this.endpoint = this.buildEndpoint(url);
     this.retry = retry ?? {
       maxRetries: 3,
@@ -367,13 +367,98 @@ class DoubaoEmbeddings {
   }
 }
 
+// ============================================================================
+// Local Embedding Provider (node-llama-cpp)
+// ============================================================================
+
+const DEFAULT_LOCAL_MODEL = "hf:CompendiumLabs/bge-small-zh-v1.5-gguf/bge-small-zh-v1.5-f16.gguf";
+
+let nodeLlamaImportPromise: Promise<typeof import("node-llama-cpp")> | null = null;
+
+const importNodeLlamaCpp = async (): Promise<typeof import("node-llama-cpp")> => {
+  if (!nodeLlamaImportPromise) {
+    nodeLlamaImportPromise = import("node-llama-cpp");
+  }
+  return nodeLlamaImportPromise;
+};
+
+export class LocalEmbedding {
+  private llama: Llama | null = null;
+  private model: LlamaModel | null = null;
+  private context: LlamaEmbeddingContext | null = null;
+  private initPromise: Promise<void> | null = null;
+
+  constructor(
+    private readonly modelPath: string,
+    private readonly modelCacheDir?: string,
+  ) {}
+
+  private async ensureInitialized(): Promise<void> {
+    if (this.context) {
+      return;
+    }
+    if (this.initPromise) {
+      return this.initPromise;
+    }
+
+    this.initPromise = this.doInitialize();
+    return this.initPromise;
+  }
+
+  private async doInitialize(): Promise<void> {
+    try {
+      const { getLlama, resolveModelFile, LlamaLogLevel } = await importNodeLlamaCpp();
+
+      if (!this.llama) {
+        this.llama = await getLlama({ logLevel: LlamaLogLevel.error });
+      }
+
+      if (!this.model) {
+        const resolved = await resolveModelFile(this.modelPath, this.modelCacheDir);
+        this.model = await this.llama.loadModel({ modelPath: resolved });
+      }
+
+      if (!this.context) {
+        this.context = await this.model.createEmbeddingContext();
+      }
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      throw new Error(`[memory-lancedb] Local embeddings unavailable.Reason: ${detail}`, {
+        cause: err,
+      });
+    }
+  }
+
+  async embed(text: string): Promise<number[]> {
+    await this.ensureInitialized();
+
+    const embedding = await this.context.getEmbeddingFor(text);
+    const vector = Array.from(embedding.vector) as number[];
+
+    // Normalize vector (magnitude ≈ 1.0)
+    const magnitude = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
+    if (magnitude > 0) {
+      return vector.map((val) => val / magnitude);
+    }
+
+    return vector;
+  }
+}
+
 function createEmbeddings(
   cfg: MemoryConfig["embedding"],
   api: OpenClawPluginApi,
 ): { embed(text: string): Promise<number[]> } {
+  if (cfg.provider === "local") {
+    api.logger.warn(`memory-lancedb: used local embedding.`);
+    const modelPath = cfg.localModelPath || DEFAULT_LOCAL_MODEL;
+    return new LocalEmbedding(modelPath, cfg.localModelCacheDir);
+  }
+
   if (cfg.provider === "doubao") {
     api.logger.warn(`memory-lancedb: used doubao embedding.`);
-    return new DoubaoEmbeddings(api, cfg.apiKey, cfg.model!, cfg.url, cfg.retry);
+    const dimensions = vectorDimsForModel(cfg.model!, cfg.dimensions);
+    return new DoubaoEmbeddings(api, cfg.apiKey, cfg.model!, dimensions, cfg.url, cfg.retry);
   }
 
   api.logger.warn(`memory-lancedb: used openai embedding.`);
@@ -495,7 +580,7 @@ const memoryPlugin = {
     const cfg = memoryConfigSchema.parse(api.pluginConfig);
     const dbPath = cfg.dbPath!;
     const resolvedDbPath = dbPath.includes("://") ? dbPath : api.resolvePath(dbPath);
-    const vectorDim = vectorDimsForModel(cfg.embedding.model!);
+    const vectorDim = cfg.embedding.dimensions ?? vectorDimsForModel(cfg.embedding.model!);
     const db = new MemoryDB(resolvedDbPath, vectorDim, cfg.storageOptions);
     const embeddings = createEmbeddings(cfg.embedding, api);
 

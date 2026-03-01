@@ -8,6 +8,9 @@
     "@sinclair/typebox": "0.34.47",
     "openai": "^6.16.0"
   },
+  "optionalDependencies": {
+    "node-llama-cpp": "3.15.0"
+  },
   "clawdbot": {
     "extensions": [
       "./index.ts"

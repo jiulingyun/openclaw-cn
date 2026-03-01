@@ -16,7 +16,22 @@
     "embedding.provider": {
       "label": "Embedding Provider",
       "placeholder": "openai",
-      "help": "Embedding provider: 'openai' (default) or 'doubao'."
+      "help": "Embedding provider: 'openai' (default), 'doubao', or 'local' for local models."
+    },
+    "embedding.localModelPath": {
+      "label": "Local Model Path",
+      "advanced": true,
+      "help": "Path to local embedding model file (GGUF format) for 'local' provider"
+    },
+    "embedding.localModelCacheDir": {
+      "label": "Local Model Cache Dir",
+      "advanced": true,
+      "help": "Directory for caching local model files (defaults to ~/.node-llama-cpp/models)"
+    },
+    "embedding.dimensions": {
+      "label": "Embedding Dimensions",
+      "advanced": true,
+      "help": "Vector dimensions for the embedding model. If not specified, will be inferred from the model name."
     },
     "dbPath": {
       "label": "Database Path",
@@ -58,13 +73,21 @@
           },
           "provider": {
             "type": "string",
-            "enum": ["openai", "doubao"]
+            "enum": ["openai", "doubao", "local"]
           },
           "url": {
             "type": "string"
+          },
+          "localModelPath": {
+            "type": "string"
+          },
+          "localModelCacheDir": {
+            "type": "string"
+          },
+          "dimensions": {
+            "type": "number"
           }
-        },
-        "required": ["apiKey"]
+        }
       },
       "dbPath": {
         "type": "string"
