@@ -39,6 +39,33 @@ import {
   resolveEffectiveUpdateChannel,
 } from "../infra/update-channels.js";
 
+function resolvePairingRecoveryContext(params: {
+  error?: string | null;
+  closeReason?: string | null;
+}): { requestId: string | null } | null {
+  const sanitizeRequestId = (value: string): string | null => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    // Keep CLI guidance injection-safe: allow only compact id characters.
+    if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(trimmed)) {
+      return null;
+    }
+    return trimmed;
+  };
+  const source = [params.error, params.closeReason]
+    .filter((part) => typeof part === "string" && part.trim().length > 0)
+    .join(" ");
+  if (!source || !/pairing required/i.test(source)) {
+    return null;
+  }
+  const requestIdMatch = source.match(/requestId:\s*([^\s)]+)/i);
+  const requestId =
+    requestIdMatch && requestIdMatch[1] ? sanitizeRequestId(requestIdMatch[1]) : null;
+  return { requestId: requestId || null };
+}
+
 export async function statusCommand(
   opts: {
     json?: boolean;
@@ -219,6 +246,10 @@ export async function statusCommand(
     const suffix = self ? ` · ${self}` : "";
     return `${gatewayMode} · ${target} · ${reach}${auth}${suffix}`;
   })();
+  const pairingRecovery = resolvePairingRecoveryContext({
+    error: gatewayProbe?.error ?? null,
+    closeReason: gatewayProbe?.close?.reason ?? null,
+  });
 
   const agentsValue = (() => {
     const pending =
@@ -376,6 +407,20 @@ export async function statusCommand(
       rows: overviewRows,
     }).trimEnd(),
   );
+
+  if (pairingRecovery) {
+    runtime.log("");
+    runtime.log(theme.warn("需要网关配对审批。"));
+    if (pairingRecovery.requestId) {
+      runtime.log(
+        theme.muted(
+          `恢复命令: ${formatCliCommand(`openclaw-cn devices approve ${pairingRecovery.requestId}`)}`,
+        ),
+      );
+    }
+    runtime.log(theme.muted(`备选命令: ${formatCliCommand("openclaw-cn devices approve --latest")}`));
+    runtime.log(theme.muted(`查看设备: ${formatCliCommand("openclaw-cn devices list")}`));
+  }
 
   runtime.log("");
   runtime.log(theme.heading("Security audit"));
