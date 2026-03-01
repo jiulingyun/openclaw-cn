@@ -30,6 +30,14 @@ Docs: https://clawd.org.cn/
   - 更新 UI 标签为 "Z.AI (GLM-5)"
   - 更新文档（zai.md、glm.md）
 
+### 🔒 安全加固
+
+- **Security/Hooks**: 对 `openclaw.hooks` 和 `openclaw.extensions` 插件包条目强制路径包含检查（lexical + symlink realpath），防止路径遍历和符号链接逃逸攻击
+- **Security/Hooks**: Hook 加载器对通过符号链接逃逸 hook 目录的处理器文件进行拒绝，防止任意模块加载
+- **Security/Plugins**: 插件发现层对所有 `openclaw.extensions` 条目强制路径包含验证，逃逸包目录的条目被拒绝
+- **Security/Net**: SSRF 检查中对 IPv4 字面量使用严格的点分十进制解析，对不支持的遗留形式（八进制/十六进制/短格式/打包格式，如 `0177.0.0.1`、`127.1`、`2130706433`）执行失败关闭策略，防止 SSRF 绕过
+- **Security/Gateway/Agents**: 通过集中式工具策略包装器及 `ownerOnly` 工具元数据强制仅限 owner 使用 `cron`、`gateway`、`whatsapp_login` 工具，防止非 owner DM 权限提升
+
 ### 🐛 Bug 修复
 
 - **Context 显示修复**：修复 `/status` 命令显示 `Context: ?/200k` 的问题，现在会显示实际 token 使用量（如 `Context: 1.5k/200k (1%)`）
