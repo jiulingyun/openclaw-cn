@@ -30,6 +30,14 @@ describe("ssrf ip classification", () => {
     expect(isPrivateIpAddress("2606:4700:4700::1111")).toBe(false);
     expect(isPrivateIpAddress("2001:db8::1")).toBe(false);
   });
+
+  it("blocks RFC2544 benchmarking range (198.18.0.0/15)", () => {
+    expect(isPrivateIpAddress("198.18.0.1")).toBe(true);
+    expect(isPrivateIpAddress("198.19.255.255")).toBe(true);
+    expect(isPrivateIpAddress("::ffff:198.18.0.1")).toBe(true);
+    expect(isPrivateIpAddress("198.17.255.255")).toBe(false);
+    expect(isPrivateIpAddress("198.20.0.0")).toBe(false);
+  });
 });
 
 describe("normalizeFingerprint", () => {
