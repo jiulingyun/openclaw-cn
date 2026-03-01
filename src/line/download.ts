@@ -1,6 +1,7 @@
+import crypto from "node:crypto";
 import fs from "node:fs";
-import path from "node:path";
 import os from "node:os";
+import path from "node:path";
 import { messagingApi } from "@line/bot-sdk";
 import { logVerbose } from "../globals.js";
 
@@ -8,6 +9,10 @@ interface DownloadResult {
   path: string;
   contentType?: string;
   size: number;
+}
+
+function buildLineTempMediaPath(extension: string): string {
+  return path.join(os.tmpdir(), `line-media-${Date.now()}-${crypto.randomUUID()}${extension}`);
 }
 
 export async function downloadLineMedia(
@@ -39,10 +44,8 @@ export async function downloadLineMedia(
   const contentType = detectContentType(buffer);
   const ext = getExtensionForContentType(contentType);
 
-  // Write to temp file
-  const tempDir = os.tmpdir();
-  const fileName = `line-media-${messageId}-${Date.now()}${ext}`;
-  const filePath = path.join(tempDir, fileName);
+  // Use random temp names; never derive paths from external message identifiers.
+  const filePath = buildLineTempMediaPath(ext);
 
   await fs.promises.writeFile(filePath, buffer);
 
