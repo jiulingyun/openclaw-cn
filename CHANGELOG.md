@@ -78,6 +78,13 @@ Docs: https://clawd.org.cn/
 
 ## 0.1.5-fix.2
 
+### 🔒 安全修复
+
+- **Windows 定时任务环境变量注入修复**：对生成 `gateway.cmd` 时的定时任务环境变量赋值进行转义和引号包裹（`set "KEY=VALUE"`），防止通过配置中的环境变量进行命令注入，将在下次 npm 发布中生效（upstream `8288702f51a3`，感谢 @tdjackey 报告）
+- **Lobster (Windows) 安全修复**：移除启动 Lobster 包装器（`.cmd`/`.bat`）时的 shell 回退路径，改为显式 argv 执行与包装入口点解析，防止命令注入同时保持 Windows 包装器兼容性，将在下次 npm 发布中生效（upstream `cf6edc6d57e7`，感谢 @allsmog 报告）
+- **IPv6 过渡地址 SSRF 绕过修复**：阻止通过 NAT64（`64:ff9b::/96`、`64:ff9b:1::/48`）、6to4（`2002::/16`）和 Teredo（`2001:0000::/32`）IPv6 过渡地址绕过 SSRF 防护，并在 IPv6 地址解析失败时默认拒绝（upstream `42d2a6188864`，感谢 @jackhax 报告）
+- **Cron Webhook SSRF 出站防护**：使用 SSRF 安全出站请求（`fetchWithSsrFGuard`）保护 cron webhook POST 投递，阻止请求发往内网或元数据目标（upstream `35851cdaff42`，感谢 @Adam55A-code 报告）
+
 ### 🐛 Bug 修复
 
 - **Session threadId 泄漏修复**：修复用户从 DM topic (thread) 切换到主 DM 时，stale `lastThreadId` 导致回复错误发送到旧 topic 的问题——非 thread session 现在正确地不继承历史 threadId（感谢上游 commit [`5f821ed`](https://github.com/openclaw/openclaw/commit/5f821ed06731e81002b69af329a151da4efdafa2)）
