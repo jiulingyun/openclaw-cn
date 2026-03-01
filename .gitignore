@@ -9,6 +9,7 @@ dist
 !dist/control-ui/
 *.bun-build
 pnpm-lock.yaml
+package-lock.json
 bun.lock
 bun.lockb
 package-lock.json

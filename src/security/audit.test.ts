@@ -698,6 +698,83 @@ describe("security audit", () => {
     }
   });
 
+  it("warns when Discord allowFrom contains name-based entries", async () => {
+    const prevStateDir = process.env.OPENCLAW_STATE_DIR;
+    const tmp = await fs.mkdtemp(
+      path.join(os.tmpdir(), "clawdbot-security-audit-discord-name-"),
+    );
+    process.env.OPENCLAW_STATE_DIR = tmp;
+    await fs.mkdir(path.join(tmp, "credentials"), { recursive: true, mode: 0o700 });
+    try {
+      const cfg: ClawdbotConfig = {
+        channels: {
+          discord: {
+            enabled: true,
+            token: "t",
+            dm: { allowFrom: ["someusername#1234"] },
+          },
+        },
+      };
+
+      const res = await runSecurityAudit({
+        config: cfg,
+        includeFilesystem: false,
+        includeChannelSecurity: true,
+        plugins: [discordPlugin],
+      });
+
+      expect(res.findings).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            checkId: "channels.discord.allowFrom.name_based_entries",
+            severity: "warn",
+          }),
+        ]),
+      );
+    } finally {
+      if (prevStateDir == null) delete process.env.OPENCLAW_STATE_DIR;
+      else process.env.OPENCLAW_STATE_DIR = prevStateDir;
+    }
+  });
+
+  it("does not warn for Discord allowFrom with snowflake IDs", async () => {
+    const prevStateDir = process.env.OPENCLAW_STATE_DIR;
+    const tmp = await fs.mkdtemp(
+      path.join(os.tmpdir(), "clawdbot-security-audit-discord-snowflake-"),
+    );
+    process.env.OPENCLAW_STATE_DIR = tmp;
+    await fs.mkdir(path.join(tmp, "credentials"), { recursive: true, mode: 0o700 });
+    try {
+      const cfg: ClawdbotConfig = {
+        channels: {
+          discord: {
+            enabled: true,
+            token: "t",
+            dm: { allowFrom: ["387380367612706819"] },
+          },
+        },
+      };
+
+      const res = await runSecurityAudit({
+        config: cfg,
+        includeFilesystem: false,
+        includeChannelSecurity: true,
+        plugins: [discordPlugin],
+      });
+
+      expect(res.findings).not.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            checkId: "channels.discord.allowFrom.name_based_entries",
+          }),
+        ]),
+      );
+    } finally {
+      if (prevStateDir == null) delete process.env.OPENCLAW_STATE_DIR;
+      else process.env.OPENCLAW_STATE_DIR = prevStateDir;
+    }
+  });
+
   it("flags Slack slash commands without a channel users allowlist", async () => {
     const prevStateDir = process.env.OPENCLAW_STATE_DIR;
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-security-audit-slack-"));

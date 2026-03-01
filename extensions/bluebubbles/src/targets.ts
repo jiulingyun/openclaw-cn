@@ -283,7 +283,7 @@ export function isAllowedBlueBubblesSender(params: {
   chatIdentifier?: string | null;
 }): boolean {
   const allowFrom = params.allowFrom.map((entry) => String(entry).trim());
-  if (allowFrom.length === 0) return true;
+  if (allowFrom.length === 0) return false;
   if (allowFrom.includes("*")) return true;
 
   const senderNormalized = normalizeBlueBubblesHandle(params.sender);
