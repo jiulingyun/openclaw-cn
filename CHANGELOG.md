@@ -14,6 +14,58 @@ Docs: https://clawd.org.cn/
 
 - **OTEL 诊断导出修复**：更新 OTEL 导出协议与指标/trace 统计，完善诊断事件处理（#324，感谢 @Ronald-Kong99）
 - **Control UI 配置保存与回显修复**：修复 `config.set` 写入时的 redaction 恢复逻辑导致的保存失败，并修复代理模型下拉框不回显已保存模型的问题
+- **飞书图片发送修复**：修复 Feishu SDK 因 `form-data` 要求 ReadStream 导致 Buffer 上传失败的问题（#455）
+- **macOS 网关安装修复**：修复 `launchctl bootstrap` 错误 125，增加 bootout by service identifier 确保可靠卸载已有 LaunchAgent
+
+### 上游同步（批量合并 40 个 Copilot PR）
+
+#### 🔒 安全加固
+
+- **插件运行时命令执行禁用**：禁用插件运行时的命令执行原语（#228，上游 #20828）
+- **LINE 入站媒体临时文件命名加固**：防止路径遍历攻击（#235，上游 #20792）
+- **路径遏制与 SSRF IPv4 加固**：移植 owner-only tool policy（#246）
+- **安全修复批量移植**：移植 5 个安全修复 commit v2026.2.17→v2026.2.19（#252）
+- **Hono 升级至 4.11.10**：启用 timing-safe 认证加固（#279）
+- **沙箱浏览器 --no-sandbox 改为 opt-in**：默认启用沙箱保护（#289）
+- **P0 安全加固**：移植上游 v2026.2.19→v2026.2.21 安全补丁（#295）
+- **SHA-1 迁移至 SHA-256**：合成 ID 使用更安全的哈希算法（#297）
+- **Shell 包装审批持久化**：持久化内部命令用于 shell-wrapper 审批（#337，上游 98b2b16）
+- **RFC2544 SSRF 阻断**：移植 SSRF 阻断与 monitor typing 修复（#367）
+- **安全批量移植 v2026.2.21→v2026.2.23**：移植 5 个安全 commit（#395）
+- **SSRF 导航守卫与扩展中继认证**：移植浏览器 SSRF 导航守卫、扩展中继认证、IPv6 回环测试（#262）
+
+#### 🐛 Bug 修复
+
+- **Agent 图像清理与工具 schema 修复**：移植 v2026.2.15→v2026.2.17（#169）
+- **Config/Telegram 修复**：移植上游配置与 Telegram 修复（#173）
+- **Token 用量报告隔离**：隔离最后一轮 total 避免累计错误（#175）
+- **浏览器端口映射**：追踪原始端口映射以处理 EADDRINUSE 回退（#177）
+- **Cron 自旋循环修复**：防止同秒完成自旋循环，支持 bindings accountId 解析（#179）
+- **Embedding Manager 类型收紧**：收紧 embedding manager 继承类型（#189）
+- **Session threadId 泄漏修复**：防止过时 threadId 泄漏到非线程会话（#193）
+- **Prompt 缓存稳定性恢复**：将 per-turn ID 移至 user context 恢复 prompt 缓存稳定性（#301）
+- **Cron maxConcurrentRuns 修复**：在 timer loop 中正确遵守 maxConcurrentRuns（#307）
+- **Heartbeat 修复**：移植 3 个修复 v2026.2.19→v2026.2.21（#315）
+- **TUI 入站元数据剥离**：剥离用户消息中的入站元数据块（#322，上游 #22345）
+- **gateway.real_ip_fallback_enabled 条件严重性修复**（#353，上游 #23428）
+- **Gemini thoughtSignatures 清理**：为原生 Google provider 清理 thoughtSignatures（#355）
+- **SSRF dispatcher family fallback**：为 pinned SSRF dispatcher 启用 family fallback（#365）
+- **配对恢复清理与认证同步测试重构**（#345）
+
+#### 📖 文档
+
+- **AGENTS.md GHSA 章节**：新增安全公告分类要求（#218）
+- **SECURITY.md canvas 网络可见性澄清**（#222）
+- **SECURITY.md sessionKey 信任边界澄清**（#333）
+- **安全公告分类提醒**：移植到 AGENTS.md（#331）
+
+#### 📦 其他
+
+- **iOS Talk redaction 与 ATS 加固**：移植 v2026.2.15→v2026.2.17（#165）
+- **Telegram 冲突提交移植**：移植 3 个 P1 commit v2026.2.19→v2026.2.21（#321）
+- **Agents 冲突提交移植**：移植 5 个 commit v2026.2.17→v2026.2.19（#260）
+- **测试去重**：lifecycle、oauth、prompt-limit fixtures 去重（#335）
+- **Changelog 条目移植**：webchat 命令认证修复（#163）、飞书路径遍历加固（#220）、v2026.2.18 安全修复（#224）、canvas auth 加固（#277）
 
 ## 0.1.7
 
@@ -23,7 +75,6 @@ Docs: https://clawd.org.cn/
 
 - **BlueBubbles/Security**：要求所有 BlueBubbles webhook 请求进行 token 认证，移除 loopback/本地代理的免密码访问回退行为（上游 commit `6b2f2811dc62`）
 - **Security/Exec**：阻断 shell 启动文件环境注入（`BASH_ENV`、`ENV`、`BASH_FUNC_*`、`LD_*`、`DYLD_*` 等），在 config env 摄入、node-host 继承环境清理和 macOS exec 宿主运行时三处统一拦截，防止攻击者通过环境变量触发预命令执行（上游 commit `2cdbadee1f8f`）
-
 
 > 🆕 **重要功能**：新增 GLM-5 模型支持，完善 Z.AI Provider 集成
 > 🐛 **关键修复**：修复 Context 显示、压缩功能、浏览器控制等核心问题
