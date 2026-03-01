@@ -16,6 +16,7 @@ Docs: https://clawd.org.cn/
 - **Control UI 配置保存与回显修复**：修复 `config.set` 写入时的 redaction 恢复逻辑导致的保存失败，并修复代理模型下拉框不回显已保存模型的问题
 - **飞书图片发送修复**：修复 Feishu SDK 因 `form-data` 要求 ReadStream 导致 Buffer 上传失败的问题（#455）
 - **macOS 网关安装修复**：修复 `launchctl bootstrap` 错误 125，增加 bootout by service identifier 确保可靠卸载已有 LaunchAgent
+- **Ollama 模型崩溃修复**：修复 `AssistantMessageEventStream is not defined` 导致 Ollama 本地模型无法使用的问题，原因是 tsc 编译时错误地将值导入当作类型导入吞掉（#458，感谢 @Yishanjiu-3386）
 
 ### 上游同步（批量合并 40 个 Copilot PR）
 

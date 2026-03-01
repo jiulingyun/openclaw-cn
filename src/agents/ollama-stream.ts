@@ -7,7 +7,7 @@ import type {
   Tool,
   Usage,
 } from "@mariozechner/pi-ai";
-import { AssistantMessageEventStream } from "@mariozechner/pi-ai";
+import { AssistantMessageEventStream } from "@mariozechner/pi-ai/dist/utils/event-stream.js";
 import { randomUUID } from "node:crypto";
 
 export const OLLAMA_NATIVE_BASE_URL = "http://127.0.0.1:11434";
