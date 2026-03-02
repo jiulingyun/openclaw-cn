@@ -26,19 +26,19 @@ describe("LocalEmbedding", () => {
 
   it("creates LocalEmbedding instance with correct parameters", async () => {
     const { LocalEmbedding } = await import("./index.js");
-    const embedding = new LocalEmbedding("model.gguf", 512, "/cache");
+    const embedding = new LocalEmbedding("model.gguf", "/cache");
     expect(embedding).toBeDefined();
   });
 
   it("creates LocalEmbedding instance without cache directory", async () => {
     const { LocalEmbedding } = await import("./index.js");
-    const embedding = new LocalEmbedding("model.gguf", 512);
+    const embedding = new LocalEmbedding("model.gguf");
     expect(embedding).toBeDefined();
   });
 
   it("has embed method", async () => {
     const { LocalEmbedding } = await import("./index.js");
-    const embedding = new LocalEmbedding("model.gguf", 512);
+    const embedding = new LocalEmbedding("model.gguf");
     expect(typeof embedding.embed).toBe("function");
   });
 

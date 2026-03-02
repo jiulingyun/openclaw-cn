@@ -432,16 +432,19 @@ export class LocalEmbedding {
   async embed(text: string): Promise<number[]> {
     await this.ensureInitialized();
 
-    const embedding = await this.context.getEmbeddingFor(text);
+    const embedding = await this.context!.getEmbeddingFor(text);
     const vector = Array.from(embedding.vector) as number[];
 
+    // Sanitize non-finite values (NaN, Infinity)
+    const sanitized = vector.map((val) => (Number.isFinite(val) ? val : 0));
+
     // Normalize vector (magnitude ≈ 1.0)
-    const magnitude = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
+    const magnitude = Math.sqrt(sanitized.reduce((sum, val) => sum + val * val, 0));
     if (magnitude > 0) {
-      return vector.map((val) => val / magnitude);
+      return sanitized.map((val) => val / magnitude);
     }
 
-    return vector;
+    return sanitized;
   }
 }
 

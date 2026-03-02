@@ -240,7 +240,7 @@ export const memoryConfigSchema = {
     "embedding.localModelCacheDir": {
       label: "Local Model Cache Dir",
       advanced: true,
-      help: "Directory for caching local model files (defaults to ~/.cache/node-llama-cpp)",
+      help: "Directory for caching local model files (defaults to ~/.node-llama-cpp/models)",
     },
     "embedding.dimensions": {
       label: "Embedding Dimensions",
