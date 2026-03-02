@@ -369,7 +369,7 @@ export async function applyAuthChoiceApiProviders(
         prompter: params.prompter,
       });
       nextConfig = applied.config;
-      agentModelOverride = applied.agentModelOverride ?? agentModelOverride;
+      agentModelOverride = applied.agentModelOverride ?? modelRef;
     }
     return { config: nextConfig, agentModelOverride };
   }
@@ -444,7 +444,7 @@ export async function applyAuthChoiceApiProviders(
         prompter: params.prompter,
       });
       nextConfig = applied.config;
-      agentModelOverride = applied.agentModelOverride ?? agentModelOverride;
+      agentModelOverride = applied.agentModelOverride ?? modelRef;
     }
     return { config: nextConfig, agentModelOverride };
   }

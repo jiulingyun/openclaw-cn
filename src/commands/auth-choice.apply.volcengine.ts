@@ -208,7 +208,6 @@ async function applyVolcengineCodingPlan(
   params: ApplyAuthChoiceParams,
 ): Promise<ApplyAuthChoiceResult | null> {
   let nextConfig = params.config;
-  let agentModelOverride: string | undefined;
   const noteAgentModel = async (model: string) => {
     if (!params.agentId) return;
     await params.prompter.note(
@@ -288,7 +287,6 @@ async function applyVolcengineCodingPlan(
     prompter: params.prompter,
   });
   nextConfig = applied.config;
-  agentModelOverride = applied.agentModelOverride ?? agentModelOverride;
 
-  return { config: nextConfig, agentModelOverride };
+  return { config: nextConfig, agentModelOverride: applied.agentModelOverride ?? modelRef };
 }
