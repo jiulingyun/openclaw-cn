@@ -1166,6 +1166,7 @@
               {
                 "group": "CLI commands",
                 "pages": [
+                  "reference/cli-cheatsheet",
                   "cli/index",
                   "cli/agent",
                   "cli/agents",
@@ -1690,6 +1691,7 @@
               {
                 "group": "CLI 命令",
                 "pages": [
+                  "reference/cli-cheatsheet",
                   "zh-CN/cli/index",
                   "zh-CN/cli/agent",
                   "zh-CN/cli/agents",
