@@ -269,12 +269,38 @@ function applyPatchFile({ patchPath, targetDir }) {
   applyPatchSet({ patchText, targetDir });
 }
 
+function warnIfUpstreamOpenclawInstalled() {
+  // If the upstream `openclaw` package is also installed globally, the `openclaw`
+  // binary symlink will point to whichever was installed last — which may not be us.
+  // Detect this and print a clear warning so users aren't silently confused.
+  try {
+    const result = spawnSync(
+      process.execPath,
+      [
+        "-e",
+        "const r=require('child_process');const o=r.execSync('npm list -g --depth 0 --json 2>/dev/null',{encoding:'utf-8'});const p=JSON.parse(o);process.stdout.write(Object.keys(p.dependencies||{}).includes('openclaw')?'1':'0')",
+      ],
+      { encoding: "utf-8", stdio: "pipe" },
+    );
+    if (result.stdout?.trim() === "1") {
+      console.warn(
+        "\n⚠️  [openclaw-cn] 检测到全局已安装上游 openclaw 包。\n" +
+          "   `openclaw` 命令当前指向最后安装的版本，可能不是 openclaw-cn。\n" +
+          "   建议使用 `openclaw-cn` 命令以确保调用本版本，或卸载其中一个以避免混淆。\n",
+      );
+    }
+  } catch {
+    // Detection failure is non-fatal; skip silently.
+  }
+}
+
 function main() {
   const repoRoot = getRepoRoot();
   process.chdir(repoRoot);
 
   ensureExecutable(path.join(repoRoot, "dist", "entry.js"));
   setupGitHooks({ repoRoot });
+  warnIfUpstreamOpenclawInstalled();
 
   // Configure git to use HTTPS for GitHub (fixes libsignal-node SSH errors)
   if (hasGit(repoRoot)) {
