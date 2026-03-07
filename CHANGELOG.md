@@ -19,6 +19,7 @@ Docs: https://clawd.org.cn/
 - **内置 Hook metadata key 修复**：修复 session-memory、command-logger、boot-md 三个内置 Hook 因 `HOOK.md` 使用旧版 `"clawdbot"` metadata key 而导致事件无法注册、Hook 静默失效的问题。已将三个内置 Hook 改为正确的 `"openclaw"` key；同时在 `frontmatter.ts` 和 `install.ts` 加入向后兼容 fallback，确保用户自写的旧格式 Hook 继续可用（#471）
 - **Web UI「新消息」按钮样式缺失修复**：修复聊天页面「新消息」浮动提示按钮因缺少 CSS 定义而导致灰色遮挡聊天区域的问题，现在正确显示为底部居中的圆角浮动按钮（#481）
 - **Agent 概览页长模型名溢出修复**：修复 Agent 概览卡片中过长的模型名（如 `volcengine-coding-plan/deepseek-v3.2`）超出网格单元格边界导致布局错乱的问题（#481）
+- **飞书配置向导「修改设置」修复**：修复已配置飞书渠道后再次运行配置向导选择「修改设置」时无法进入 App ID / App Secret 输入步骤的问题，现在会预填已有值供修改
 
 ## 0.1.7
 

@@ -1,7 +1,6 @@
 import type {
   ChannelOnboardingAdapter,
   OpenClawConfig as ClawdbotConfig,
-  WizardPrompter,
 } from "openclaw/plugin-sdk";
 
 /** Feishu domain: "feishu" (China) or "lark" (International). */
@@ -30,12 +29,7 @@ export const feishuOnboardingAdapter: ChannelOnboardingAdapter = {
       quickstartScore: configured ? 1 : 10,
     };
   },
-  configure: async ({
-    cfg,
-    prompter,
-    accountOverrides,
-    shouldPromptAccountIds,
-  }) => {
+  configure: async ({ cfg, prompter, accountOverrides, shouldPromptAccountIds }) => {
     const override = accountOverrides.feishu?.trim();
     const defaultId = resolveDefaultFeishuAccountId(cfg);
     let accountId = override ? normalizeAccountId(override) : defaultId;
@@ -81,47 +75,45 @@ export const feishuOnboardingAdapter: ChannelOnboardingAdapter = {
 
     const platformLabel = domain === "lark" ? "Lark" : "飞书";
 
-    let appId = resolved.config.appId;
-    if (!appId) {
-      appId = String(
-        await prompter.text({
-          message: `输入 ${platformLabel} App ID (cli_...)`,
-          validate: (val) => (val?.trim() ? undefined : "Required"),
-        }),
-      ).trim();
-    }
+    const existingAppId = resolved.config.appId ?? "";
+    const appId = String(
+      await prompter.text({
+        message: `输入 ${platformLabel} App ID (cli_...)`,
+        initialValue: existingAppId,
+        validate: (val) => (val?.trim() ? undefined : "Required"),
+      }),
+    ).trim();
 
-    let appSecret = resolved.config.appSecret;
-    if (!appSecret) {
-      appSecret = String(
-        await prompter.text({
-          message: `输入 ${platformLabel} App Secret`,
-          validate: (val) => (val?.trim() ? undefined : "Required"),
-        }),
-      ).trim();
-    }
+    const existingAppSecret = resolved.config.appSecret ?? "";
+    const appSecret = String(
+      await prompter.text({
+        message: `输入 ${platformLabel} App Secret`,
+        initialValue: existingAppSecret,
+        validate: (val) => (val?.trim() ? undefined : "Required"),
+      }),
+    ).trim();
 
     next = updateFeishuConfig(next, accountId, { appId, appSecret, domain, enabled: true });
 
     return { cfg: next, accountId };
   },
   disable: (cfg) => {
-      // Simple disable logic
-      const next = { ...cfg };
-      if (next.channels?.feishu) {
-          // If we have specific accounts, we might need more complex logic, 
-          // but usually this disables the whole channel or default account.
-          // For simplicity, let's just mark the structure if it exists.
-          // But actually, the core might handle channel disabling if we don't return anything?
-          // Telegram adapter sets enabled: false.
-          // Let's do nothing for now or just return cfg if not implemented.
-          // But better to implement basic disable.
-          if (next.channels.feishu.accounts) {
-             // Disable all accounts? Or just return modified config
-          }
+    // Simple disable logic
+    const next = { ...cfg };
+    if (next.channels?.feishu) {
+      // If we have specific accounts, we might need more complex logic,
+      // but usually this disables the whole channel or default account.
+      // For simplicity, let's just mark the structure if it exists.
+      // But actually, the core might handle channel disabling if we don't return anything?
+      // Telegram adapter sets enabled: false.
+      // Let's do nothing for now or just return cfg if not implemented.
+      // But better to implement basic disable.
+      if (next.channels.feishu.accounts) {
+        // Disable all accounts? Or just return modified config
       }
-      return next;
-  }
+    }
+    return next;
+  },
 };
 
 function updateFeishuConfig(
@@ -134,26 +126,26 @@ function updateFeishuConfig(
   next.channels = { ...next.channels, feishu };
 
   if (accountId === DEFAULT_ACCOUNT_ID) {
-      // If we are using the simplified config structure (which we didn't strictly define for Feishu, 
-      // but let's assume we stick to `accounts` map for consistency with my previous types.feishu.ts)
-      // Wait, in types.feishu.ts I defined:
-      // export type FeishuConfig = { accounts?: Record<string, FeishuAccountConfig>; };
-      // So there is no top-level appId/appSecret in FeishuConfig, only inside accounts.
-      
-      if (!feishu.accounts) feishu.accounts = {};
-      const acc = feishu.accounts[accountId] || { appId: "", appSecret: "" };
-      feishu.accounts[accountId] = {
-          ...acc,
-          ...updates,
-      };
+    // If we are using the simplified config structure (which we didn't strictly define for Feishu,
+    // but let's assume we stick to `accounts` map for consistency with my previous types.feishu.ts)
+    // Wait, in types.feishu.ts I defined:
+    // export type FeishuConfig = { accounts?: Record<string, FeishuAccountConfig>; };
+    // So there is no top-level appId/appSecret in FeishuConfig, only inside accounts.
+
+    if (!feishu.accounts) feishu.accounts = {};
+    const acc = feishu.accounts[accountId] || { appId: "", appSecret: "" };
+    feishu.accounts[accountId] = {
+      ...acc,
+      ...updates,
+    };
   } else {
-      if (!feishu.accounts) feishu.accounts = {};
-      const acc = feishu.accounts[accountId] || { appId: "", appSecret: "" };
-      feishu.accounts[accountId] = {
-          ...acc,
-          ...updates,
-      };
+    if (!feishu.accounts) feishu.accounts = {};
+    const acc = feishu.accounts[accountId] || { appId: "", appSecret: "" };
+    feishu.accounts[accountId] = {
+      ...acc,
+      ...updates,
+    };
   }
-  
+
   return next;
 }
