@@ -5,16 +5,16 @@ import type {
 } from "openclaw/plugin-sdk";
 import { wecomConnectorOnboardingAdapter } from "./onboarding.js";
 
-const CHANNEL_ID = "wecom-connector";
+const CHANNEL_ID = "wecom";
 
 const meta: ChannelMeta = {
   id: CHANNEL_ID,
   label: "企业微信",
   selectionLabel: "企业微信 (WeCom)",
-  docsPath: "/channels/wecom-connector",
-  docsLabel: "wecom-connector",
+  docsPath: "/channels/wecom",
+  docsLabel: "wecom",
   blurb: "企业微信机器人接入插件。",
-  aliases: ["wecom", "wechat-work", "wxwork"],
+  aliases: ["wechat-work", "wxwork"],
   order: 45,
 };
 

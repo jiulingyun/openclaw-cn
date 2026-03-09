@@ -1,6 +1,6 @@
 {
   "id": "wecom-connector",
-  "channels": ["wecom-connector"],
+  "channels": ["wecom"],
   "configSchema": {
     "type": "object",
     "additionalProperties": false,

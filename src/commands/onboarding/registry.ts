@@ -8,7 +8,7 @@ import { wecomConnectorOnboardingAdapter } from "./wecom-connector.js";
 // their own onboarding adapter (or may not be loaded at configure time).
 const CORE_ONBOARDING_ADAPTERS: ReadonlyMap<ChannelChoice, ChannelOnboardingAdapter> = new Map([
   ["dingtalk-connector", dingtalkConnectorOnboardingAdapter],
-  ["wecom-connector", wecomConnectorOnboardingAdapter],
+  ["wecom", wecomConnectorOnboardingAdapter],
 ]);
 
 const CHANNEL_ONBOARDING_ADAPTERS = () => {

@@ -293,8 +293,8 @@ const DOCKS: Record<ChatChannelId, ChannelDock> = {
       formatAllowFrom: ({ allowFrom }) => allowFrom.map(String),
     },
   },
-  "wecom-connector": {
-    id: "wecom-connector",
+  wecom: {
+    id: "wecom",
     capabilities: {
       chatTypes: ["direct", "channel"],
     },

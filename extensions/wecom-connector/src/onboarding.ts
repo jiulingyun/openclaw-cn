@@ -1,6 +1,6 @@
 import type { ChannelOnboardingAdapter } from "openclaw/plugin-sdk";
 
-const CHANNEL_ID = "wecom-connector" as const;
+const CHANNEL_ID = "wecom" as const;
 
 export const wecomConnectorOnboardingAdapter: ChannelOnboardingAdapter = {
   channel: CHANNEL_ID,

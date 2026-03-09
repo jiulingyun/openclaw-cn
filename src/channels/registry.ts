@@ -11,7 +11,7 @@ export const CHAT_CHANNEL_ORDER = [
   "googlechat",
   "feishu",
   "dingtalk-connector",
-  "wecom-connector",
+  "wecom",
   "slack",
   "signal",
   "imessage",
@@ -91,13 +91,13 @@ const CHAT_CHANNEL_META: Record<ChatChannelId, ChannelMeta> = {
     blurb: "钉钉机器人集成，通过官方 dingtalk-connector 接入。",
     systemImage: "message",
   },
-  "wecom-connector": {
-    id: "wecom-connector",
+  wecom: {
+    id: "wecom",
     label: "企业微信",
     selectionLabel: "企业微信 (WeCom)",
     detailLabel: "企业微信机器人",
-    docsPath: "/channels/wecom-connector",
-    docsLabel: "wecom-connector",
+    docsPath: "/channels/wecom",
+    docsLabel: "wecom",
     blurb: "企业微信机器人接入插件。",
     systemImage: "message",
   },
@@ -139,9 +139,8 @@ export const CHAT_CHANNEL_ALIASES: Record<string, ChatChannelId> = {
   gchat: "googlechat",
   dingtalk: "dingtalk-connector",
   dingding: "dingtalk-connector",
-  wecom: "wecom-connector",
-  wxwork: "wecom-connector",
-  "wechat-work": "wecom-connector",
+  wxwork: "wecom",
+  "wechat-work": "wecom",
 };
 
 const normalizeChannelKey = (raw?: string | null): string | undefined => {

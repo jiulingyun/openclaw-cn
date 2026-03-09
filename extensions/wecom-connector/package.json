@@ -59,14 +59,13 @@
       "./dist/index.js"
     ],
     "channel": {
-      "id": "wecom-connector",
+      "id": "wecom",
       "label": "企业微信",
       "selectionLabel": "企业微信 (WeCom)",
-      "docsPath": "/channels/wecom-connector",
-      "docsLabel": "wecom-connector",
+      "docsPath": "/channels/wecom",
+      "docsLabel": "wecom",
       "blurb": "企业微信机器人接入插件。",
       "aliases": [
-        "wecom",
         "wechat-work",
         "wxwork"
       ],

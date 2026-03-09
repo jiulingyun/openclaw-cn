@@ -1,7 +1,7 @@
 import type { ClawdbotConfig } from "../../config/config.js";
 import type { ChannelOnboardingAdapter } from "./types.js";
 
-const CHANNEL_ID = "wecom-connector" as const;
+const CHANNEL_ID = "wecom" as const;
 
 export const wecomConnectorOnboardingAdapter: ChannelOnboardingAdapter = {
   channel: CHANNEL_ID,
