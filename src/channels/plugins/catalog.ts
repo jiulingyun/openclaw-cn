@@ -274,16 +274,21 @@ export function listChannelPluginCatalogEntries(
     }
   }
 
-  // Deduplicate: if an entry's npmSpec matches another entry's officialSpec,
-  // it is the official implementation of that channel — drop the duplicate.
-  const officialSpecValues = new Set(
-    Array.from(resolved.values())
-      .map(({ entry }) => entry.install.officialSpec?.trim())
-      .filter(Boolean) as string[],
-  );
+  // Deduplicate: if entry A's npmSpec matches entry B's officialSpec (where A !== B),
+  // then A is a community wrapper superseded by the official package — drop A.
+  // Do NOT drop an entry whose npmSpec equals its own officialSpec (no-community-build case).
+  const officialSpecByOtherId = new Map<string, string>();
   for (const [id, { entry }] of resolved) {
-    if (officialSpecValues.has(entry.install.npmSpec.trim())) {
-      resolved.delete(id);
+    const spec = entry.install.officialSpec?.trim();
+    if (spec) officialSpecByOtherId.set(id, spec);
+  }
+  for (const [id, { entry }] of resolved) {
+    const npm = entry.install.npmSpec.trim();
+    for (const [otherId, spec] of officialSpecByOtherId) {
+      if (otherId !== id && spec === npm) {
+        resolved.delete(id);
+        break;
+      }
     }
   }
 
