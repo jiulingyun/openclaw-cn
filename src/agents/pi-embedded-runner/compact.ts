@@ -77,6 +77,15 @@ import {
 import { splitSdkTools } from "./tool-split.js";
 import { describeUnknownError, mapThinkingLevel, resolveExecToolDefaults } from "./utils.js";
 import { flushPendingToolResultsAfterIdle } from "./wait-for-idle-before-flush.js";
+import {
+  compactWithSafetyTimeout,
+  EMBEDDED_COMPACTION_TIMEOUT_MS,
+} from "./compaction-safety-timeout.js";
+import {
+  startCompactionTracking,
+  completeCompactionTracking,
+  failCompactionTracking,
+} from "./compaction-health-check.js";
 
 export type CompactEmbeddedPiSessionParams = {
   sessionId: string;
@@ -256,6 +265,12 @@ export async function compactEmbeddedPiSessionDirect(
   const runId = params.runId ?? params.sessionId;
   const resolvedWorkspace = resolveUserPath(params.workspaceDir);
   const prevCwd = process.cwd();
+
+  // Start health tracking for this compaction operation
+  startCompactionTracking({
+    sessionId: params.sessionId,
+    sessionKey: params.sessionKey,
+  });
 
   const provider = (params.provider ?? DEFAULT_PROVIDER).trim() || DEFAULT_PROVIDER;
   const modelId = (params.model ?? DEFAULT_MODEL).trim() || DEFAULT_MODEL;
@@ -649,7 +664,11 @@ export async function compactEmbeddedPiSessionDirect(
         }
 
         const compactStartedAt = Date.now();
-        const result = await session.compact(params.customInstructions);
+        // Apply safety timeout to prevent compaction from hanging indefinitely
+        const result = await compactWithSafetyTimeout(
+          () => session.compact(params.customInstructions),
+          EMBEDDED_COMPACTION_TIMEOUT_MS,
+        );
         // Estimate tokens after compaction by summing token estimates for remaining messages
         let tokensAfter: number | undefined;
         try {
@@ -701,6 +720,12 @@ export async function compactEmbeddedPiSessionDirect(
               `delta.estTokens=${typeof preMetrics.estTokens === "number" && typeof postMetrics.estTokens === "number" ? postMetrics.estTokens - preMetrics.estTokens : "unknown"}`,
           );
         }
+        // Mark compaction as completed successfully
+        completeCompactionTracking({
+          sessionId: params.sessionId,
+          sessionKey: params.sessionKey,
+        });
+
         return {
           ok: true,
           compacted: true,
@@ -730,6 +755,13 @@ export async function compactEmbeddedPiSessionDirect(
         `attempt=${attempt} maxAttempts=${maxAttempts} outcome=failed reason=${classifyCompactionReason(reason)} ` +
         `durationMs=${Date.now() - startedAt}`,
     );
+    // Mark compaction as failed
+    failCompactionTracking({
+      sessionId: params.sessionId,
+      sessionKey: params.sessionKey,
+      error: reason,
+    });
+
     return {
       ok: false,
       compacted: false,
