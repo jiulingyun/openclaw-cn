@@ -37,25 +37,36 @@ export function handleAutoCompactionStart(ctx: EmbeddedPiSubscribeContext) {
 
 export function handleAutoCompactionEnd(
   ctx: EmbeddedPiSubscribeContext,
-  evt: AgentEvent & { willRetry?: unknown },
+  evt: AgentEvent & { willRetry?: unknown; error?: unknown },
 ) {
+  // Always clear compaction state, even on error/timeout
   ctx.state.compactionInFlight = false;
   const willRetry = Boolean(evt.willRetry);
+  const hasError = Boolean(evt.error);
+
+  if (hasError) {
+    // Log error for debugging
+    ctx.log.warn(
+      `embedded run compaction ended with error: runId=${ctx.params.runId}, error=${String(evt.error)}`,
+    );
+  }
+
   if (willRetry) {
     ctx.noteCompactionRetry();
     ctx.resetForCompactionRetry();
     ctx.log.debug(`embedded run compaction retry: runId=${ctx.params.runId}`);
   } else {
+    // Always resolve waiting promises on completion (success or failure)
     ctx.maybeResolveCompactionWait();
   }
   emitAgentEvent({
     runId: ctx.params.runId,
     stream: "compaction",
-    data: { phase: "end", willRetry },
+    data: { phase: "end", willRetry, error: evt.error },
   });
   void ctx.params.onAgentEvent?.({
     stream: "compaction",
-    data: { phase: "end", willRetry },
+    data: { phase: "end", willRetry, error: evt.error },
   });
 }
 
