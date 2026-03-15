@@ -86,15 +86,15 @@ pnpm openclaw-cn onboard --install-daemon
 
 ## 📚 文档
 
-- [快速开始](https://clawd.org.cn/docs/start/getting-started)
+- [快速开始](https://clawd.org.cn/start/getting-started.html)
 - [Gateway 配置](https://clawd.org.cn/docs/gateway/configuration)
-- [渠道接入](https://clawd.org.cn/docs/channels)
-- [飞书渠道](https://clawd.org.cn/docs/channels/feishu) — 官方插件 `@larksuiteoapi/feishu-openclaw-plugin`，配置向导一键安装
-- [钉钉渠道](https://clawd.org.cn/docs/channels/dingtalk) — 官方插件，配置向导一键安装
-- [企业微信渠道](https://clawd.org.cn/docs/channels/wecom) — 官方插件，配置向导一键安装
-- [QQ 渠道](https://clawd.org.cn/docs/channels/qq) — 社区插件 `@sliverp/qqbot`（基于 OneBot/NapCat），配置向导一键安装
+- [渠道接入](https://clawd.org.cn/channels/)
+- [飞书渠道](https://clawd.org.cn/channels/feishu.html) — 官方插件 `@larksuiteoapi/feishu-openclaw-plugin`，配置向导一键安装
+- [钉钉渠道](https://clawd.org.cn/channels/dingtalk-connector.html) — 官方插件，配置向导一键安装
+- [企业微信渠道](https://clawd.org.cn/channels/wecom.html) — 官方插件，配置向导一键安装
+- [QQ 渠道](https://clawd.org.cn/channels/qqbot.html) — 社区插件 `@sliverp/qqbot`（基于 OneBot/NapCat），配置向导一键安装
 - [QQ (OneBot) 社区插件 ↗](https://github.com/Daiyimo/openclaw-napcat) - 由 @Daiyimo 贡献，基于 NapCat/Lagrange（非官方内置）
-- [技能开发](https://clawd.org.cn/docs/tools/skills)
+- [技能开发](https://clawd.org.cn/tools/skills.html)
 
 ## 🔄 版本同步
 
