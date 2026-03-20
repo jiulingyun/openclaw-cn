@@ -49,4 +49,28 @@ describe("normalizePluginsConfig", () => {
     });
     expect(result.slots.memory).toBe("memory-core");
   });
+
+  it("normalizes legacy plugin entry id aliases", () => {
+    const result = normalizePluginsConfig({
+      entries: { wecom: { enabled: true } },
+    });
+    expect(result.entries["wecom-connector"]?.enabled).toBe(true);
+    expect(result.entries.wecom).toBeUndefined();
+  });
+
+  it("normalizes legacy plugin allow/deny aliases", () => {
+    const result = normalizePluginsConfig({
+      allow: ["wecom"],
+      deny: ["wecom"],
+    });
+    expect(result.allow).toEqual(["wecom-connector"]);
+    expect(result.deny).toEqual(["wecom-connector"]);
+  });
+
+  it("normalizes legacy memory slot plugin alias", () => {
+    const result = normalizePluginsConfig({
+      slots: { memory: "wecom" },
+    });
+    expect(result.slots.memory).toBe("wecom-connector");
+  });
 });

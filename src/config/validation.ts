@@ -164,21 +164,17 @@ export function validateConfigObjectWithPlugins(raw: unknown):
     }
   }
 
-  const entries = pluginsConfig?.entries;
-  if (entries && isRecord(entries)) {
-    for (const pluginId of Object.keys(entries)) {
-      if (!knownIds.has(pluginId)) {
-        issues.push({
-          path: `plugins.entries.${pluginId}`,
-          message: `plugin not found: ${pluginId}`,
-        });
-      }
+  const entries = normalizedPlugins.entries;
+  for (const pluginId of Object.keys(entries)) {
+    if (!knownIds.has(pluginId)) {
+      issues.push({
+        path: `plugins.entries.${pluginId}`,
+        message: `plugin not found: ${pluginId}`,
+      });
     }
   }
 
-  const allow = pluginsConfig?.allow ?? [];
-  for (const pluginId of allow) {
-    if (typeof pluginId !== "string" || !pluginId.trim()) continue;
+  for (const pluginId of normalizedPlugins.allow) {
     if (!knownIds.has(pluginId)) {
       issues.push({
         path: "plugins.allow",
@@ -187,9 +183,7 @@ export function validateConfigObjectWithPlugins(raw: unknown):
     }
   }
 
-  const deny = pluginsConfig?.deny ?? [];
-  for (const pluginId of deny) {
-    if (typeof pluginId !== "string" || !pluginId.trim()) continue;
+  for (const pluginId of normalizedPlugins.deny) {
     if (!knownIds.has(pluginId)) {
       issues.push({
         path: "plugins.deny",

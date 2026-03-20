@@ -15,14 +15,25 @@ export type NormalizedPluginsConfig = {
 
 export const BUNDLED_ENABLED_BY_DEFAULT = new Set<string>([]);
 
+const LEGACY_PLUGIN_ID_ALIASES: Readonly<Record<string, string>> = {
+  wecom: "wecom-connector",
+};
+
+function canonicalizePluginId(value: string): string {
+  const trimmed = value.trim();
+  return LEGACY_PLUGIN_ID_ALIASES[trimmed] ?? trimmed;
+}
+
 const normalizeList = (value: unknown): string[] => {
   if (!Array.isArray(value)) return [];
-  return value.map((entry) => (typeof entry === "string" ? entry.trim() : "")).filter(Boolean);
+  return value
+    .map((entry) => (typeof entry === "string" ? canonicalizePluginId(entry) : ""))
+    .filter(Boolean);
 };
 
 const normalizeSlotValue = (value: unknown): string | null | undefined => {
   if (typeof value !== "string") return undefined;
-  const trimmed = value.trim();
+  const trimmed = canonicalizePluginId(value);
   if (!trimmed) return undefined;
   if (trimmed.toLowerCase() === "none") return null;
   return trimmed;
@@ -34,13 +45,14 @@ const normalizePluginEntries = (entries: unknown): NormalizedPluginsConfig["entr
   }
   const normalized: NormalizedPluginsConfig["entries"] = {};
   for (const [key, value] of Object.entries(entries)) {
-    if (!key.trim()) continue;
+    const normalizedKey = canonicalizePluginId(key);
+    if (!normalizedKey) continue;
     if (!value || typeof value !== "object" || Array.isArray(value)) {
-      normalized[key] = {};
+      normalized[normalizedKey] = {};
       continue;
     }
     const entry = value as Record<string, unknown>;
-    normalized[key] = {
+    normalized[normalizedKey] = {
       enabled: typeof entry.enabled === "boolean" ? entry.enabled : undefined,
       config: "config" in entry ? entry.config : undefined,
     };

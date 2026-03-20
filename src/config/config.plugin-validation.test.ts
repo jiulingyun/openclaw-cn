@@ -151,6 +151,30 @@ describe("config plugin validation", () => {
     });
   });
 
+  it("accepts legacy wecom plugin id alias", async () => {
+    await withTempHome(async (home) => {
+      process.env.OPENCLAW_STATE_DIR = path.join(home, ".openclaw");
+      const pluginDir = path.join(home, "wecom-plugin");
+      await writePluginFixture({
+        dir: pluginDir,
+        id: "wecom-connector",
+        channels: ["wecom"],
+        schema: { type: "object" },
+      });
+      vi.resetModules();
+      const { validateConfigObjectWithPlugins } = await import("./config.js");
+      const res = validateConfigObjectWithPlugins({
+        agents: { list: [{ id: "pi" }] },
+        plugins: {
+          enabled: false,
+          load: { paths: [pluginDir] },
+          entries: { wecom: { enabled: true } },
+        },
+      });
+      expect(res.ok).toBe(true);
+    });
+  });
+
   it("accepts plugin heartbeat targets", async () => {
     await withTempHome(async (home) => {
       process.env.OPENCLAW_STATE_DIR = path.join(home, ".openclaw");
