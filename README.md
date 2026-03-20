@@ -19,7 +19,7 @@
   <a href="https://clawd.org.cn">🌐 官网</a> ·
   <a href="https://clawd.org.cn/docs">📖 文档</a> ·
   <a href="https://github.com/jiulingyun/openclaw-cn/issues">💬 反馈</a> ·
-  <a href="https://ifdian.net/a/openclaw-cn">❤️ 为爱发电（赞助）</a>
+  <a href="https://clawd.org.cn/sponsor.html">❤️ 为爱发电（赞助）</a>
 </p>
 
 ---
