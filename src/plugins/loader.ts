@@ -50,13 +50,14 @@ const resolvePluginSdkAlias = (): string | null => {
     const preferDist = process.env.VITEST || process.env.NODE_ENV === "test" || isDistRuntime;
     let cursor = path.dirname(modulePath);
     for (let i = 0; i < 6; i += 1) {
-      const srcCandidate = path.join(cursor, "src", "plugin-sdk", "index.ts");
-      const distCandidate = path.join(cursor, "dist", "plugin-sdk", "index.js");
-      const orderedCandidates = preferDist
-        ? [distCandidate, srcCandidate]
-        : [srcCandidate, distCandidate];
-      for (const candidate of orderedCandidates) {
-        if (fs.existsSync(candidate)) return candidate;
+      const srcDir = path.join(cursor, "src", "plugin-sdk");
+      const distDir = path.join(cursor, "dist", "plugin-sdk");
+      const orderedDirs = preferDist ? [distDir, srcDir] : [srcDir, distDir];
+      for (const dir of orderedDirs) {
+        // Point alias at directory so subpath imports (e.g. openclaw/plugin-sdk/channel-config-schema)
+        // resolve to files within the directory rather than appending to index.js path.
+        const indexFile = dir === distDir ? path.join(dir, "index.js") : path.join(dir, "index.ts");
+        if (fs.existsSync(indexFile)) return dir;
       }
       const parent = path.dirname(cursor);
       if (parent === cursor) break;
