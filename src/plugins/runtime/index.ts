@@ -152,8 +152,13 @@ function resolveVersion(): string {
   if (cachedVersion) return cachedVersion;
   try {
     const require = createRequire(import.meta.url);
-    const pkg = require("../../../package.json") as { version?: string };
-    cachedVersion = pkg.version ?? "unknown";
+    const pkg = require("../../../package.json") as {
+      version?: string;
+      openclawVersion?: string;
+    };
+    // Prefer openclawVersion (upstream-compatible date-based version)
+    // so third-party plugins that check host compatibility pass.
+    cachedVersion = pkg.openclawVersion ?? pkg.version ?? "unknown";
     return cachedVersion;
   } catch {
     cachedVersion = "unknown";
