@@ -330,6 +330,15 @@
   min-width: 140px;
 }
 
+.chat-controls__model {
+  min-width: 120px;
+}
+
+.chat-controls__model select {
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
 .chat-controls__thinking {
   display: flex;
   align-items: center;

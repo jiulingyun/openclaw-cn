@@ -10,12 +10,7 @@ import type { Tab } from "./navigation";
 import type { UiSettings } from "./storage";
 import { handleAgentEvent, resetToolStream, type AgentEventPayload } from "./app-tool-stream";
 import { flushChatQueueForEvent } from "./app-chat";
-import {
-  applySettings,
-  loadCron,
-  refreshActiveTab,
-  setLastActiveSessionKey,
-} from "./app-settings";
+import { applySettings, loadCron, refreshActiveTab, setLastActiveSessionKey } from "./app-settings";
 import { handleChatEvent, type ChatEventPayload } from "./controllers/chat";
 import {
   addExecApproval,
@@ -50,6 +45,10 @@ type GatewayHost = {
   assistantAgentId: string | null;
   sessionKey: string;
   chatRunId: string | null;
+  chatModels: Array<{ id: string; name: string; provider: string }>;
+  chatModelsLoading: boolean;
+  chatDefaultModel: string | null;
+  chatDefaultProvider: string | null;
   execApprovalQueue: ExecApprovalRequest[];
   execApprovalError: string | null;
 };
@@ -75,8 +74,7 @@ function normalizeSessionKeyForDefaults(
     raw === "main" ||
     raw === mainKey ||
     (defaultAgentId &&
-      (raw === `agent:${defaultAgentId}:main` ||
-        raw === `agent:${defaultAgentId}:${mainKey}`));
+      (raw === `agent:${defaultAgentId}:main` || raw === `agent:${defaultAgentId}:${mainKey}`));
   return isAlias ? mainSessionKey : raw;
 }
 
@@ -132,6 +130,7 @@ export function connectGateway(host: GatewayHost) {
       void loadNodes(host as unknown as ClawdbotApp, { quiet: true });
       void loadDevices(host as unknown as ClawdbotApp, { quiet: true });
       void refreshActiveTab(host as unknown as Parameters<typeof refreshActiveTab>[0]);
+      void loadChatModels(host);
     },
     onClose: ({ code, reason }) => {
       host.connected = false;
@@ -185,9 +184,7 @@ function handleGatewayEventUnsafe(host: GatewayHost, evt: GatewayEventFrame) {
     const state = handleChatEvent(host as unknown as ClawdbotApp, payload);
     if (state === "final" || state === "error" || state === "aborted") {
       resetToolStream(host as unknown as Parameters<typeof resetToolStream>[0]);
-      void flushChatQueueForEvent(
-        host as unknown as Parameters<typeof flushChatQueueForEvent>[0],
-      );
+      void flushChatQueueForEvent(host as unknown as Parameters<typeof flushChatQueueForEvent>[0]);
     }
     if (state === "final") void loadChatHistory(host as unknown as ClawdbotApp);
     return;
@@ -229,6 +226,29 @@ function handleGatewayEventUnsafe(host: GatewayHost, evt: GatewayEventFrame) {
     if (resolved) {
       host.execApprovalQueue = removeExecApproval(host.execApprovalQueue, resolved.id);
     }
+  }
+}
+
+async function loadChatModels(host: GatewayHost) {
+  if (!host.client || host.chatModelsLoading) return;
+  host.chatModelsLoading = true;
+  try {
+    const result = (await host.client.request("models.list", {})) as
+      | {
+          models?: Array<{ id: string; name: string; provider: string }>;
+          defaultModel?: string;
+          defaultProvider?: string;
+        }
+      | undefined;
+    host.chatModels = Array.isArray(result?.models) ? result.models : [];
+    host.chatDefaultModel = result?.defaultModel ?? null;
+    host.chatDefaultProvider = result?.defaultProvider ?? null;
+  } catch {
+    host.chatModels = [];
+    host.chatDefaultModel = null;
+    host.chatDefaultProvider = null;
+  } finally {
+    host.chatModelsLoading = false;
   }
 }
 

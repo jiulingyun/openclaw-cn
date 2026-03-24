@@ -134,6 +134,70 @@ export function renderChatControls(state: AppViewState) {
       >
         ${refreshIcon}
       </button>
+      ${
+        state.chatModels.length > 0
+          ? html`
+            <label class="field chat-controls__model">
+              <select
+                ?disabled=${!state.connected}
+                @change=${(e: Event) => {
+                  const value = (e.target as HTMLSelectElement).value;
+                  if (!value || value === "__default__") {
+                    if (value === "__default__") {
+                      void (state as unknown as OpenClawApp).handleModelSwitch(
+                        `${state.chatDefaultProvider}/${state.chatDefaultModel}`,
+                      );
+                    }
+                    return;
+                  }
+                  void (state as unknown as OpenClawApp).handleModelSwitch(value);
+                }}
+              >
+                ${(() => {
+                  const activeSession = state.sessionsResult?.sessions?.find(
+                    (s) => s.key === state.sessionKey,
+                  );
+                  const currentModel = activeSession?.model;
+                  const currentProvider = activeSession?.modelProvider;
+                  const defaultLabel = state.chatDefaultModel
+                    ? `默认 (${state.chatDefaultModel})`
+                    : "默认";
+                  const isDefault =
+                    !currentModel ||
+                    (currentModel === state.chatDefaultModel &&
+                      currentProvider === state.chatDefaultProvider);
+                  return html`
+                    <option value="__default__" ?selected=${isDefault}>
+                      ${defaultLabel}
+                    </option>
+                    ${repeat(
+                      state.chatModels.filter(
+                        (m) =>
+                          !(
+                            m.id === state.chatDefaultModel &&
+                            m.provider === state.chatDefaultProvider
+                          ),
+                      ),
+                      (m) => `${m.provider}/${m.id}`,
+                      (m) => {
+                        const modelValue = `${m.provider}/${m.id}`;
+                        const isSelected = currentModel === m.id && currentProvider === m.provider;
+                        const displayName = `${m.name || m.id} · ${m.provider}`;
+                        return html`<option
+                          value=${modelValue}
+                          ?selected=${isSelected}
+                        >
+                          ${displayName}
+                        </option>`;
+                      },
+                    )}
+                  `;
+                })()}
+              </select>
+            </label>
+          `
+          : null
+      }
       <span class="chat-controls__separator">|</span>
       <button
         class="btn btn--sm btn--icon ${showThinking ? "active" : ""}"
@@ -148,11 +212,7 @@ export function renderChatControls(state: AppViewState) {
           });
         }}
         aria-pressed=${showThinking}
-        title=${
-          disableThinkingToggle
-            ? "引导期间已禁用"
-            : "切换助手思考/工作输出"
-        }
+        title=${disableThinkingToggle ? "引导期间已禁用" : "切换助手思考/工作输出"}
       >
         ${icons.brain}
       </button>
@@ -169,11 +229,7 @@ export function renderChatControls(state: AppViewState) {
           });
         }}
         aria-pressed=${focusActive}
-        title=${
-          disableFocusToggle
-            ? "引导期间已禁用"
-            : "切换专注模式（隐藏侧栏 + 页面标题）"
-        }
+        title=${disableFocusToggle ? "引导期间已禁用" : "切换专注模式（隐藏侧栏 + 页面标题）"}
       >
         ${focusIcon}
       </button>

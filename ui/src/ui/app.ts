@@ -132,6 +132,10 @@ export class OpenClawApp extends LitElement {
   @state() chatThinkingLevel: string | null = null;
   @state() chatQueue: ChatQueueItem[] = [];
   @state() chatAttachments: ChatAttachment[] = [];
+  @state() chatModels: Array<{ id: string; name: string; provider: string }> = [];
+  @state() chatModelsLoading = false;
+  @state() chatDefaultModel: string | null = null;
+  @state() chatDefaultProvider: string | null = null;
   // Sidebar state for tool output viewing
   @state() sidebarOpen = false;
   @state() sidebarContent: string | null = null;
@@ -198,7 +202,8 @@ export class OpenClawApp extends LitElement {
   @state() agentsList: AgentsListResult | null = null;
   @state() agentsError: string | null = null;
   @state() agentsSelectedId: string | null = null;
-  @state() agentsPanel: "overview" | "files" | "tools" | "skills" | "channels" | "cron" = "overview";
+  @state() agentsPanel: "overview" | "files" | "tools" | "skills" | "channels" | "cron" =
+    "overview";
   @state() agentFilesLoading = false;
   @state() agentFilesError: string | null = null;
   @state() agentFilesList: import("./types.js").AgentsFilesListResult | null = null;
@@ -391,7 +396,10 @@ export class OpenClawApp extends LitElement {
 
   scrollToBottom() {
     resetChatScrollInternal(this as unknown as Parameters<typeof resetChatScrollInternal>[0]);
-    scheduleChatScrollInternal(this as unknown as Parameters<typeof scheduleChatScrollInternal>[0], true);
+    scheduleChatScrollInternal(
+      this as unknown as Parameters<typeof scheduleChatScrollInternal>[0],
+      true,
+    );
   }
 
   async loadAssistantIdentity() {
@@ -420,6 +428,10 @@ export class OpenClawApp extends LitElement {
 
   async handleAbortChat() {
     await handleAbortChatInternal(this as unknown as Parameters<typeof handleAbortChatInternal>[0]);
+  }
+
+  async handleModelSwitch(modelValue: string) {
+    await this.handleSendChat(`/model ${modelValue}`);
   }
 
   removeQueuedMessage(id: string) {

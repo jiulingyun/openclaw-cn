@@ -60,6 +60,10 @@ export type AppViewState = {
   chatAvatarUrl: string | null;
   chatThinkingLevel: string | null;
   chatQueue: ChatQueueItem[];
+  chatModels: Array<{ id: string; name: string; provider: string }>;
+  chatModelsLoading: boolean;
+  chatDefaultModel: string | null;
+  chatDefaultProvider: string | null;
   nodesLoading: boolean;
   nodes: Array<Record<string, unknown>>;
   chatNewMessagesBelow: boolean;

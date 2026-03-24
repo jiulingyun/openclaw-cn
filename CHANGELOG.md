@@ -26,6 +26,11 @@ Docs: https://clawd.org.cn/
 - **插件运行时新增 `withReplyDispatcher` 方法**：在 `PluginRuntime.channel.reply` 中新增 `withReplyDispatcher` 生命周期包装器，确保回复分发完成后所有排队消息被刷新，修复官方微信插件处理消息时 `withReplyDispatcher is not a function` 报错
 - **配置向导模型选择过滤优化**：修复配置向导中选择百炼等自定义 Provider 时显示所有模型而非仅该 Provider 模型的问题。修复方案：在过滤前将 config 中的自定义 Provider 模型补充到 SDK 目录中，确保按 Provider 筛选时能正确显示对应模型列表
 
+### Web UI 功能增强
+
+- **Web UI 对话页面新增模型切换功能**：在对话页面右上角控制栏新增模型下拉选择器，支持在已配置的模型间快速切换。下拉列表显示「默认 (模型名)」选项及所有白名单允许的模型（含自定义 Provider 模型），格式为 `模型名 · 提供商`；选择后通过 `/model` 指令自动切换当前会话模型
+- **`models.list` RPC 返回白名单过滤结果**：Gateway 的 `models.list` 接口现在通过 `buildAllowedModelSet` 过滤，仅返回用户配置白名单中允许的模型（而非全部已发现模型），同时包含自定义 Provider 中不在标准目录的模型条目，并附带 `defaultModel`/`defaultProvider` 信息
+
 ## 0.1.8
 
 ### bug修复（0.1.8 热补丁）
