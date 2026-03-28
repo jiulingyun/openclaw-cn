@@ -57,6 +57,11 @@ import {
   ZAI_DEFAULT_MODEL_REF,
 } from "./onboard-auth.js";
 import {
+  applyEphoneConfig,
+  applyEphoneProviderConfig,
+  EPHONE_DEFAULT_MODEL_ID,
+  EPHONE_MODELS,
+  setEphoneApiKey,
   applySiliconflowConfig,
   applySiliconflowProviderConfig,
   applyDashscopeConfig,
@@ -132,7 +137,85 @@ export async function applyAuthChoiceApiProviders(
       authChoice = "venice-api-key";
     } else if (params.opts.tokenProvider === "opencode") {
       authChoice = "opencode-zen";
+    } else if (params.opts.tokenProvider === "ephone") {
+      authChoice = "ephone-api-key";
     }
+  }
+
+  if (authChoice === "ephone-api-key") {
+    let hasCredential = false;
+    if (!hasCredential && params.opts?.token && params.opts?.tokenProvider === "ephone") {
+      await setEphoneApiKey(normalizeApiKeyInput(params.opts.token), params.agentDir);
+      hasCredential = true;
+    }
+    const envKey = resolveEnvApiKey("ephone");
+    if (envKey && !hasCredential) {
+      const useExisting = await params.prompter.confirm({
+        message: `使用已有 EPHONE_API_KEY (${envKey.source}, ${formatApiKeyPreview(envKey.apiKey)})？`,
+        initialValue: true,
+      });
+      if (useExisting) {
+        await setEphoneApiKey(envKey.apiKey, params.agentDir);
+        hasCredential = true;
+      }
+    }
+    if (!hasCredential) {
+      await params.prompter.note(
+        [
+          "ePhone AI 是模型聚合平台，支持 Claude、GPT、MiniMax、Kimi 等主流模型。",
+          "获取 API Key: https://platform.ephone.ai",
+          "配置文档: https://clawd.org.cn/providers/ephone.html",
+        ].join("\n"),
+        "ePhone AI",
+      );
+      const key = await params.prompter.text({
+        message: "输入 ePhone AI API key",
+        validate: validateApiKeyInput,
+      });
+      await setEphoneApiKey(normalizeApiKeyInput(String(key)), params.agentDir);
+    }
+    nextConfig = applyAuthProfileConfig(nextConfig, {
+      profileId: "ephone:default",
+      provider: "ephone",
+      mode: "api_key",
+    });
+    {
+      const selection = await params.prompter.select({
+        message: "选择 ePhone AI 模型",
+        options: EPHONE_MODELS.map((m) => ({ value: m.value, label: m.label })),
+        initialValue: EPHONE_DEFAULT_MODEL_ID,
+      });
+
+      let modelId: string;
+      if (selection === "custom") {
+        await params.prompter.note(
+          "查看完整模型列表: https://platform.ephone.ai/models",
+          "ePhone AI 模型",
+        );
+        const input = await params.prompter.text({
+          message: "输入模型 ID",
+          validate: (val) => (String(val).trim().length > 0 ? undefined : "模型 ID 不能为空"),
+        });
+        modelId = typeof input === "string" ? input.trim() : EPHONE_DEFAULT_MODEL_ID;
+      } else {
+        modelId = String(selection);
+      }
+
+      const modelRef = `ephone/${modelId}`;
+      const applied = await applyDefaultModelChoice({
+        config: nextConfig,
+        setDefaultModel: params.setDefaultModel,
+        defaultModel: modelRef,
+        applyDefaultConfig: (cfg) => applyEphoneConfig(cfg, modelId),
+        applyProviderConfig: (cfg) => applyEphoneProviderConfig(cfg, modelId),
+        noteDefault: modelRef,
+        noteAgentModel,
+        prompter: params.prompter,
+      });
+      nextConfig = applied.config;
+      agentModelOverride = applied.agentModelOverride ?? modelRef;
+    }
+    return { config: nextConfig, agentModelOverride };
   }
 
   if (authChoice === "openrouter-api-key") {

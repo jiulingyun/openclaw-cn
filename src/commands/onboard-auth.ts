@@ -28,6 +28,8 @@ export {
   applyZaiConfig,
 } from "./onboard-auth.config-core.js";
 export {
+  applyEphoneConfig,
+  applyEphoneProviderConfig,
   applySiliconflowConfig,
   applySiliconflowProviderConfig,
   applyDashscopeConfig,
@@ -78,6 +80,7 @@ export {
   ZAI_DEFAULT_MODEL_REF,
 } from "./onboard-auth.credentials.js";
 export {
+  setEphoneApiKey,
   setSiliconflowApiKey,
   setDashscopeApiKey,
   setDashscopeCodingPlanApiKey,
@@ -101,6 +104,11 @@ export {
   MOONSHOT_DEFAULT_MODEL_REF,
 } from "./onboard-auth.models.js";
 export {
+  EPHONE_BASE_URL,
+  EPHONE_DEFAULT_MODEL_REF,
+  EPHONE_DEFAULT_MODEL_ID,
+  EPHONE_MODELS,
+  buildEphoneModelDefinition,
   SILICONFLOW_BASE_URL,
   SILICONFLOW_DEFAULT_MODEL_REF,
   DASHSCOPE_BASE_URL,

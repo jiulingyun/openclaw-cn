@@ -34,6 +34,11 @@ import {
   MOONSHOT_DEFAULT_MODEL_REF,
 } from "./onboard-auth.models.js";
 import {
+  buildEphoneModelDefinition,
+  EPHONE_BASE_URL,
+  EPHONE_DEFAULT_MODEL_REF,
+} from "./onboard-auth.models.js";
+import {
   buildSiliconflowModelDefinition,
   SILICONFLOW_BASE_URL,
   SILICONFLOW_DEFAULT_MODEL_REF,
@@ -720,6 +725,72 @@ export function applyVolcengineConfig(cfg: ClawdbotConfig, modelId?: string): Cl
   }
 
   return next;
+}
+
+export function applyEphoneProviderConfig(cfg: ClawdbotConfig, modelId?: string): ClawdbotConfig {
+  const models = { ...cfg.agents?.defaults?.models };
+  const modelRef = modelId ? `ephone/${modelId}` : EPHONE_DEFAULT_MODEL_REF;
+  models[modelRef] = {
+    ...models[modelRef],
+    alias: models[modelRef]?.alias ?? "ePhone",
+  };
+
+  const providers = { ...cfg.models?.providers };
+  const existingProvider = providers.ephone;
+  const existingModels = Array.isArray(existingProvider?.models) ? existingProvider.models : [];
+  const defaultModel = buildEphoneModelDefinition(modelId);
+  const hasDefaultModel = existingModels.some((model) => model.id === defaultModel.id);
+  const mergedModels = hasDefaultModel ? existingModels : [...existingModels, defaultModel];
+  const { apiKey: existingApiKey, ...existingProviderRest } = (existingProvider ?? {}) as {
+    apiKey?: string;
+  };
+  const resolvedApiKey = typeof existingApiKey === "string" ? existingApiKey : undefined;
+  const normalizedApiKey = resolvedApiKey?.trim();
+  providers.ephone = {
+    ...existingProviderRest,
+    baseUrl: EPHONE_BASE_URL,
+    api: "openai-completions",
+    ...(normalizedApiKey ? { apiKey: normalizedApiKey } : {}),
+    models: mergedModels,
+  };
+
+  return {
+    ...cfg,
+    agents: {
+      ...cfg.agents,
+      defaults: {
+        ...cfg.agents?.defaults,
+        models,
+      },
+    },
+    models: {
+      mode: cfg.models?.mode ?? "merge",
+      providers,
+    },
+  };
+}
+
+export function applyEphoneConfig(cfg: ClawdbotConfig, modelId?: string): ClawdbotConfig {
+  const next = applyEphoneProviderConfig(cfg, modelId);
+  const modelRef = modelId ? `ephone/${modelId}` : EPHONE_DEFAULT_MODEL_REF;
+  const existingModel = next.agents?.defaults?.model;
+  return {
+    ...next,
+    agents: {
+      ...next.agents,
+      defaults: {
+        ...next.agents?.defaults,
+        model: {
+          ...(existingModel && "fallbacks" in (existingModel as Record<string, unknown>)
+            ? {
+                fallbacks: (existingModel as { fallbacks?: string[] }).fallbacks,
+              }
+            : undefined),
+          primary: modelRef,
+        },
+      },
+    },
+  };
 }
 
 // 新增：硅基流动提供商配置

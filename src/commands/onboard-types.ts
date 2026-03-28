@@ -6,6 +6,7 @@ export type AuthChoice =
   // Legacy alias for `setup-token` (kept for backwards CLI compatibility).
   | "oauth"
   | "setup-token"
+  | "ephone-api-key"
   | "claude-cli"
   | "token"
   | "chutes"
@@ -80,6 +81,7 @@ export type AuthChoiceGroupId =
   | "synthetic"
   | "venice"
   | "qwen"
+  | "ephone"
   | "together"
   | "huggingface"
   | "qianfan"
@@ -144,6 +146,7 @@ export type OnboardOptions = {
   dashscopeApiKey?: string;
   dashscopeCodingPlanApiKey?: string;
   deepseekApiKey?: string;
+  ePhoneApiKey?: string;
   gatewayPort?: number;
   gatewayBind?: GatewayBind;
   gatewayAuth?: GatewayAuthChoice;

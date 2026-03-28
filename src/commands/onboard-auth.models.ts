@@ -1,5 +1,40 @@
 import type { ModelDefinitionConfig } from "../config/types.js";
 
+// ePhone AI: 模型聚合平台，兼容 OpenAI 协议
+export const EPHONE_BASE_URL = "https://api.ephone.ai/v1";
+export const EPHONE_DEFAULT_MODEL_ID = "claude-sonnet-4-6";
+export const EPHONE_DEFAULT_MODEL_REF = `ephone/${EPHONE_DEFAULT_MODEL_ID}`;
+export const EPHONE_DEFAULT_CONTEXT_WINDOW = 200000;
+export const EPHONE_DEFAULT_MAX_TOKENS = 8192;
+export const EPHONE_DEFAULT_COST = {
+  input: 0,
+  output: 0,
+  cacheRead: 0,
+  cacheWrite: 0,
+};
+
+export const EPHONE_MODELS = [
+  { value: "claude-sonnet-4-6", label: "claude-sonnet-4-6    （Anthropic Claude Sonnet 4.6）" },
+  { value: "claude-opus-4-6", label: "claude-opus-4-6      （Anthropic Claude Opus 4.6）" },
+  { value: "MiniMax-M2.7", label: "MiniMax-M2.7         （MiniMax M2.7）" },
+  { value: "gpt-5.4", label: "gpt-5.4              （OpenAI GPT-5.4）" },
+  { value: "kimi-k2.5", label: "kimi-k2.5            （Moonshot Kimi K2.5）" },
+  { value: "custom", label: "手动输入模型 ID       （查看完整列表: platform.ephone.ai/models）" },
+] as const;
+
+export function buildEphoneModelDefinition(modelId?: string): ModelDefinitionConfig {
+  const id = modelId || EPHONE_DEFAULT_MODEL_ID;
+  return {
+    id,
+    name: modelId ? id : "Claude Sonnet 4.6",
+    reasoning: false,
+    input: ["text"],
+    cost: EPHONE_DEFAULT_COST,
+    contextWindow: EPHONE_DEFAULT_CONTEXT_WINDOW,
+    maxTokens: EPHONE_DEFAULT_MAX_TOKENS,
+  };
+}
+
 export const DEFAULT_MINIMAX_BASE_URL = "https://api.minimax.io/v1";
 export const MINIMAX_API_BASE_URL = "https://api.minimax.chat/v1";
 export const MINIMAX_HOSTED_MODEL_ID = "MiniMax-M2.1";

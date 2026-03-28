@@ -81,6 +81,17 @@ const OLLAMA_DEFAULT_COST = {
   cacheWrite: 0,
 };
 
+const EPHONE_BASE_URL = "https://api.ephone.ai/v1";
+const EPHONE_DEFAULT_MODEL_ID = "claude-sonnet-4-6";
+const EPHONE_DEFAULT_CONTEXT_WINDOW = 200000;
+const EPHONE_DEFAULT_MAX_TOKENS = 8192;
+const EPHONE_DEFAULT_COST = {
+  input: 0,
+  output: 0,
+  cacheRead: 0,
+  cacheWrite: 0,
+};
+
 // 新增：OpenAI兼容供应商（硅基流动、阿里云百炼、DeepSeek）默认配置
 const SILICONFLOW_BASE_URL = "https://api.siliconflow.cn/v1";
 // 采用在中文环境中更常见且可用的Qwen 2.5指令模型作为默认
@@ -500,6 +511,24 @@ export function buildXiaomiProvider(): ProviderConfig {
   };
 }
 
+function buildEphoneProvider(): ProviderConfig {
+  return {
+    baseUrl: EPHONE_BASE_URL,
+    api: "openai-completions",
+    models: [
+      {
+        id: EPHONE_DEFAULT_MODEL_ID,
+        name: "Claude Sonnet 4.6",
+        reasoning: false,
+        input: ["text"],
+        cost: EPHONE_DEFAULT_COST,
+        contextWindow: EPHONE_DEFAULT_CONTEXT_WINDOW,
+        maxTokens: EPHONE_DEFAULT_MAX_TOKENS,
+      },
+    ],
+  };
+}
+
 function buildSiliconflowProvider(): ProviderConfig {
   return {
     baseUrl: SILICONFLOW_BASE_URL,
@@ -660,6 +689,13 @@ export async function resolveImplicitProviders(params: {
     resolveApiKeyFromProfiles({ provider: "venice", store: authStore });
   if (veniceKey) {
     providers.venice = { ...(await buildVeniceProvider()), apiKey: veniceKey };
+  }
+
+  const ephoneKey =
+    resolveEnvApiKeyVarName("ephone") ??
+    resolveApiKeyFromProfiles({ provider: "ephone", store: authStore });
+  if (ephoneKey) {
+    providers.ephone = { ...buildEphoneProvider(), apiKey: ephoneKey };
   }
 
   const siliconKey =

@@ -8,6 +8,7 @@ export type AuthChoiceOption = {
 };
 
 export type AuthChoiceGroupId =
+  | "ephone"
   | "openai"
   | "anthropic"
   | "google"
@@ -44,6 +45,12 @@ const AUTH_CHOICE_GROUP_DEFS: {
   hint?: string;
   choices: AuthChoice[];
 }[] = [
+  {
+    value: "ephone",
+    label: "ePhone AI",
+    hint: "支持Claude等主流模型，官方优惠",
+    choices: ["ephone-api-key"],
+  },
   {
     value: "openai",
     label: "OpenAI",
@@ -183,6 +190,12 @@ export function buildAuthChoiceOptions(params: {
 }): AuthChoiceOption[] {
   void params.store;
   const options: AuthChoiceOption[] = [];
+
+  options.push({
+    value: "ephone-api-key",
+    label: "ePhone AI API key",
+    hint: "模型聚合平台 · 支持 Claude / GPT / MiniMax 等",
+  });
 
   options.push({
     value: "token",

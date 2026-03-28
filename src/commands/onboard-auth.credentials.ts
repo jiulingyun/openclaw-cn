@@ -204,6 +204,18 @@ export async function setOpencodeZenApiKey(key: string, agentDir?: string) {
   });
 }
 
+export async function setEphoneApiKey(key: string, agentDir?: string) {
+  upsertAuthProfile({
+    profileId: "ephone:default",
+    credential: {
+      type: "api_key",
+      provider: "ephone",
+      key,
+    },
+    agentDir: resolveAuthAgentDir(agentDir),
+  });
+}
+
 // 新增：硅基流动 API Key 写入到代理目录
 export async function setSiliconflowApiKey(key: string, agentDir?: string) {
   upsertAuthProfile({
