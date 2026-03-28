@@ -18,6 +18,7 @@ import { loadConfig } from "../config/config.js";
 import type { createSubsystemLogger } from "../logging/subsystem.js";
 import { resolveAgentAvatar } from "../agents/identity-avatar.js";
 import { safeEqualSecret } from "../security/secret-equal.js";
+import { isTailnetIPv4, isTailnetIPv6 } from "../infra/tailnet.js";
 import { handleSlackHttpRequest } from "../slack/http/index.js";
 import { authorizeGatewayConnect, isLocalDirectRequest, type ResolvedGatewayAuth } from "./auth.js";
 import { handleControlUiAvatarRequest, handleControlUiHttpRequest } from "./control-ui.js";
@@ -469,6 +470,7 @@ export function createGatewayHttpServer(opts: {
  *
  * Rules:
  * - Localhost origins (http://localhost:*, http://127.0.0.1:*, etc.) are always allowed
+ * - Tailscale origins (*.ts.net domains, 100.64.0.0/10 IPv4, fd7a:115c:a1e0::/48 IPv6) are allowed
  * - Null origin (file:// protocol, privacy mode) is allowed for local clients
  * - Empty origin (non-browser clients) is allowed
  * - All other origins are rejected
@@ -495,6 +497,10 @@ function isValidWebSocketOrigin(req: IncomingMessage): boolean {
 
     // Allow Tailscale serve domains
     if (hostname.endsWith(".ts.net")) return true;
+
+    // Allow Tailscale IP addresses (100.64.0.0/10 IPv4, fd7a:115c:a1e0::/48 IPv6)
+    if (isTailnetIPv4(hostname)) return true;
+    if (isTailnetIPv6(hostname)) return true;
 
     return false;
   } catch {

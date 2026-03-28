@@ -5,7 +5,7 @@ export type TailnetAddresses = {
   ipv6: string[];
 };
 
-function isTailnetIPv4(address: string): boolean {
+export function isTailnetIPv4(address: string): boolean {
   const parts = address.split(".");
   if (parts.length !== 4) return false;
   const octets = parts.map((p) => Number.parseInt(p, 10));
@@ -17,7 +17,7 @@ function isTailnetIPv4(address: string): boolean {
   return a === 100 && b >= 64 && b <= 127;
 }
 
-function isTailnetIPv6(address: string): boolean {
+export function isTailnetIPv6(address: string): boolean {
   // Tailscale IPv6 ULA prefix: fd7a:115c:a1e0::/48
   // (stable across tailnets; nodes get per-device suffixes)
   const normalized = address.trim().toLowerCase();

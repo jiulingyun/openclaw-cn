@@ -7,6 +7,7 @@ Docs: https://clawd.org.cn/
 ### bug修复
 
 - **修复对话页面输入区渐变产生深色蒙层**（#537）：`.chat-compose` 的背景渐变使用 CSS `transparent`（等同于 `rgba(0,0,0,0)` 即透明黑色），浏览器在 sRGB 空间从透明黑色插值到浅色背景时会经过半透明灰色，产生可见的深色条带覆盖对话内容。修复方案：新增 `--bg-transparent` / `--bg-content-transparent` CSS 变量（与背景色同色但 alpha 为 0），替换所有渐变中的 `transparent` 关键字，确保插值始终在同一色相内过渡。感谢 @hyydmmhy 🙏
+- **修复 Tailscale 直连网关时 WebSocket 断开 (1006)**（#527）：当网关配置 `bind: "tailnet"` 绑定到 Tailscale IP（如 `100.x.x.x`）时，浏览器访问控制台页面后 WebSocket 升级请求的 Origin 为 Tailscale IP，但 `isValidWebSocketOrigin()` 的 CSWSH 白名单仅包含 localhost/127.x/\*.ts.net，导致返回 403 + socket.destroy()，浏览器收到 1006 异常关闭。修复方案：在 Origin 白名单中新增 Tailscale IP 范围（100.64.0.0/10 IPv4 + fd7a:115c:a1e0::/48 IPv6）。感谢 @crossgg 🙏
 
 ## 0.1.9
 
