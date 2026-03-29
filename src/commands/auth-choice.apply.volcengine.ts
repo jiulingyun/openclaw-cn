@@ -1,6 +1,10 @@
 import type { ApplyAuthChoiceParams, ApplyAuthChoiceResult } from "./auth-choice.apply.js";
 import { resolveEnvApiKey } from "../agents/model-auth.js";
 import { VOLCENGINE_API_BASE_URL } from "../agents/models-config.providers.js";
+import {
+  discoverOpenAICompatibleModels,
+  buildDiscoveredModelOptions,
+} from "../agents/openai-models-discovery.js";
 import { applyDefaultModelChoice } from "./auth-choice.default-model.js";
 import {
   formatApiKeyPreview,
@@ -129,37 +133,47 @@ export async function applyAuthChoiceVolcengine(
     }
   };
 
-  while (!modelId) {
-    const PREDEFINED_MODELS = [
-      "doubao-seed-2.0-code",
-      "doubao-seed-code",
-      "glm-4.7",
-      "deepseek-v3.2",
-      "kimi-k2-thinking",
-      "kimi-k2.5",
-      "glm-4-7-251222",
-      "doubao-seed-1-8-251228",
-      "deepseek-v3-2-251201",
-      "kimi-k2-thinking-251104",
-    ];
+  // Try dynamic model discovery from ARK API; fall back to predefined list
+  const discovered = await discoverOpenAICompatibleModels({
+    baseUrl: VOLCENGINE_API_BASE_URL,
+    apiKey: apiKey,
+  });
 
-    const choices = [
-      // 1. Predefined Models
-      ...PREDEFINED_MODELS.map((id) => ({
-        value: id,
-        label: id,
-        hint: "Predefined",
-      })),
-      // 2. Manual Entry (Always available as fallback)
-      {
-        value: "__manual__",
-        label: "Enter Manually (e.g. Endpoint ID ep-2025...)",
-        hint: "Use this if your Endpoint is not listed",
-      },
-    ];
+  const PREDEFINED_MODELS = [
+    "doubao-seed-2.0-code",
+    "doubao-seed-code",
+    "glm-4.7",
+    "deepseek-v3.2",
+    "kimi-k2-thinking",
+    "kimi-k2.5",
+    "glm-4-7-251222",
+    "doubao-seed-1-8-251228",
+    "deepseek-v3-2-251201",
+    "kimi-k2-thinking-251104",
+  ];
+
+  while (!modelId) {
+    const choices = discovered
+      ? buildDiscoveredModelOptions({
+          discovered,
+          pinnedIds: PREDEFINED_MODELS,
+          customLabel: "手动输入模型 ID / Endpoint ID (ep-2025...)",
+        })
+      : [
+          ...PREDEFINED_MODELS.map((id) => ({
+            value: id,
+            label: id,
+          })),
+          {
+            value: "custom",
+            label: "手动输入模型 ID / Endpoint ID (ep-2025...)",
+          },
+        ];
 
     const selection = await params.prompter.select({
-      message: selectionMessage,
+      message: discovered
+        ? `${selectionMessage}（已获取 ${discovered.length} 个可用模型）`
+        : selectionMessage,
       options: choices,
     });
 
@@ -168,10 +182,10 @@ export async function applyAuthChoiceVolcengine(
     }
 
     let candidateId: string;
-    if (selection === "__manual__") {
+    if (selection === "custom") {
       const input = await params.prompter.text({
-        message: "Enter Endpoint ID (e.g. ep-20250604...)",
-        validate: (val) => (val.length > 0 ? undefined : "Endpoint ID is required"),
+        message: "输入模型 ID 或 Endpoint ID (例如 ep-20250604...)",
+        validate: (val) => (val.length > 0 ? undefined : "模型 ID 不能为空"),
       });
       if (typeof input === "symbol") {
         return null;
@@ -256,16 +270,34 @@ async function applyVolcengineCodingPlan(
     mode: "api_key",
   });
 
+  const codingPlanDiscovered = await discoverOpenAICompatibleModels({
+    baseUrl: "https://ark.cn-beijing.volces.com/api/coding/v3",
+    apiKey:
+      resolveEnvApiKey("volcengine-coding-plan")?.apiKey ?? resolveEnvApiKey("volcengine")?.apiKey,
+  });
+
+  const codingPlanPinnedIds = VOLCENGINE_CODING_PLAN_MODELS.map((m) => m.value);
+  const codingPlanOptions = codingPlanDiscovered
+    ? buildDiscoveredModelOptions({
+        discovered: codingPlanDiscovered,
+        pinnedIds: codingPlanPinnedIds,
+        customLabel: "手动输入模型 ID",
+      })
+    : [
+        ...VOLCENGINE_CODING_PLAN_MODELS.map((m) => ({ value: m.value, label: m.label })),
+        { value: "custom", label: "手动输入模型 ID" },
+      ];
+
   const modelChoice = await params.prompter.select({
-    message: "选择模型",
-    options: [
-      ...VOLCENGINE_CODING_PLAN_MODELS,
-      { value: "__manual__", label: "手动输入模型 ID", hint: "自定义模型" },
-    ],
+    message: codingPlanDiscovered
+      ? `选择模型（已获取 ${codingPlanDiscovered.length} 个可用模型）`
+      : "选择模型",
+    options: codingPlanOptions,
+    initialValue: "doubao-seed-2.0-code",
   });
 
   let modelId: string;
-  if (modelChoice === "__manual__") {
+  if (modelChoice === "custom") {
     const input = await params.prompter.text({
       message: "输入模型 ID",
       validate: (val) => (String(val).trim().length > 0 ? undefined : "模型 ID 不能为空"),

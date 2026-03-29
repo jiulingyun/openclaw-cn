@@ -45,28 +45,18 @@ const AUTH_CHOICE_GROUP_DEFS: {
   hint?: string;
   choices: AuthChoice[];
 }[] = [
+  // ── 赞助商（始终第一）──
   {
     value: "ephone",
     label: "ePhone AI",
     hint: "支持Claude等主流模型，官方优惠",
     choices: ["ephone-api-key"],
   },
-  {
-    value: "openai",
-    label: "OpenAI",
-    hint: "Codex OAuth + API key",
-    choices: ["openai-codex", "openai-api-key"],
-  },
-  {
-    value: "anthropic",
-    label: "Anthropic",
-    hint: "setup-token + API key",
-    choices: ["token", "apiKey"],
-  },
+  // ── 国内模型厂商 ──
   {
     value: "minimax",
     label: "MiniMax",
-    hint: "M2.5 (recommended)",
+    hint: "M2.5（推荐）",
     choices: ["minimax-portal", "minimax-api-key"],
   },
   {
@@ -81,16 +71,59 @@ const AUTH_CHOICE_GROUP_DEFS: {
     ],
   },
   {
-    value: "ollama",
-    label: "Ollama (本地)",
-    hint: "本地运行的 Ollama 服务",
-    choices: ["ollama-local"],
+    value: "deepseek",
+    label: "DeepSeek",
+    hint: "OpenAI兼容 · API key",
+    choices: ["deepseek-api-key"],
   },
   {
-    value: "custom",
-    label: "自定义模型 (兼容 OpenAI/Anthropic)",
-    hint: "Bring your own model",
-    choices: ["custom-provider-api-key"],
+    value: "dashscope",
+    label: "阿里云百炼 (DashScope)",
+    hint: "OpenAI兼容 · API key",
+    choices: ["dashscope-api-key", "dashscope-coding-plan-api-key"],
+  },
+  {
+    value: "siliconflow",
+    label: "硅基流动 (SiliconFlow)",
+    hint: "OpenAI兼容 · API key",
+    choices: ["siliconflow-api-key"],
+  },
+  {
+    value: "volcengine",
+    label: "火山引擎 (VolcanoEngine)",
+    hint: "ARK API key + Coding Plan",
+    choices: ["volcengine-api-key", "volcengine-coding-plan-api-key"],
+  },
+  {
+    value: "zai",
+    label: "Z.AI (GLM-5)",
+    hint: "API key",
+    choices: ["zai-api-key"],
+  },
+  {
+    value: "xiaomi",
+    label: "Xiaomi (MiMo)",
+    hint: "API key",
+    choices: ["xiaomi-api-key"],
+  },
+  {
+    value: "qwen",
+    label: "Qwen (通义千问)",
+    hint: "OAuth",
+    choices: ["qwen-portal"],
+  },
+  // ── 国际厂商 ──
+  {
+    value: "openai",
+    label: "OpenAI",
+    hint: "Codex OAuth + API key",
+    choices: ["openai-codex", "openai-api-key"],
+  },
+  {
+    value: "anthropic",
+    label: "Anthropic",
+    hint: "setup-token + API key",
+    choices: ["token", "apiKey"],
   },
   {
     value: "google",
@@ -105,22 +138,23 @@ const AUTH_CHOICE_GROUP_DEFS: {
     choices: ["openrouter-api-key"],
   },
   {
-    value: "qwen",
-    label: "Qwen",
-    hint: "OAuth",
-    choices: ["qwen-portal"],
-  },
-  {
-    value: "zai",
-    label: "Z.AI (GLM-5)",
-    hint: "API key",
-    choices: ["zai-api-key"],
-  },
-  {
     value: "copilot",
     label: "Copilot",
     hint: "GitHub + local proxy",
     choices: ["github-copilot", "copilot-proxy"],
+  },
+  // ── 通用 / 其他 ──
+  {
+    value: "ollama",
+    label: "Ollama (本地)",
+    hint: "本地运行的 Ollama 服务",
+    choices: ["ollama-local"],
+  },
+  {
+    value: "custom",
+    label: "自定义模型 (兼容 OpenAI/Anthropic)",
+    hint: "Bring your own model",
+    choices: ["custom-provider-api-key"],
   },
   {
     value: "ai-gateway",
@@ -133,12 +167,6 @@ const AUTH_CHOICE_GROUP_DEFS: {
     label: "OpenCode Zen",
     hint: "API key",
     choices: ["opencode-zen"],
-  },
-  {
-    value: "xiaomi",
-    label: "Xiaomi",
-    hint: "API key",
-    choices: ["xiaomi-api-key"],
   },
   {
     value: "synthetic",
@@ -157,30 +185,6 @@ const AUTH_CHOICE_GROUP_DEFS: {
     label: "Cloudflare AI Gateway",
     hint: "Account ID + Gateway ID + API key",
     choices: ["cloudflare-ai-gateway-api-key"],
-  },
-  {
-    value: "siliconflow",
-    label: "硅基流动 (SiliconFlow)",
-    hint: "OpenAI兼容 · API key",
-    choices: ["siliconflow-api-key"],
-  },
-  {
-    value: "dashscope",
-    label: "阿里云百炼 (DashScope)",
-    hint: "OpenAI兼容 · API key",
-    choices: ["dashscope-api-key", "dashscope-coding-plan-api-key"],
-  },
-  {
-    value: "deepseek",
-    label: "DeepSeek",
-    hint: "OpenAI兼容 · API key",
-    choices: ["deepseek-api-key"],
-  },
-  {
-    value: "volcengine",
-    label: "火山引擎 (VolcanoEngine)",
-    hint: "ARK API key + Coding Plan",
-    choices: ["volcengine-api-key", "volcengine-coding-plan-api-key"],
   },
 ];
 

@@ -1,5 +1,9 @@
 import { resolveEnvApiKey } from "../agents/model-auth.js";
 import {
+  discoverOpenAICompatibleModels,
+  buildDiscoveredModelOptions,
+} from "../agents/openai-models-discovery.js";
+import {
   formatApiKeyPreview,
   normalizeApiKeyInput,
   validateApiKeyInput,
@@ -13,6 +17,7 @@ import {
   applyMinimaxApiProviderConfig,
   applyMinimaxConfig,
   applyMinimaxProviderConfig,
+  MINIMAX_API_BASE_URL,
   setMinimaxApiKey,
 } from "./onboard-auth.js";
 
@@ -49,23 +54,26 @@ export async function applyAuthChoiceMiniMax(
 
   if (params.authChoice === "minimax-api-key") {
     let hasCredential = false;
+    let resolvedApiKey = "";
     const envKey = resolveEnvApiKey("minimax");
     if (envKey) {
       const useExisting = await params.prompter.confirm({
-        message: `Use existing MINIMAX_API_KEY (${envKey.source}, ${formatApiKeyPreview(envKey.apiKey)})?`,
+        message: `使用已有 MINIMAX_API_KEY (${envKey.source}, ${formatApiKeyPreview(envKey.apiKey)})？`,
         initialValue: true,
       });
       if (useExisting) {
-        await setMinimaxApiKey(envKey.apiKey, params.agentDir);
+        resolvedApiKey = envKey.apiKey;
+        await setMinimaxApiKey(resolvedApiKey, params.agentDir);
         hasCredential = true;
       }
     }
     if (!hasCredential) {
       const key = await params.prompter.text({
-        message: "Enter MiniMax API key",
+        message: "输入 MiniMax API key",
         validate: validateApiKeyInput,
       });
-      await setMinimaxApiKey(normalizeApiKeyInput(String(key)), params.agentDir);
+      resolvedApiKey = normalizeApiKeyInput(String(key));
+      await setMinimaxApiKey(resolvedApiKey, params.agentDir);
     }
     nextConfig = applyAuthProfileConfig(nextConfig, {
       profileId: "minimax:default",
@@ -73,30 +81,59 @@ export async function applyAuthChoiceMiniMax(
       mode: "api_key",
     });
 
-    const modelChoice = await params.prompter.select({
-      message: "选择 MiniMax 模型",
-      options: [
-        { value: "MiniMax-M2.5", label: "MiniMax M2.5", hint: "顶尖性能与极致性价比（推荐）" },
-        {
-          value: "MiniMax-M2.5-highspeed",
-          label: "MiniMax M2.5 Highspeed",
-          hint: "极速版 (~100 TPS)",
-        },
-        { value: "MiniMax-M2.1", label: "MiniMax M2.1" },
-        {
-          value: "MiniMax-M2.1-highspeed",
-          label: "MiniMax M2.1 Highspeed",
-          hint: "极速版 (~100 TPS)",
-        },
-        {
-          value: "MiniMax-M2.1-lightning",
-          label: "MiniMax M2.1 Lightning",
-          hint: "Faster, higher output cost",
-        },
-        { value: "MiniMax-M2", label: "MiniMax M2", hint: "专为高效编码与 Agent 工作流而生" },
-      ],
+    const STATIC_MINIMAX_MODELS = [
+      { value: "MiniMax-M2.5", label: "MiniMax M2.5", hint: "顶尖性能与极致性价比（推荐）" },
+      {
+        value: "MiniMax-M2.5-highspeed",
+        label: "MiniMax M2.5 Highspeed",
+        hint: "极速版 (~100 TPS)",
+      },
+      { value: "MiniMax-M2.1", label: "MiniMax M2.1" },
+      {
+        value: "MiniMax-M2.1-highspeed",
+        label: "MiniMax M2.1 Highspeed",
+        hint: "极速版 (~100 TPS)",
+      },
+      {
+        value: "MiniMax-M2.1-lightning",
+        label: "MiniMax M2.1 Lightning",
+        hint: "Faster, higher output cost",
+      },
+      { value: "MiniMax-M2", label: "MiniMax M2", hint: "专为高效编码与 Agent 工作流而生" },
+    ];
+
+    const discovered = await discoverOpenAICompatibleModels({
+      baseUrl: MINIMAX_API_BASE_URL,
+      apiKey: resolvedApiKey,
     });
-    const modelId = String(modelChoice);
+
+    const pinnedIds = STATIC_MINIMAX_MODELS.map((m) => m.value);
+    const modelOptions = discovered
+      ? buildDiscoveredModelOptions({
+          discovered,
+          pinnedIds,
+          customLabel: "手动输入模型 ID",
+        })
+      : STATIC_MINIMAX_MODELS.map((m) => ({ value: m.value, label: m.label }));
+
+    const modelChoice = await params.prompter.select({
+      message: discovered
+        ? `选择 MiniMax 模型（已获取 ${discovered.length} 个可用模型）`
+        : "选择 MiniMax 模型",
+      options: modelOptions,
+      initialValue: "MiniMax-M2.5",
+    });
+
+    let modelId: string;
+    if (modelChoice === "custom") {
+      const input = await params.prompter.text({
+        message: "输入模型 ID",
+        validate: (val) => (String(val).trim().length > 0 ? undefined : "模型 ID 不能为空"),
+      });
+      modelId = typeof input === "string" ? input.trim() : "MiniMax-M2.5";
+    } else {
+      modelId = String(modelChoice);
+    }
     {
       const modelRef = `minimax/${modelId}`;
       const applied = await applyDefaultModelChoice({

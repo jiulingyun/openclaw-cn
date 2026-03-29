@@ -83,8 +83,16 @@ export async function promptAuthConfig(
     authChoice === "dashscope-api-key" ||
     authChoice === "dashscope-coding-plan-api-key" ||
     authChoice === "deepseek-api-key" ||
+    authChoice === "moonshot-api-key" ||
+    authChoice === "moonshot-api-key-cn" ||
     authChoice === "moonshot-coding-plan-api-key" ||
-    authChoice === "volcengine-coding-plan-api-key"
+    authChoice === "kimi-code-api-key" ||
+    authChoice === "volcengine-api-key" ||
+    authChoice === "volcengine-coding-plan-api-key" ||
+    authChoice === "minimax-api-key" ||
+    authChoice === "minimax-portal" ||
+    authChoice === "zai-api-key" ||
+    authChoice === "xiaomi-api-key"
   ) {
     return next;
   }
