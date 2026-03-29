@@ -8,6 +8,12 @@ Docs: https://clawd.org.cn/
 
 - **新增 ePhone AI 模型供应商**：在模型配置向导中新增 [ePhone AI](https://platform.ephone.ai) 聚合平台，置顶为默认推荐供应商。兼容 OpenAI 协议（`https://api.ephone.ai/v1`），预设 claude-sonnet-4-6、claude-opus-4-6、MiniMax-M2.7、gpt-5.4、kimi-k2.5 五个可选模型，同时支持手动输入任意模型 ID。配置文档：https://clawd.org.cn/providers/ephone.html
 
+- **模型配置向导支持动态模型发现**：配置模型供应商时，自动从供应商 API（`/v1/models`）获取可用模型列表并展示在选择界面中。支持的供应商：ePhone AI、MiniMax、Moonshot（国际/.cn）、DeepSeek、阿里云百炼（DashScope）、硅基流动（SiliconFlow）、火山引擎（ARK + Coding Plan）、Z.AI（智谱）、小米 MiMo。API 不可达时自动降级到静态模型列表
+
+- **重新排列供应商选择顺序**：配置向导中供应商列表按区域分组：国内模型厂商（MiniMax、Moonshot、DeepSeek、阿里云百炼、硅基流动、火山引擎、Z.AI、小米、通义千问）优先展示，国际厂商和通用选项排在后面
+
+- **修复多个供应商配置后多余的模型选择步骤**：Moonshot、Z.AI、小米、火山引擎、MiniMax 等供应商在配置流程中已内置模型选择，但之前配置完成后仍会弹出通用的 `promptModelAllowlist` 步骤。现已将这些供应商加入 early-return 列表，避免重复选择
+
 ### bug修复
 
 - **修复对话页面输入区渐变产生深色蒙层**（#537）：`.chat-compose` 的背景渐变使用 CSS `transparent`（等同于 `rgba(0,0,0,0)` 即透明黑色），浏览器在 sRGB 空间从透明黑色插值到浅色背景时会经过半透明灰色，产生可见的深色条带覆盖对话内容。修复方案：新增 `--bg-transparent` / `--bg-content-transparent` CSS 变量（与背景色同色但 alpha 为 0），替换所有渐变中的 `transparent` 关键字，确保插值始终在同一色相内过渡。感谢 @hyydmmhy 🙏
