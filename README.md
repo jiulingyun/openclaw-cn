@@ -24,6 +24,19 @@
 
 ---
 
+## 💎 赞助商
+
+<p align="center">
+  <a href="https://platform.ephone.ai">
+    <img src="https://platform.ephone.ai/logo-e.png" alt="ePhone AI" height="48">
+  </a>
+</p>
+<p align="center">
+  <a href="https://platform.ephone.ai"><b>ePhone AI</b></a> — 统一接入，极速集成；支持 Claude、GPT 等主流模型
+</p>
+
+---
+
 ## ✨ 特性
 
 - **🇨🇳 完整中文化** — CLI、Web 控制界面、配置向导全部汉化
