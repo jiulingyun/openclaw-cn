@@ -984,6 +984,7 @@
                 "pages": [
                   "tools/slash-commands",
                   "tools/skills",
+                  "tools/creating-skills",
                   "tools/skills-config",
                   "tools/clawhub",
                   "tools/plugin"
