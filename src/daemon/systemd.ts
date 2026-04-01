@@ -158,16 +158,74 @@ async function execSystemctl(
 }
 
 export async function isSystemdUserServiceAvailable(): Promise<boolean> {
+  const result = await isSystemdUserServiceAvailableDetailed();
+  return result.available;
+}
+
+export async function isSystemdUserServiceAvailableDetailed(): Promise<{
+  available: boolean;
+  reason?: string;
+  fix?: string;
+}> {
   const res = await execSystemctl(["--user", "status"]);
-  if (res.code === 0) return true;
+  if (res.code === 0) return { available: true };
+  
   const detail = `${res.stderr} ${res.stdout}`.toLowerCase();
-  if (!detail) return false;
-  if (detail.includes("not found")) return false;
-  if (detail.includes("failed to connect")) return false;
-  if (detail.includes("not been booted")) return false;
-  if (detail.includes("no such file or directory")) return false;
-  if (detail.includes("not supported")) return false;
-  return false;
+  if (!detail) {
+    return { 
+      available: false, 
+      reason: "未知错误", 
+      fix: "请检查systemd状态或使用前台模式运行: openclaw-cn gateway run" 
+    };
+  }
+  
+  // 检查特定错误类型并提供具体修复指导
+  if (detail.includes("not found")) {
+    return { 
+      available: false, 
+      reason: "systemctl命令未找到", 
+      fix: "请安装systemd: sudo apt install systemd" 
+    };
+  }
+  
+  if (detail.includes("failed to connect to bus")) {
+    return { 
+      available: false, 
+      reason: "无法连接到DBus总线", 
+      fix: "请启用用户linger: loginctl enable-linger $USER\n然后重启会话或运行: systemctl --user daemon-reexec" 
+    };
+  }
+  
+  if (detail.includes("not been booted with systemd")) {
+    return { 
+      available: false, 
+      reason: "系统未使用systemd启动", 
+      fix: "如果是WSL2，请编辑/etc/wsl.conf添加:\n[boot]\nsystemd=true\n然后重启WSL: wsl --shutdown" 
+    };
+  }
+  
+  if (detail.includes("no such file or directory")) {
+    return { 
+      available: false, 
+      reason: "systemd用户目录不存在", 
+      fix: "创建目录: mkdir -p ~/.config/systemd/user" 
+    };
+  }
+  
+  if (detail.includes("not supported")) {
+    return { 
+      available: false, 
+      reason: "systemd用户服务不支持", 
+      fix: "请使用其他进程管理器或前台模式运行" 
+    };
+  }
+  
+  // 其他可修复的错误
+  return { 
+    available: false, 
+    reason: "systemd用户服务不可用", 
+    fix: "请检查systemd状态或使用前台模式运行: openclaw-cn gateway run" 
+  };
 }
 
 async function assertSystemdAvailable() {
@@ -177,7 +235,14 @@ async function assertSystemdAvailable() {
   if (detail.toLowerCase().includes("not found")) {
     throw new Error("systemctl not available; systemd user services are required on Linux.");
   }
-  throw new Error(`systemctl --user unavailable: ${detail || "unknown error"}`.trim());
+  
+  // 提供更详细的错误信息
+  const availability = await isSystemdUserServiceAvailableDetailed();
+  if (!availability.available) {
+    throw new Error(`systemctl --user unavailable: ${availability.reason}\n修复建议: ${availability.fix}`);
+  }
+  
+  throw new Error(`systemctl --user unavailable: ${detail || "未知错误"}`.trim());
 }
 
 export async function installSystemdService({
