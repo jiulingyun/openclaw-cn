@@ -1,4 +1,6 @@
 import type { BrowserFormField } from "./client-actions-core.js";
+import { assertBrowserNavigationAllowed } from "./navigation-guard.js";
+import type { SsrFPolicy } from "../infra/net/ssrf.js";
 import {
   ensurePageState,
   getPageForTargetId,
@@ -213,12 +215,15 @@ export async function evaluateViaPlaywright(opts: {
   targetId?: string;
   fn: string;
   ref?: string;
+  ssrfPolicy?: SsrFPolicy;
 }): Promise<unknown> {
   const fnText = String(opts.fn ?? "").trim();
   if (!fnText) throw new Error("function is required");
   const page = await getPageForTargetId(opts);
   ensurePageState(page);
   restoreRoleRefsForTarget({ cdpUrl: opts.cdpUrl, targetId: opts.targetId, page });
+  const urlBefore = page.url();
+  let result: unknown;
   if (opts.ref) {
     const locator = refLocator(page, opts.ref);
     // Use Function constructor at runtime to avoid esbuild adding __name helper
@@ -237,24 +242,32 @@ export async function evaluateViaPlaywright(opts: {
       }
       `,
     ) as (el: Element, fnBody: string) => unknown;
-    return await locator.evaluate(elementEvaluator, fnText);
+    result = await locator.evaluate(elementEvaluator, fnText);
+  } else {
+    // Use Function constructor at runtime to avoid esbuild adding __name helper
+    // which doesn't exist in the browser context
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval -- required for browser-context eval
+    const browserEvaluator = new Function(
+      "fnBody",
+      `
+      "use strict";
+      try {
+        var candidate = eval("(" + fnBody + ")");
+        return typeof candidate === "function" ? candidate() : candidate;
+      } catch (err) {
+        throw new Error("Invalid evaluate function: " + (err && err.message ? err.message : String(err)));
+      }
+      `,
+    ) as (fnBody: string) => unknown;
+    result = await page.evaluate(browserEvaluator, fnText);
   }
-  // Use Function constructor at runtime to avoid esbuild adding __name helper
-  // which doesn't exist in the browser context
-  // eslint-disable-next-line @typescript-eslint/no-implied-eval -- required for browser-context eval
-  const browserEvaluator = new Function(
-    "fnBody",
-    `
-    "use strict";
-    try {
-      var candidate = eval("(" + fnBody + ")");
-      return typeof candidate === "function" ? candidate() : candidate;
-    } catch (err) {
-      throw new Error("Invalid evaluate function: " + (err && err.message ? err.message : String(err)));
-    }
-    `,
-  ) as (fnBody: string) => unknown;
-  return await page.evaluate(browserEvaluator, fnText);
+  // Post-evaluation SSRF check: if the evaluated function navigated the page
+  // to a blocked URL, reject before returning the result.
+  const urlAfter = page.url();
+  if (urlAfter && urlAfter !== urlBefore && !urlAfter.startsWith("data:")) {
+    await assertBrowserNavigationAllowed({ url: urlAfter, ssrfPolicy: opts.ssrfPolicy });
+  }
+  return result;
 }
 
 export async function scrollIntoViewViaPlaywright(opts: {

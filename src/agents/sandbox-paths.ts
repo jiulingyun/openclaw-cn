@@ -108,7 +108,11 @@ async function assertNoSymlinkEscape(
   }
   const rootReal = await tryRealpath(root);
   const parts = relative.split(path.sep).filter(Boolean);
-  let current = root;
+  // Start from the canonical (realpath) form of root to avoid Windows 8.3 short-name
+  // mismatches: fs.realpath may resolve "ADMINI~1" to "Administrator", and if we
+  // build `current` from the short-form root, symlink targets resolved via readlink
+  // inherit the short form, causing isPathInside to fail against the long-form rootReal.
+  let current = rootReal;
   for (let idx = 0; idx < parts.length; idx += 1) {
     const part = parts[idx];
     const isLast = idx === parts.length - 1;
@@ -121,7 +125,28 @@ async function assertNoSymlinkEscape(
         if (options?.allowFinalSymlink && isLast) {
           return;
         }
-        const target = await tryRealpath(current);
+        // Resolve the symlink target. When the target does not exist (dangling
+        // symlink), fs.realpath throws ENOENT. In that case, use fs.readlink to
+        // obtain the link target and resolve it manually so we can still check
+        // whether it escapes the sandbox root.
+        let target: string;
+        try {
+          target = await fs.realpath(current);
+        } catch (realpathErr) {
+          if (isNotFoundPathError(realpathErr)) {
+            const linkTarget = await fs.readlink(current);
+            target = path.isAbsolute(linkTarget)
+              ? linkTarget
+              : path.resolve(path.dirname(current), linkTarget);
+            // Normalize through realpath so the target matches rootReal's canonical
+            // form. On Windows, readlink may return a path through a different
+            // junction/drive (e.g. a VM cache redirect) that differs from rootReal's
+            // realpath form, causing isPathInside to incorrectly report escape.
+            target = await tryRealpath(target);
+          } else {
+            throw realpathErr;
+          }
+        }
         if (!isPathInside(rootReal, target)) {
           throw new Error(
             `Symlink escapes sandbox root (${shortPath(rootReal)}): ${shortPath(current)}`,

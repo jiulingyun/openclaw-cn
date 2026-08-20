@@ -1,5 +1,6 @@
 import type * as Lark from "@larksuiteoapi/node-sdk";
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
+import { fetchRemoteMedia } from "openclaw/plugin-sdk";
 import { Type } from "@sinclair/typebox";
 import { Readable } from "stream";
 import { listEnabledFeishuAccounts } from "./accounts.js";
@@ -323,11 +324,8 @@ async function uploadImageToDocx(
 }
 
 async function downloadImage(url: string): Promise<Buffer> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to download image: ${response.status} ${response.statusText}`);
-  }
-  return Buffer.from(await response.arrayBuffer());
+  const result = await fetchRemoteMedia({ url, maxBytes: 10 * 1024 * 1024 });
+  return result.buffer;
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- SDK block types */

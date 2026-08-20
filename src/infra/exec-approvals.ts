@@ -340,6 +340,7 @@ type CommandResolution = {
   rawExecutable: string;
   resolvedPath?: string;
   executableName: string;
+  nestedResolutions?: CommandResolution[];
 };
 
 function isExecutableFile(filePath: string): boolean {
@@ -425,7 +426,27 @@ export function resolveCommandResolutionFromArgv(
   if (!rawExecutable) return null;
   const resolvedPath = resolveExecutablePath(rawExecutable, cwd, env);
   const executableName = resolvedPath ? path.basename(resolvedPath) : rawExecutable;
-  return { rawExecutable, resolvedPath, executableName };
+  const nestedResolutions: CommandResolution[] = [];
+  for (let i = 1; i < argv.length; i += 1) {
+    const arg = argv[i]?.trim();
+    if (!arg || arg.startsWith("-")) {
+      continue;
+    }
+    // Only resolve arguments that look like paths (contain / or \) to avoid
+    // false positives from regular command arguments looked up via PATH.
+    if (!arg.includes("/") && !arg.includes("\\")) {
+      continue;
+    }
+    const nestedPath = resolveExecutablePath(arg, cwd, env);
+    if (nestedPath) {
+      nestedResolutions.push({
+        rawExecutable: arg,
+        resolvedPath: nestedPath,
+        executableName: path.basename(nestedPath),
+      });
+    }
+  }
+  return { rawExecutable, resolvedPath, executableName, nestedResolutions };
 }
 
 function normalizeMatchTarget(value: string): string {
@@ -1124,7 +1145,27 @@ function evaluateSegments(
       allowSkills && segment.resolution?.executableName
         ? params.skillBins?.has(segment.resolution.executableName)
         : false;
-    return Boolean(match || safe || skillAllow);
+    if (!Boolean(match || safe || skillAllow)) {
+      return false;
+    }
+    // Check nested resolutions (e.g., /usr/bin/env /bin/sh -c '...')
+    // to prevent allowlist bypass via wrapper commands.
+    const nested = segment.resolution?.nestedResolutions;
+    if (nested && nested.length > 0) {
+      for (const nr of nested) {
+        const nestedCandidatePath = resolveAllowlistCandidatePath(nr, params.cwd);
+        const nestedCandidateResolution =
+          nestedCandidatePath
+            ? { ...nr, resolvedPath: nestedCandidatePath }
+            : nr;
+        const nestedMatch = matchAllowlist(params.allowlist, nestedCandidateResolution);
+        if (!nestedMatch) {
+          return false;
+        }
+        if (nestedMatch) matches.push(nestedMatch);
+      }
+    }
+    return true;
   });
 
   return { satisfied, matches };
