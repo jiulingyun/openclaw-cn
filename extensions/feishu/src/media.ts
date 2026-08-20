@@ -1,4 +1,5 @@
 import type { OpenClawConfig as ClawdbotConfig } from "openclaw/plugin-sdk";
+import { fetchRemoteMedia } from "openclaw/plugin-sdk";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -533,13 +534,13 @@ export async function sendMediaFeishu(params: {
       buffer = fs.readFileSync(filePath);
       name = fileName ?? path.basename(filePath);
     } else {
-      // Remote URL - fetch
-      const response = await fetch(mediaUrl);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch media from URL: ${response.status}`);
-      }
-      buffer = Buffer.from(await response.arrayBuffer());
-      name = fileName ?? (path.basename(new URL(mediaUrl).pathname) || "file");
+      // Remote URL - fetch with SSRF protection
+      const result = await fetchRemoteMedia({
+        url: mediaUrl,
+        maxBytes: 30 * 1024 * 1024,
+      });
+      buffer = result.buffer;
+      name = fileName ?? result.fileName ?? (path.basename(new URL(mediaUrl).pathname) || "file");
     }
   } else {
     throw new Error("Either mediaUrl or mediaBuffer must be provided");

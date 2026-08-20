@@ -383,6 +383,7 @@ export { monitorFeishuProvider } from "../feishu/monitor.js";
 
 // Media utilities
 export { loadWebMedia, type WebMediaResult } from "../web/media.js";
+export { fetchRemoteMedia, type MediaFetchError, type MediaFetchErrorCode } from "../media/fetch.js";
 
 // Command authorization helpers used by external channel plugins (e.g. official Feishu plugin)
 export { resolveCommandAuthorizedFromAuthorizers } from "../channels/command-gating.js";

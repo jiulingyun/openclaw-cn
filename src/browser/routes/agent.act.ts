@@ -254,11 +254,13 @@ export function registerBrowserAgentActRoutes(app: BrowserRouteRegistrar, ctx: B
           const fn = toStringOrEmpty(body.fn);
           if (!fn) return jsonError(res, 400, "fn is required");
           const ref = toStringOrEmpty(body.ref) || undefined;
+          const ssrfPolicy = ctx.state().resolved.ssrfPolicy;
           const result = await pw.evaluateViaPlaywright({
             cdpUrl,
             targetId: tab.targetId,
             fn,
             ref,
+            ...(ssrfPolicy ? { ssrfPolicy } : {}),
           });
           return res.json({
             ok: true,

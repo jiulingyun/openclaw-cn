@@ -23,6 +23,7 @@ export type CommandResolution = {
   rawExecutable: string;
   resolvedPath?: string;
   executableName: string;
+  nestedResolutions?: CommandResolution[];
 };
 
 function isExecutableFile(filePath: string): boolean {
@@ -120,7 +121,27 @@ export function resolveCommandResolutionFromArgv(
   }
   const resolvedPath = resolveExecutablePath(rawExecutable, cwd, env);
   const executableName = resolvedPath ? path.basename(resolvedPath) : rawExecutable;
-  return { rawExecutable, resolvedPath, executableName };
+  const nestedResolutions: CommandResolution[] = [];
+  for (let i = 1; i < argv.length; i += 1) {
+    const arg = argv[i]?.trim();
+    if (!arg || arg.startsWith("-")) {
+      continue;
+    }
+    // Only resolve arguments that look like paths (contain / or \) to avoid
+    // false positives from regular command arguments looked up via PATH.
+    if (!arg.includes("/") && !arg.includes("\\")) {
+      continue;
+    }
+    const nestedPath = resolveExecutablePath(arg, cwd, env);
+    if (nestedPath) {
+      nestedResolutions.push({
+        rawExecutable: arg,
+        resolvedPath: nestedPath,
+        executableName: path.basename(nestedPath),
+      });
+    }
+  }
+  return { rawExecutable, resolvedPath, executableName, nestedResolutions };
 }
 
 function normalizeMatchTarget(value: string): string {
